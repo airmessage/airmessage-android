@@ -8,10 +8,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.forEachGesture
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -28,6 +25,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -256,6 +254,29 @@ fun MessageInputBarText(
 					}
 				}
 			}
+		}
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewMessageInputBarText() {
+	Surface {
+		Box(modifier = Modifier.padding(8.dp)) {
+			MessageInputBarText(
+				messageText = "",
+				onMessageTextChange = {},
+				attachments = listOf(),
+				onRemoveAttachment = {},
+				onTakePhoto = {},
+				onOpenContentPicker = {},
+				collapseButtons = false,
+				onChangeCollapseButtons = {},
+				onStartAudioRecording = {},
+				serviceHandler = ServiceHandler.appleBridge,
+				serviceType = ServiceType.appleMessage,
+				onSend = {}
+			)
 		}
 	}
 }

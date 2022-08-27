@@ -5,7 +5,6 @@ import android.view.MotionEvent
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,14 +16,17 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.util.findActivity
+import kotlin.random.Random
 
 private data class Positioning(
 	val x: Float,
@@ -57,9 +59,6 @@ fun MessageInputBarAudio(
 	amplitudeList: List<Int>,
 	visible: Boolean
 ) {
-	val gestureTrackable = LocalContext.current.findActivity() as? GestureTrackable
-		?: throw IllegalStateException("Must be a GestureTrackerActivity")
-	
 	var sendButtonPositioning by remember { mutableStateOf<Positioning?>(null) }
 	var recordButtonPositioning by remember { mutableStateOf<Positioning?>(null) }
 	
@@ -69,43 +68,48 @@ fun MessageInputBarAudio(
 	val currentSendButtonHover by rememberUpdatedState(sendButtonHover)
 	//val currentRecordButtonHover by rememberUpdatedState(recordButtonHover)
 	
-	DisposableEffect(isRecording, gestureTrackable, sendButtonPositioning, recordButtonPositioning) {
-		//Ignore if we're not recording
-		if(!isRecording) {
-			return@DisposableEffect onDispose {}
-		}
+	if(!LocalInspectionMode.current) {
+		val gestureTrackable = LocalContext.current.findActivity() as? GestureTrackable
+			?: throw IllegalStateException("Must be a GestureTrackerActivity")
 		
-		val listener: GestureTracker = listener@{ event ->
-			when(event.action) {
-				MotionEvent.ACTION_MOVE -> {
-					//Track hover states
-					sendButtonPositioning?.let { positioning ->
-						sendButtonHover = positioning.isInside(event.rawX, event.rawY, 64F)
-					}
-					
-					recordButtonPositioning?.let { positioning ->
-						recordButtonHover = positioning.isInside(event.rawX, event.rawY, 64F)
-					}
-					
-					false
-				}
-				MotionEvent.ACTION_UP -> {
-					//Stop recording when the user releases
-					onStopRecording()
-					
-					if(currentSendButtonHover) {
-						onSend()
-					}
-					
-					true
-				}
-				else -> false
+		DisposableEffect(isRecording, gestureTrackable, sendButtonPositioning, recordButtonPositioning) {
+			//Ignore if we're not recording
+			if(!isRecording) {
+				return@DisposableEffect onDispose {}
 			}
-		}
-		
-		gestureTrackable.addGestureTracker(listener)
-		onDispose {
-			gestureTrackable.removeGestureTracker(listener)
+			
+			val listener: GestureTracker = listener@{ event ->
+				when(event.action) {
+					MotionEvent.ACTION_MOVE -> {
+						//Track hover states
+						sendButtonPositioning?.let { positioning ->
+							sendButtonHover = positioning.isInside(event.rawX, event.rawY, 64F)
+						}
+						
+						recordButtonPositioning?.let { positioning ->
+							recordButtonHover = positioning.isInside(event.rawX, event.rawY, 64F)
+						}
+						
+						false
+					}
+					MotionEvent.ACTION_UP -> {
+						//Stop recording when the user releases
+						onStopRecording()
+						
+						if(currentSendButtonHover) {
+							onSend()
+						}
+						
+						true
+					}
+					else -> false
+				}
+			}
+			
+			gestureTrackable.addGestureTracker(listener)
+			onDispose {
+				gestureTrackable.removeGestureTracker(listener)
+			}
 		}
 	}
 	
@@ -246,6 +250,29 @@ fun MessageInputBarAudio(
 						)
 					}
 				}
+			}
+		}
+	}
+}
+
+@Preview(heightDp = 180)
+@Composable
+private fun PreviewMessageInputBarAudio() {
+	val random = Random(0)
+	Surface {
+		Box {
+			Box(modifier = Modifier.padding(8.dp).align(Alignment.BottomCenter)) {
+				MessageInputBarAudio(
+					duration = 3,
+					isRecording = true,
+					onStopRecording = {},
+					onSend = {},
+					onDiscard = {},
+					onTogglePlay = {},
+					playbackState = AudioPlaybackState.Stopped,
+					amplitudeList = List(100) { random.nextInt(100, 5000) },
+					visible = true
+				)
 			}
 		}
 	}
