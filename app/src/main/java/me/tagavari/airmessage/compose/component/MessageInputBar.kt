@@ -1,21 +1,21 @@
 package me.tagavari.airmessage.compose.component
 
-import android.Manifest
-import android.content.pm.PackageManager
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.remember.rememberAudioCapture
-import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.messaging.QueuedFile
@@ -49,10 +49,23 @@ fun MessageInputBar(
 		Box(
 			modifier = Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(surfaceElevation))
 		) {
-			Box(modifier = modifier.padding(8.dp)) {
-				if(audioCapture.isRecording) {
+			Box(
+				modifier = modifier
+					.padding(8.dp)
+					.pointerInput(Unit) {
+						detectTapGestures(
+							onPress = {
+								awaitRelease()
+								if(audioCapture.isRecording.value) {
+									audioCapture.stopRecording()
+								}
+							}
+						)
+					}
+			) {
+				if(audioCapture.isRecording.value) {
 					MessageInputBarAudio(
-						audioCapture.duration
+						audioCapture.duration.value
 					)
 				} else {
 					val scope = rememberCoroutineScope()

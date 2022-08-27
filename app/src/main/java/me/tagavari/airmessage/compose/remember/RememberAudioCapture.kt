@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Build
+import android.util.Log
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -11,11 +12,14 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import java.io.File
 import kotlin.time.Duration.Companion.seconds
+
+private const val TAG = "rememberAudioCapture"
 
 @Composable
 fun rememberAudioCapture(): AudioCaptureState {
@@ -31,29 +35,33 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 	}
 	
-	var isRecording by remember { mutableStateOf(false) }
+	val isRecording = remember { mutableStateOf(false) }
 	
-	var recordingFile by remember { mutableStateOf<File?>(null) }
-	var recordingDuration by remember { mutableStateOf(0) }
+	val recordingFile = remember { mutableStateOf<File?>(null) }
+	val recordingDuration = remember { mutableStateOf(0) }
 	LaunchedEffect(isRecording) {
 		//Count seconds while recording
-		if(isRecording) {
+		if(isRecording.value) {
 			while(true) {
 				delay(1.seconds)
-				recordingDuration++
+				recordingDuration.value++
 			}
 		} else {
-			recordingDuration = 0
+			recordingDuration.value = 0
 		}
 	}
 	
 	fun stopAudioRecording(forceDiscard: Boolean = false): File? {
+		if(BuildConfig.DEBUG && !isRecording.value) {
+			Log.w(TAG, "Tried to stop audio recording while no recording is present!")
+		}
+		
 		//Get the recording state
 		val localMediaRecorder = mediaRecorder ?: return null
-		val localRecordingFile = recordingFile ?: return null
+		val localRecordingFile = recordingFile.value ?: return null
 		
 		//Reset the recording state
-		isRecording = false
+		isRecording.value = false
 		
 		val cleanStop: Boolean = try {
 			localMediaRecorder.stop()
@@ -72,11 +80,15 @@ fun rememberAudioCapture(): AudioCaptureState {
 	}
 	
 	suspend fun startAudioRecording(): Boolean {
+		if(BuildConfig.DEBUG && isRecording.value) {
+			Log.w(TAG, "Tried to start audio recording while already recording!")
+		}
+		
 		//Check if we have permission
 		if(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
 			!= PackageManager.PERMISSION_GRANTED) {
-			val granted = requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-			if(!granted) return false
+			requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
+			return false
 		}
 		
 		//Reset or create the media recorder
@@ -117,7 +129,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 			//Set the media recorder file
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) setOutputFile(targetFile)
 			else setOutputFile(targetFile.absolutePath)
-			recordingFile = targetFile
+			recordingFile.value = targetFile
 			
 			//Prepare the media recorder
 			@Suppress("BlockingMethodInNonBlockingContext")
@@ -129,7 +141,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		//Start recording
 		mediaRecorder = preparedMediaRecorder
 		preparedMediaRecorder.start()
-		isRecording = true
+		isRecording.value = true
 		
 		return true
 	}
@@ -142,8 +154,8 @@ fun rememberAudioCapture(): AudioCaptureState {
 }
 
 abstract class AudioCaptureState(
-	val isRecording: Boolean,
-	val duration: Int
+	val isRecording: State<Boolean>,
+	val duration: State<Int>
 ) {
 	/**
 	 * Starts audio recording
