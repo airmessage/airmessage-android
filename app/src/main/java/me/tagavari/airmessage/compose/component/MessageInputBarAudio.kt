@@ -185,7 +185,7 @@ fun MessageInputBarAudio(
 									height = coordinates.size.height.toFloat()
 								)
 							}
-							.alpha(if(sendButtonHover) 0.5F else 1F),
+							.alpha(if(isRecording && sendButtonHover) 0.5F else 1F),
 						painter = painterResource(id = R.drawable.push_rounded),
 						contentDescription = null,
 						tint = MaterialTheme.colorScheme.primary
@@ -209,7 +209,7 @@ fun MessageInputBarAudio(
 									height = coordinates.size.height.toFloat()
 								)
 							}
-							.alpha(if(recordButtonHover) 0.5F else 1F),
+							.alpha(if(isRecording && recordButtonHover) 0.5F else 1F),
 						painter = painterResource(id = R.drawable.play_circle_rounded),
 						contentDescription = null,
 						tint = MaterialTheme.colorScheme.primary
