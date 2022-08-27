@@ -24,7 +24,6 @@ fun deriveAmplitudeList(
 			delay(interval)
 			val amplitude = mediaRecorder.maxAmplitude
 			amplitudeList.add(amplitude)
-			println("Add amplitude $amplitude")
 		}
 	}
 	

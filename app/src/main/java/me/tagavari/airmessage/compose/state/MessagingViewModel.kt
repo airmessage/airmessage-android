@@ -60,7 +60,6 @@ class MessagingViewModel(
 			}
 			conversation = loadedConversation ?: return@launch
 			queuedFiles.addAll(loadedConversation.draftFiles.map { QueuedFile(it) })
-			println("Loaded ${queuedFiles.size} files")
 			
 			//Load the conversation title
 			launch {
