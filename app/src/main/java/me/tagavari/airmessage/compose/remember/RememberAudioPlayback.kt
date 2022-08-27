@@ -111,6 +111,7 @@ fun rememberAudioPlayback(): AudioPlaybackControls {
 	return object : AudioPlaybackControls {
 		override fun play(uri: Uri) = play(uri)
 		override fun pause() = exoPlayer.pause()
+		override fun resume() = exoPlayer.play()
 		override fun stop() = exoPlayer.stop()
 	}
 }
@@ -118,6 +119,7 @@ fun rememberAudioPlayback(): AudioPlaybackControls {
 interface AudioPlaybackControls {
 	fun play(uri: Uri): Flow<AudioPlaybackState>
 	fun pause()
+	fun resume()
 	fun stop()
 }
 

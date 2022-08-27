@@ -107,12 +107,17 @@ fun MessageInputBar(
 						},
 						onTogglePlay = {
 							val file = recordingData?.file ?: return@MessageInputBarAudio
+							val state = playbackState
 							
 							scope.launch {
-								if(playbackState is AudioPlaybackState.Stopped) {
-									playbackManager.play(Uri.fromFile(file)).collect { playbackState = it }
+								if(state is AudioPlaybackState.Playing) {
+									if(state.playing) {
+										playbackManager.pause()
+									} else {
+										playbackManager.resume()
+									}
 								} else {
-									playbackManager.pause()
+									playbackManager.play(Uri.fromFile(file)).collect { playbackState = it }
 								}
 							}
 						},

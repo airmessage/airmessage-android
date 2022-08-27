@@ -209,9 +209,12 @@ fun MessageInputBarAudio(
 							}
 							.alpha(if(isRecording && recordButtonHover) 0.5F else 1F),
 						painter = when {
-							isRecording -> painterResource(id = R.drawable.stop_circle_rounded)
-							playbackState is AudioPlaybackState.Playing -> painterResource(id = R.drawable.pause_circle_rounded)
-							else -> painterResource(id = R.drawable.play_circle_rounded)
+							isRecording ->
+								painterResource(id = R.drawable.stop_circle_rounded)
+							playbackState is AudioPlaybackState.Playing && playbackState.playing ->
+								painterResource(id = R.drawable.pause_circle_rounded)
+							else ->
+								painterResource(id = R.drawable.play_circle_rounded)
 						},
 						contentDescription = null,
 					)
