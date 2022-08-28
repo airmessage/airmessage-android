@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.compose.state
+package me.tagavari.airmessage.compose.provider
 
 import android.app.Activity
 import android.content.ComponentName
@@ -21,7 +21,7 @@ val LocalConnectionManager = compositionLocalOf<ConnectionManager?> { null }
  * connection manager via [LocalConnectionManager]
  */
 @Composable
-fun ConnectionServiceComposition(
+fun ConnectionServiceLocalProvider(
 	activity: Activity,
 	body: @Composable () -> Unit
 ) {

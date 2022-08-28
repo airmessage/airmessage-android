@@ -122,6 +122,20 @@ interface AudioPlaybackControls {
 	fun stop()
 }
 
+/**
+ * An instance of AudioPlaybackControls that throws errors
+ */
+class AudioPlaybackControlsEmpty : AudioPlaybackControls {
+	private fun throwError(): Nothing {
+		throw IllegalStateException("No-op audio playback controls instance!")
+	}
+	
+	override fun play(uri: Uri) = throwError()
+	override fun pause() = throwError()
+	override fun resume() = throwError()
+	override fun stop() = throwError()
+}
+
 sealed class AudioPlaybackState {
 	class Playing(
 		val time: Long,

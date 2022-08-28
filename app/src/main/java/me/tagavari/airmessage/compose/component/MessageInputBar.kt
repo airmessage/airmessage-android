@@ -11,10 +11,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.remember.deriveAmplitudeList
 import me.tagavari.airmessage.compose.remember.rememberAudioCapture
-import me.tagavari.airmessage.compose.remember.rememberAudioPlayback
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
@@ -61,9 +61,8 @@ fun MessageInputBar(
 				
 				val showRecording = audioCapture.isRecording.value || recordingData != null
 				
-				val playbackManager = rememberAudioPlayback()
+				val playbackManager = LocalAudioPlayback.current
 				var playbackState by remember { mutableStateOf<AudioPlaybackState>(AudioPlaybackState.Stopped) }
-				val scope = rememberCoroutineScope()
 				
 				if(!showRecording) {
 					val scope = rememberCoroutineScope()
@@ -87,6 +86,7 @@ fun MessageInputBar(
 					)
 				}
 				
+				val scope = rememberCoroutineScope()
 				MessageInputBarAudio(
 					duration = audioCapture.duration.value,
 					isRecording = audioCapture.isRecording.value,

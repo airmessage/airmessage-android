@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
@@ -10,11 +11,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
+import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
-import me.tagavari.airmessage.compose.state.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NetworkState
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -156,10 +159,29 @@ fun MessageInfoListEntry(
 								}
 							)
 						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio)) {
+							var playbackState by remember { mutableStateOf<AudioPlaybackState>(AudioPlaybackState.Stopped) }
+							val playbackManager = LocalAudioPlayback.current
+							val scope = rememberCoroutineScope()
+							
 							MessageBubbleAudio(
 								flow = attachmentFlow,
 								file = attachmentFile,
-								audioPlaybackState = AudioPlaybackState.Stopped
+								audioPlaybackState = playbackState,
+								onTogglePlayback = {
+									scope.launch {
+										val state = playbackState
+										
+										if(state is AudioPlaybackState.Playing) {
+											if(state.playing) {
+												playbackManager.pause()
+											} else {
+												playbackManager.resume()
+											}
+										} else {
+											playbackManager.play(Uri.fromFile(attachmentFile)).collect { playbackState = it }
+										}
+									}
+								}
 							)
 						} else {
 							MessageBubbleFile(

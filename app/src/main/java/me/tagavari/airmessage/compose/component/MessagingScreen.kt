@@ -13,7 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.remember.MessagingMediaCaptureType
+import me.tagavari.airmessage.compose.remember.rememberAudioPlayback
 import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
@@ -39,84 +41,88 @@ fun MessagingScreen(
 	}
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
-	Column(
-		modifier = Modifier
-			.background(MaterialTheme.colorScheme.background)
-			.nestedScroll(scrollBehavior.nestedScrollConnection)
+	CompositionLocalProvider(
+		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
-		Surface(tonalElevation = 2.dp) {
-			CenterAlignedTopAppBar(
-				modifier = Modifier.height(120.dp),
-				//scrollBehavior = scrollBehavior,
-				title = {
-					Column(
-						horizontalAlignment = Alignment.CenterHorizontally,
-						verticalArrangement = Arrangement.Center,
-						modifier = Modifier.height(120.dp)
-					) {
-						viewModel.conversation?.let { conversation ->
-							UserIconGroup(members = conversation.members)
+		Column(
+			modifier = Modifier
+				.background(MaterialTheme.colorScheme.background)
+				.nestedScroll(scrollBehavior.nestedScrollConnection)
+		) {
+			Surface(tonalElevation = 2.dp) {
+				CenterAlignedTopAppBar(
+					modifier = Modifier.height(120.dp),
+					//scrollBehavior = scrollBehavior,
+					title = {
+						Column(
+							horizontalAlignment = Alignment.CenterHorizontally,
+							verticalArrangement = Arrangement.Center,
+							modifier = Modifier.height(120.dp)
+						) {
+							viewModel.conversation?.let { conversation ->
+								UserIconGroup(members = conversation.members)
+							}
+							
+							Spacer(modifier = Modifier.height(2.dp))
+							
+							viewModel.conversationTitle?.let { title ->
+								Text(
+									text = title,
+									style = MaterialTheme.typography.bodySmall
+								)
+							}
 						}
-						
-						Spacer(modifier = Modifier.height(2.dp))
-						
-						viewModel.conversationTitle?.let { title ->
-							Text(
-								text = title,
-								style = MaterialTheme.typography.bodySmall
-							)
-						}
+					},
+					navigationIcon = navigationIcon
+				)
+			}
+			
+			viewModel.conversation?.let { conversation ->
+				MessageList(
+					modifier = Modifier.weight(1F),
+					conversation = conversation,
+					messages = viewModel.messages,
+					scrollState = scrollState,
+					onLoadPastMessages = { viewModel.loadPastMessages() },
+					lazyLoadState = viewModel.lazyLoadState
+				)
+			} ?: Box(modifier = Modifier.weight(1F))
+			
+			val scope = rememberCoroutineScope()
+			val captureMedia = rememberMediaCapture()
+			val requestMedia = rememberMediaRequest()
+			
+			MessageInputBar(
+				modifier = Modifier
+					.navigationBarsPadding()
+					.imePadding(),
+				messageText = inputText,
+				onMessageTextChange = { inputText = it },
+				attachments = viewModel.queuedFiles,
+				onRemoveAttachment = { attachment ->
+					viewModel.removeQueuedFile(attachment)
+				},
+				onSend = {},
+				onTakePhoto = {
+					if(viewModel.conversation == null) return@MessageInputBar
+					
+					scope.launch {
+						captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
+							?.let { viewModel.addQueuedFile(it) }
 					}
 				},
-				navigationIcon = navigationIcon
+				onOpenContentPicker = {
+					scope.launch {
+						requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
+							.forEach { viewModel.addQueuedFile(it) }
+					}
+				},
+				collapseButtons = collapseInputButtons,
+				onChangeCollapseButtons = { collapseInputButtons = it },
+				serviceHandler = viewModel.conversation?.serviceHandler,
+				serviceType = viewModel.conversation?.serviceType,
+				floating = !isScrolledToBottom
 			)
 		}
-		
-		viewModel.conversation?.let { conversation ->
-			MessageList(
-				modifier = Modifier.weight(1F),
-				conversation = conversation,
-				messages = viewModel.messages,
-				scrollState = scrollState,
-				onLoadPastMessages = { viewModel.loadPastMessages() },
-				lazyLoadState = viewModel.lazyLoadState
-			)
-		} ?: Box(modifier = Modifier.weight(1F))
-		
-		val scope = rememberCoroutineScope()
-		val captureMedia = rememberMediaCapture()
-		val requestMedia = rememberMediaRequest()
-		
-		MessageInputBar(
-			modifier = Modifier
-				.navigationBarsPadding()
-				.imePadding(),
-			messageText = inputText,
-			onMessageTextChange = { inputText = it },
-			attachments = viewModel.queuedFiles,
-			onRemoveAttachment = { attachment ->
-				viewModel.removeQueuedFile(attachment)
-			},
-			onSend = {},
-			onTakePhoto = {
-				if(viewModel.conversation == null) return@MessageInputBar
-				
-				scope.launch {
-					captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
-						?.let { viewModel.addQueuedFile(it) }
-				}
-			},
-			onOpenContentPicker = {
-				scope.launch {
-					requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
-						.forEach { viewModel.addQueuedFile(it) }
-				}
-			},
-			collapseButtons = collapseInputButtons,
-			onChangeCollapseButtons = { collapseInputButtons = it },
-			serviceHandler = viewModel.conversation?.serviceHandler,
-			serviceType = viewModel.conversation?.serviceType,
-			floating = !isScrolledToBottom
-		)
 	}
 }

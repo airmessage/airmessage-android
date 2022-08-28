@@ -15,7 +15,7 @@ import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.MessagingScreen
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
-import me.tagavari.airmessage.compose.state.ConnectionServiceComposition
+import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 
 class MessagingCompose : ComponentActivity(), GestureTrackable {
@@ -28,7 +28,7 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 		val conversationID = intent.getLongExtra(Messaging.intentParamTargetID, -1)
 		
 		setContent {
-			ConnectionServiceComposition(activity = this) {
+			ConnectionServiceLocalProvider(activity = this) {
 				AirMessageAndroidTheme {
 					MessagingScreen(
 						navigationIcon = {

@@ -18,13 +18,19 @@ object AudioDecodeHelper {
 	 * or null
 	 */
 	@Throws(IOException::class)
-	fun getAmplitudeList(file: File): List<Int> {
+	fun getAudioPreviewData(file: File): AudioPreviewData {
 		val mediaExtractor = MediaExtractor()
 		mediaExtractor.setDataSource(file.path)
 		mediaExtractor.selectTrack(0)
 		
+		//Get the media format
 		val mediaFormat = mediaExtractor.getTrackFormat(0)
 		
+		//Get the duration in seconds
+		val duration = mediaFormat.getLong(MediaFormat.KEY_DURATION)
+		val durationSeconds = duration / 1000000
+		
+		//Create a decoder for the codec
 		val codecList = MediaCodecList(MediaCodecList.REGULAR_CODECS)
 		val codec = codecList.findDecoderForFormat(mediaFormat) ?:
 			throw IllegalArgumentException("Failed to get codec for media format $mediaFormat")
@@ -85,6 +91,14 @@ object AudioDecodeHelper {
 		decoder.release()
 		mediaExtractor.release()
 		
-		return amplitudeList
+		return AudioPreviewData(
+			amplitude = amplitudeList,
+			duration = durationSeconds
+		)
 	}
 }
+
+data class AudioPreviewData(
+	val amplitude: List<Int>,
+	val duration: Long
+)
