@@ -2,13 +2,10 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,14 +18,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.google.android.material.transition.MaterialElevationScale
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
@@ -47,6 +44,7 @@ fun ConversationListEntry(
 	conversation: ConversationInfo,
 	onClick: () -> Unit,
 	onLongClick: (() -> Unit)? = null,
+	active: Boolean = false,
 	selected: Boolean = false
 ) {
 	val context = LocalContext.current
@@ -61,10 +59,14 @@ fun ConversationListEntry(
 	
 	Box(modifier = Modifier.height(72.dp)) {
 		val backgroundColor by animateColorAsState(
-			if(selected) MaterialTheme.colorScheme.primaryContainer
-			else MaterialTheme.colorScheme.surface
+			when {
+				selected -> MaterialTheme.colorScheme.surfaceVariant
+				active -> MaterialTheme.colorScheme.primaryContainer
+				else -> MaterialTheme.colorScheme.surface
+			}
 		)
 		
+		val haptic = LocalHapticFeedback.current
 		Surface(
 			modifier = Modifier
 				.align(Alignment.Center)
@@ -72,7 +74,10 @@ fun ConversationListEntry(
 				.clip(MaterialTheme.shapes.large)
 				.combinedClickable(
 					onClick = onClick,
-					onLongClick = onLongClick
+					onLongClick = onLongClick?.let { callback -> {
+						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+						callback()
+					} }
 				),
 			color = backgroundColor
 		) {
@@ -255,22 +260,63 @@ private fun PreviewConversationListSelectedEntry() {
 					members = mutableListOf(
 						MemberInfo("test", 0xFFFF1744.toInt())
 					),
-					title = "An error conversation",
+					title = "A selected conversation",
 					unreadMessageCount = 0,
 					isArchived = false,
 					isMuted = false,
 					messagePreview = ConversationPreview.Message(
 						date = System.currentTimeMillis(),
 						isOutgoing = false,
-						message = "Failed message",
+						message = "Test message",
 						subject = null,
 						attachments = listOf(),
 						sendStyle = null,
-						isError = true
+						isError = false
 					)
 				),
 				onClick = {},
 				selected = true
+			)
+		}
+	}
+}
+
+@Preview(
+	name = "Conversation active entry",
+	widthDp = 384
+)
+@Composable
+private fun PreviewConversationListActiveEntry() {
+	AirMessageAndroidTheme {
+		Surface {
+			ConversationListEntry(
+				conversation = ConversationInfo(
+					localID = 0,
+					guid = null,
+					externalID = -1,
+					state = ConversationState.ready,
+					serviceHandler = ServiceHandler.appleBridge,
+					serviceType = ServiceType.appleMessage,
+					conversationColor = 0xFFFF1744.toInt(),
+					members = mutableListOf(
+						MemberInfo("test", 0xFFFF1744.toInt())
+					),
+					title = "A selected conversation",
+					unreadMessageCount = 0,
+					isArchived = false,
+					isMuted = false,
+					messagePreview = ConversationPreview.Message(
+						date = System.currentTimeMillis(),
+						isOutgoing = false,
+						message = "Test message",
+						subject = null,
+						attachments = listOf(),
+						sendStyle = null,
+						isError = false
+					)
+				),
+				onClick = {},
+				active = true
 			)
 		}
 	}
