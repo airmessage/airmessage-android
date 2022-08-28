@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -14,7 +15,6 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,11 +40,19 @@ fun ConversationList(
 	//Action mode
 	var selectedConversations by remember { mutableStateOf(setOf<Long>()) }
 	val isActionMode by remember { derivedStateOf { selectedConversations.isNotEmpty() } }
+	fun stopActionMode() {
+		selectedConversations = setOf()
+	}
+	
+	//Stop action mode when back is pressed
+	BackHandler(isActionMode) {
+		stopActionMode()
+	}
 	
 	Scaffold(
 		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 		topBar = {
-			if(selectedConversations.isEmpty()) {
+			if(!isActionMode) {
 				LargeTopAppBar(
 					title = { Text(stringResource(id = R.string.app_name)) },
 					scrollBehavior = scrollBehavior,
@@ -83,11 +91,7 @@ fun ConversationList(
 					},
 					scrollBehavior = scrollBehavior,
 					navigationIcon = {
-						IconButton(
-							onClick = {
-								selectedConversations = setOf()
-							}
-						) {
+						IconButton(onClick = { stopActionMode() }) {
 							Icon(
 								imageVector = Icons.Filled.Close,
 								contentDescription = stringResource(id = android.R.string.cancel)
