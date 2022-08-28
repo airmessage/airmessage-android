@@ -14,6 +14,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
+import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.MessagingMediaCaptureType
 import me.tagavari.airmessage.compose.remember.rememberAudioPlayback
 import me.tagavari.airmessage.compose.remember.rememberMediaCapture
@@ -85,6 +86,7 @@ fun MessagingScreen(
 				)
 			} ?: Box(modifier = Modifier.weight(1F))
 			
+			val connectionManager = LocalConnectionManager.current
 			val scope = rememberCoroutineScope()
 			val captureMedia = rememberMediaCapture()
 			val requestMedia = rememberMediaRequest()
@@ -99,7 +101,7 @@ fun MessagingScreen(
 				onRemoveAttachment = { attachment ->
 					viewModel.removeQueuedFile(attachment)
 				},
-				onSend = { viewModel.submitInput() },
+				onSend = { viewModel.submitInput(connectionManager) },
 				onTakePhoto = {
 					if(viewModel.conversation == null) return@MessageInputBar
 					
