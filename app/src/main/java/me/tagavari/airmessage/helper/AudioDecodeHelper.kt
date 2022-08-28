@@ -8,6 +8,7 @@ import java.io.File
 import java.io.IOException
 import java.lang.IllegalArgumentException
 import java.nio.ByteOrder
+import kotlin.random.Random
 
 object AudioDecodeHelper {
 	private const val coderTimeout = 1_000L
@@ -101,4 +102,15 @@ object AudioDecodeHelper {
 data class AudioPreviewData(
 	val amplitude: List<Int>,
 	val duration: Long
-)
+) {
+	companion object {
+		val Preview: AudioPreviewData
+			get() {
+				val random = Random(0)
+				return AudioPreviewData(
+					amplitude = List(100) { random.nextInt(100, 5000) },
+					duration = 16
+				)
+			}
+	}
+}

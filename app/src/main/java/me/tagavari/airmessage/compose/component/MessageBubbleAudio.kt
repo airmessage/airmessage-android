@@ -10,7 +10,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -18,6 +20,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
+import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.helper.AudioDecodeHelper
 import me.tagavari.airmessage.helper.AudioPreviewData
 import me.tagavari.airmessage.util.MessagePartFlow
@@ -55,23 +58,27 @@ fun MessageBubbleAudio(
 				audioPlaybackState is AudioPlaybackState.Playing && audioPlaybackState.playing
 			
 			//Get the amplitude list
-			val audioPreview by produceState<AudioPreviewData?>(null) {
-				audioPreviewCacheMutex.withLock {
-					//Look up a previous value in the cache
-					audioPreviewCache[file]?.let {
-						value = it
-						return@withLock
+			val audioPreview by if(LocalInspectionMode.current) {
+				remember { mutableStateOf<AudioPreviewData?>(AudioPreviewData.Preview) }
+			} else {
+				produceState<AudioPreviewData?>(null) {
+					audioPreviewCacheMutex.withLock {
+						//Look up a previous value in the cache
+						audioPreviewCache[file]?.let {
+							value = it
+							return@withLock
+						}
+						
+						//Process the file
+						@Suppress("BlockingMethodInNonBlockingContext")
+						val amplitudeList = withContext(Dispatchers.IO) {
+							AudioDecodeHelper.getAudioPreviewData(file)
+						}
+						
+						//Save the value in the cache
+						audioPreviewCache.put(file, amplitudeList)
+						value = amplitudeList
 					}
-					
-					//Process the file
-					@Suppress("BlockingMethodInNonBlockingContext")
-					val amplitudeList = withContext(Dispatchers.IO) {
-						AudioDecodeHelper.getAudioPreviewData(file)
-					}
-					
-					//Save the value in the cache
-					audioPreviewCache.put(file, amplitudeList)
-					value = amplitudeList
 				}
 			}
 			
@@ -113,5 +120,23 @@ fun MessageBubbleAudio(
 				}
 			)
 		}
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewMessageBubbleAudio() {
+	AirMessageAndroidTheme {
+		MessageBubbleAudio(
+			flow = MessagePartFlow(
+				isOutgoing = false,
+				anchorBottom = false,
+				anchorTop = false,
+				tintRatio = 0F
+			),
+			file = File(""),
+			audioPlaybackState = AudioPlaybackState.Stopped,
+			onTogglePlayback = {}
+		)
 	}
 }
