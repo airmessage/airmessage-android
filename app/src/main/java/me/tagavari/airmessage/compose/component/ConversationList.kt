@@ -10,6 +10,7 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -38,7 +39,7 @@ fun ConversationList(
 	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 	
 	//Action mode
-	var selectedConversations by remember { mutableStateOf(setOf<Long>()) }
+	var selectedConversations by rememberSaveable { mutableStateOf(setOf<Long>()) }
 	val isActionMode by remember { derivedStateOf { selectedConversations.isNotEmpty() } }
 	fun stopActionMode() {
 		selectedConversations = setOf()
