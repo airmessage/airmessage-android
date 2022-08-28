@@ -65,6 +65,10 @@ class MessagingViewModel(
 		}
 	}
 	
+	override fun onCleared() {
+		soundPool.release()
+	}
+	
 	/**
 	 * Loads the conversation from its ID
 	 */
