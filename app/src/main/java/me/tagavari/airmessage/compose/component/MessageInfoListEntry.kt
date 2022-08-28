@@ -15,9 +15,11 @@ import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.state.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NetworkState
+import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.helper.ConversationColorHelper
+import me.tagavari.airmessage.helper.FileHelper.compareMimeTypes
 import me.tagavari.airmessage.helper.IntentHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MessageInfo
@@ -138,13 +140,25 @@ fun MessageInfoListEntry(
 					)
 					
 					attachment.file?.also { attachmentFile ->
-						MessageBubbleFile(
-							flow = attachmentFlow,
-							name = attachment.computedFileName ?: "",
-							onClick = {
-								IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
-							}
-						)
+						if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
+									|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo)) {
+							MessageBubbleAV(
+								flow = attachmentFlow,
+								file = attachmentFile,
+								type = attachment.contentType,
+								onClick = {
+									IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+								}
+							)
+						} else {
+							MessageBubbleFile(
+								flow = attachmentFlow,
+								name = attachment.computedFileName ?: "",
+								onClick = {
+									IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+								}
+							)
+						}
 					} ?: run {
 						//Get the current download state
 						val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()

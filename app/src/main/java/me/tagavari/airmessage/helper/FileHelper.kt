@@ -98,7 +98,8 @@ object FileHelper {
 	 * Compares two mime types to check if they are equivalent
 	 */
 	@JvmStatic
-	fun compareMimeTypes(one: String, two: String): Boolean {
+	fun compareMimeTypes(one: String?, two: String?): Boolean {
+		if(one == null || two == null) return false
 		if(one == "*/*" || two == "*/*") return true
 		if(!one.contains("/") || !two.contains("/")) {
 			CrashlyticsBridge.recordException(IllegalArgumentException("Couldn't compare MIME types. Attempting to compare $one and $two"))
