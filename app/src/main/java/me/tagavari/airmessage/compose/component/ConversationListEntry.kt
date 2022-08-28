@@ -1,9 +1,14 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -16,12 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.google.android.material.transition.MaterialElevationScale
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
@@ -34,10 +41,13 @@ import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationPreview
 import me.tagavari.airmessage.messaging.MemberInfo
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun ConversationListEntry(
 	conversation: ConversationInfo,
-	onClick: () -> Unit
+	onClick: () -> Unit,
+	onLongClick: (() -> Unit)? = null,
+	selected: Boolean = false
 ) {
 	val context = LocalContext.current
 	val title by produceState(
@@ -49,80 +59,99 @@ fun ConversationListEntry(
 	
 	val preview = conversation.dynamicPreview
 	
-	Row(
-		modifier = Modifier.height(72.dp).clickable(onClick = onClick),
-		verticalAlignment = Alignment.CenterVertically
-	) {
-		Spacer(modifier = Modifier.width(6.dp))
-		
-		//New message indicator
-		Box(
-			modifier = Modifier
-				.alpha(if(conversation.unreadMessageCount > 0) 1F else 0F)
-				.size(8.dp)
-				.clip(CircleShape)
-				.background(MaterialTheme.colorScheme.primary)
+	Box(modifier = Modifier.height(72.dp)) {
+		val backgroundColor by animateColorAsState(
+			if(selected) MaterialTheme.colorScheme.primaryContainer
+			else MaterialTheme.colorScheme.surface
 		)
 		
-		Spacer(modifier = Modifier.width(6.dp))
-		
-		//Group icon
-		UserIconGroup(members = conversation.members)
-		
-		Spacer(modifier = Modifier.width(16.dp))
-		
-		//Title and preview
-		Column(modifier = Modifier.weight(1F)) {
-			Text(
-				text = title,
-				overflow = TextOverflow.Ellipsis,
-				maxLines = 1,
-				style = MaterialTheme.typography.bodyLarge
-			)
-			
-			Text(
-				text = preview?.buildString(LocalContext.current) ?: stringResource(id = R.string.part_unknown),
-				style = MaterialTheme.typography.bodyMedium,
-				maxLines = 1,
-				overflow = TextOverflow.Ellipsis,
-				color = MaterialTheme.colorScheme.onSurfaceVariant
-			)
-		}
-		
-		Spacer(modifier = Modifier.width(16.dp))
-		
-		Column(
-			horizontalAlignment = Alignment.End
+		Surface(
+			modifier = Modifier
+				.align(Alignment.Center)
+				.padding(horizontal = 4.dp, vertical = 2.dp)
+				.clip(MaterialTheme.shapes.large)
+				.combinedClickable(
+					onClick = onClick,
+					onLongClick = onLongClick
+				),
+			color = backgroundColor
 		) {
-			val stringNotSent = stringResource(id = R.string.message_senderror)
-			
-			val isPreviewError = remember(preview) {
-				preview is ConversationPreview.Message && preview.isError
+			Row(
+				modifier = Modifier.fillMaxSize(),
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				Spacer(modifier = Modifier.width(6.dp))
+				
+				//New message indicator
+				Box(
+					modifier = Modifier
+						.alpha(if(conversation.unreadMessageCount > 0) 1F else 0F)
+						.size(8.dp)
+						.clip(CircleShape)
+						.background(MaterialTheme.colorScheme.primary)
+				)
+				
+				Spacer(modifier = Modifier.width(6.dp))
+				
+				//Group icon
+				UserIconGroup(members = conversation.members)
+				
+				Spacer(modifier = Modifier.width(16.dp))
+				
+				//Title and preview
+				Column(modifier = Modifier.weight(1F)) {
+					Text(
+						text = title,
+						overflow = TextOverflow.Ellipsis,
+						maxLines = 1,
+						style = MaterialTheme.typography.bodyLarge
+					)
+					
+					Text(
+						text = preview?.buildString(LocalContext.current) ?: stringResource(id = R.string.part_unknown),
+						style = MaterialTheme.typography.bodyMedium,
+						maxLines = 1,
+						overflow = TextOverflow.Ellipsis,
+						color = MaterialTheme.colorScheme.onSurfaceVariant
+					)
+				}
+				
+				Spacer(modifier = Modifier.width(16.dp))
+				
+				Column(
+					horizontalAlignment = Alignment.End
+				) {
+					val stringNotSent = stringResource(id = R.string.message_senderror)
+					
+					val isPreviewError = remember(preview) {
+						preview is ConversationPreview.Message && preview.isError
+					}
+					val previewText = remember(preview, isPreviewError) {
+						if(isPreviewError) stringNotSent
+						else preview?.let { LanguageHelper.getLastUpdateStatusTime(context, it.date) }
+							?: ""
+					}
+					
+					Text(
+						text = previewText,
+						style = MaterialTheme.typography.bodyMedium,
+						color = if(isPreviewError) MaterialTheme.colorScheme.error
+						else MaterialTheme.colorScheme.onSurfaceVariant
+					)
+					
+					Icon(
+						painter = painterResource(id = R.drawable.notifications_off_outlined),
+						contentDescription = stringResource(id = R.string.action_mute),
+						tint = MaterialTheme.colorScheme.onSurfaceVariant,
+						modifier = Modifier
+							.size(16.dp)
+							.alpha(if(conversation.isMuted) 1F else 0F)
+					)
+				}
+				
+				Spacer(modifier = Modifier.width(16.dp))
 			}
-			val previewText = remember(preview, isPreviewError) {
-				if(isPreviewError) stringNotSent
-				else preview?.let { LanguageHelper.getLastUpdateStatusTime(context, it.date) }
-					?: ""
-			}
-			
-			Text(
-				text = previewText,
-				style = MaterialTheme.typography.bodyMedium,
-				color = if(isPreviewError) MaterialTheme.colorScheme.error
-				else MaterialTheme.colorScheme.onSurfaceVariant
-			)
-			
-			Icon(
-				painter = painterResource(id = R.drawable.notifications_off_outlined),
-				contentDescription = stringResource(id = R.string.action_mute),
-				tint = MaterialTheme.colorScheme.onSurfaceVariant,
-				modifier = Modifier
-					.size(16.dp)
-					.alpha(if(conversation.isMuted) 1F else 0F)
-			)
 		}
-		
-		Spacer(modifier = Modifier.width(16.dp))
 	}
 }
 
