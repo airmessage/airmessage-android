@@ -27,9 +27,6 @@ fun MessagingScreen(
 	navigationIcon: @Composable () -> Unit = {},
 	conversationID: Long
 ) {
-	var inputText by remember { mutableStateOf("") }
-	var collapseInputButtons by remember { mutableStateOf(false) }
-	
 	val application = LocalContext.current.applicationContext as Application
 	val viewModel = viewModel<MessagingViewModel>(factory = MessagingViewModelFactory(application, conversationID))
 	
@@ -96,13 +93,13 @@ fun MessagingScreen(
 				modifier = Modifier
 					.navigationBarsPadding()
 					.imePadding(),
-				messageText = inputText,
-				onMessageTextChange = { inputText = it },
+				messageText = viewModel.inputText,
+				onMessageTextChange = { viewModel.inputText = it },
 				attachments = viewModel.queuedFiles,
 				onRemoveAttachment = { attachment ->
 					viewModel.removeQueuedFile(attachment)
 				},
-				onSend = {},
+				onSend = { viewModel.submitInput() },
 				onTakePhoto = {
 					if(viewModel.conversation == null) return@MessageInputBar
 					
@@ -117,8 +114,8 @@ fun MessagingScreen(
 							.forEach { viewModel.addQueuedFile(it) }
 					}
 				},
-				collapseButtons = collapseInputButtons,
-				onChangeCollapseButtons = { collapseInputButtons = it },
+				collapseButtons = viewModel.collapseInputButtons,
+				onChangeCollapseButtons = { viewModel.collapseInputButtons = it },
 				serviceHandler = viewModel.conversation?.serviceHandler,
 				serviceType = viewModel.conversation?.serviceType,
 				floating = !isScrolledToBottom

@@ -13,16 +13,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
+import me.tagavari.airmessage.R
+import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
-import me.tagavari.airmessage.helper.AttachmentStorageHelper
+import me.tagavari.airmessage.helper.*
 import me.tagavari.airmessage.helper.AttachmentStorageHelper.deleteContentFile
-import me.tagavari.airmessage.helper.ConversationBuildHelper
-import me.tagavari.airmessage.helper.ConversationHelper
 import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileUpdate
+import me.tagavari.airmessage.task.ConversationActionTask
 import me.tagavari.airmessage.task.DraftActionTask
 import me.tagavari.airmessage.util.ReplaceInsertResult
 import java.io.File
@@ -31,6 +33,13 @@ class MessagingViewModel(
 	application: Application,
 	private val conversationID: Long
 ) : AndroidViewModel(application) {
+	//Input state
+	var inputText by mutableStateOf("")
+	
+	//Screen state
+	var collapseInputButtons by mutableStateOf(false)
+	
+	//Messaging state
 	var conversation by mutableStateOf<ConversationInfo?>(null)
 		private set
 	var conversationTitle by mutableStateOf<String?>(null)
@@ -40,6 +49,11 @@ class MessagingViewModel(
 		private set
 	var messages = mutableStateListOf<ConversationItem>()
 	var queuedFiles = mutableStateListOf<QueuedFile>()
+	
+	//Sound
+	private val soundPool = SoundHelper.getSoundPool()
+	private val soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_in, 1)
+	private val soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_out, 1)
 	
 	init {
 		//Load conversations
@@ -301,6 +315,54 @@ class MessagingViewModel(
 				
 				//Remove the item from the database
 				DatabaseManager.getInstance().removeDraftReference(localID, updateTime)
+			}
+		}
+	}
+	
+	fun submitInput(connectionManager: ConnectionManager?) {
+		val conversation = conversation ?: return
+		
+		viewModelScope.launch {
+			//Sanitize input
+			val cleanInputText = inputText.trim().ifEmpty { null }
+			//Make a copy of queued file list
+			val cleanQueuedFiles = queuedFiles.toList()
+			
+			//Ignore if we have no content to send,
+			//or if there is an attachment that hasn't been prepared
+			if(cleanInputText == null
+				|| cleanQueuedFiles.isEmpty()
+				|| cleanQueuedFiles.any { it.file.isA }) {
+				return@launch
+			}
+			
+			
+			//Prepare and send the messages in the background
+			launch {
+				MessageSendHelper.prepareSendMessages(
+					getApplication(),
+					conversation,
+					cleanInputText,
+					cleanQueuedFiles.map { it.toFileDraft() },
+					connectionManager
+				).await()
+			}
+			
+			//Clear input
+			inputText = ""
+			queuedFiles.clear()
+			
+			//Play a sound
+			if(Preferences.getPreferenceMessageSounds(getApplication())) {
+				SoundHelper.playSound(soundPool, soundIDMessageOutgoing)
+			}
+			
+			//If the conversation is archived, unarchive it
+			if(conversation.isArchived) {
+				ConversationActionTask.archiveConversations(
+					setOf(conversation),
+					false
+				).await()
 			}
 		}
 	}
