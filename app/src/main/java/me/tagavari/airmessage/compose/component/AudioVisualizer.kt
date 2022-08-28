@@ -6,7 +6,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import kotlin.math.ceil
 
 private const val amplitudeMin = 100
 private const val amplitudeMax = 10000
@@ -45,7 +44,7 @@ fun AudioVisualizer(
 		val canvasHeight = size.height
 		
 		//Estimate how many lines we'll be able to render
-		val lineCount = ceil(canvasWidth / (lineWidth + lineSpacing)).toInt()
+		val lineCount = (canvasWidth / (lineWidth + lineSpacing)).toInt()
 		
 		val displayList = when(displayType) {
 			AudioVisualizerDisplayType.STREAM -> {
