@@ -101,7 +101,14 @@ fun AudioVisualizer(
 			//Calculate the line dimensions
 			val lineHeight = (amplitude.toFloat() / amplitudeMax.toFloat()) * canvasHeight
 			
-			val posX = canvasWidth - lineWidth - ((lineSpacing + lineWidth) * index)
+			val posX = when(displayType) {
+				AudioVisualizerDisplayType.STREAM -> {
+					canvasWidth - lineWidth - ((lineSpacing + lineWidth) * index)
+				}
+				AudioVisualizerDisplayType.SUMMARY -> {
+					(lineWidth + lineSpacing) * index
+				}
+			}
 			val posY = (canvasHeight - lineHeight) / 2
 			
 			//How many pixels wide should be solid
