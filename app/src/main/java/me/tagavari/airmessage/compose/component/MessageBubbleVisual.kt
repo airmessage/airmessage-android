@@ -28,7 +28,7 @@ import me.tagavari.airmessage.util.MessagePartFlow
 import java.io.File
 
 @Composable
-fun MessageBubbleAV(
+fun MessageBubbleVisual(
 	flow: MessagePartFlow,
 	file: File,
 	type: String?,

@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.state.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NetworkState
 import me.tagavari.airmessage.constants.MIMEConstants
@@ -142,13 +143,23 @@ fun MessageInfoListEntry(
 					attachment.file?.also { attachmentFile ->
 						if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
 									|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo)) {
-							MessageBubbleAV(
+							MessageBubbleVisual(
 								flow = attachmentFlow,
 								file = attachmentFile,
 								type = attachment.contentType,
 								onClick = {
-									IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+									IntentHelper.openAttachmentFile(
+										context,
+										attachmentFile,
+										attachment.computedContentType
+									)
 								}
+							)
+						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio)) {
+							MessageBubbleAudio(
+								flow = attachmentFlow,
+								file = attachmentFile,
+								audioPlaybackState = AudioPlaybackState.Stopped
 							)
 						} else {
 							MessageBubbleFile(
