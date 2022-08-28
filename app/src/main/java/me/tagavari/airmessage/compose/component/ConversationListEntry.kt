@@ -234,3 +234,44 @@ private fun PreviewConversationListErrorEntry() {
 		}
 	}
 }
+
+@Preview(
+	name = "Conversation selected entry",
+	widthDp = 384
+)
+@Composable
+private fun PreviewConversationListSelectedEntry() {
+	AirMessageAndroidTheme {
+		Surface {
+			ConversationListEntry(
+				conversation = ConversationInfo(
+					localID = 0,
+					guid = null,
+					externalID = -1,
+					state = ConversationState.ready,
+					serviceHandler = ServiceHandler.appleBridge,
+					serviceType = ServiceType.appleMessage,
+					conversationColor = 0xFFFF1744.toInt(),
+					members = mutableListOf(
+						MemberInfo("test", 0xFFFF1744.toInt())
+					),
+					title = "An error conversation",
+					unreadMessageCount = 0,
+					isArchived = false,
+					isMuted = false,
+					messagePreview = ConversationPreview.Message(
+						date = System.currentTimeMillis(),
+						isOutgoing = false,
+						message = "Failed message",
+						subject = null,
+						attachments = listOf(),
+						sendStyle = null,
+						isError = true
+					)
+				),
+				onClick = {},
+				selected = true
+			)
+		}
+	}
+}
