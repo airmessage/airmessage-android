@@ -1,13 +1,19 @@
 package me.tagavari.airmessage.compose.component
 
 import android.os.SystemClock
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import me.tagavari.airmessage.compose.state.MessageLazyLoadState
 import me.tagavari.airmessage.constants.TimingConstants
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
@@ -22,7 +28,9 @@ fun MessageList(
 	modifier: Modifier = Modifier,
 	conversation: ConversationInfo,
 	messages: List<ConversationItem>,
-	scrollState: LazyListState = rememberLazyListState()
+	scrollState: LazyListState = rememberLazyListState(),
+	onLoadPastMessages: () -> Unit,
+	lazyLoadState: MessageLazyLoadState
 ) {
 	val reversedMessages = messages.asReversed()
 	
@@ -40,11 +48,24 @@ fun MessageList(
 				scrollProgressModificationTime = timeNow
 				
 				lastScrollOffsetMap = visibleItemsInfo
+					.filter { it.key is Long }
 					.associate { it.key as Long to (it.offset / height).coerceIn(0F, 1F) }
 			}
 			
 			lastScrollOffsetMap!!
 		}
+	}
+	
+	val endOfListReached by remember {
+		derivedStateOf {
+			scrollState.layoutInfo.visibleItemsInfo.lastOrNull()?.index == scrollState.layoutInfo.totalItemsCount - 1
+		}
+	}
+	
+	val currentOnLoadPastMessages by rememberUpdatedState(onLoadPastMessages)
+	
+	LaunchedEffect(endOfListReached) {
+		currentOnLoadPastMessages()
 	}
 	
 	LazyColumn(
@@ -88,6 +109,16 @@ fun MessageList(
 					spacing = spacing,
 					scrollProgress = scrollProgress
 				)
+			}
+		}
+		
+		if(lazyLoadState == MessageLazyLoadState.LOADING) {
+			item {
+				Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+					CircularProgressIndicator(
+						modifier = Modifier.align(Alignment.Center)
+					)
+				}
 			}
 		}
 	}

@@ -36,6 +36,8 @@ class MessagingViewModel(
 	var conversationTitle by mutableStateOf<String?>(null)
 		private set
 	private var lazyLoader: DatabaseManager.ConversationLazyLoader? = null
+	var lazyLoadState by mutableStateOf(MessageLazyLoadState.IDLE)
+		private set
 	var messages = mutableStateListOf<ConversationItem>()
 	var queuedFiles = mutableStateListOf<QueuedFile>()
 	
@@ -75,6 +77,37 @@ class MessagingViewModel(
 			withContext(Dispatchers.IO) {
 				lazyLoader.loadNextChunk(getApplication())
 			}.let { messages.addAll(it) }
+		}
+	}
+	
+	/**
+	 * Loads past message history
+	 */
+	fun loadPastMessages() {
+		//Ignore if we're still loading or we're not idle
+		if(messages.isEmpty() || lazyLoadState != MessageLazyLoadState.IDLE) {
+			return
+		}
+		
+		//Get the lazy loader
+		val lazyLoader = lazyLoader ?: return
+		
+		viewModelScope.launch {
+			//Set the state to loading
+			lazyLoadState = MessageLazyLoadState.LOADING
+			
+			//Fetch messages
+			val loadedMessages = withContext(Dispatchers.IO) {
+				lazyLoader.loadNextChunk(getApplication())
+			}
+			
+			//Handle the result
+			lazyLoadState = if(loadedMessages.isNotEmpty()) {
+				messages.addAll(0, loadedMessages)
+				MessageLazyLoadState.COMPLETE
+			} else {
+				MessageLazyLoadState.IDLE
+			}
 		}
 	}
 	
@@ -285,4 +318,13 @@ class MessagingViewModelFactory(
 	override fun <T : ViewModel> create(modelClass: Class<T>): T {
 		return MessagingViewModel(application, conversationID) as T
 	}
+}
+
+enum class MessageLazyLoadState {
+	//New messages can be loaded
+	IDLE,
+	//New messages are being loaded
+	LOADING,
+	//There are no new messages to load
+	COMPLETE
 }

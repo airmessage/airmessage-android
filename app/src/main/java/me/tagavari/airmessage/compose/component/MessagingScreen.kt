@@ -78,6 +78,8 @@ fun MessagingScreen(
 				conversation = conversation,
 				messages = viewModel.messages,
 				scrollState = scrollState,
+				onLoadPastMessages = { viewModel.loadPastMessages() },
+				lazyLoadState = viewModel.lazyLoadState
 			)
 		} ?: Box(modifier = Modifier.weight(1F))
 		
