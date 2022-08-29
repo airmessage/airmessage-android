@@ -3,14 +3,16 @@ package me.tagavari.airmessage.compose.state
 import android.app.Application
 import android.net.Uri
 import android.util.Log
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
@@ -57,9 +59,9 @@ class MessagingViewModel(
 	val scrollToBottomFlow = _scrollToBottomFlow.asSharedFlow()
 	
 	//Sound
-	private val soundPool = SoundHelper.getSoundPool()
-	private val soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_in, 1)
-	private val soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_out, 1)
+	val soundPool = SoundHelper.getSoundPool()
+	val soundIDMessageIncoming = soundPool.load(getApplication(), R.raw.message_in, 1)
+	val soundIDMessageOutgoing = soundPool.load(getApplication(), R.raw.message_out, 1)
 	
 	init {
 		//Load conversations
@@ -146,7 +148,7 @@ class MessagingViewModel(
 				//Apply the update
 				applyMessageUpdate(resultList)
 				
-				//Scroll to the bottom for new outgoing items
+				//Scroll to the bottom of the list
 				_scrollToBottomFlow.emit(Unit)
 			}
 			is ReduxEventMessaging.ConversationUpdate -> {
@@ -331,51 +333,58 @@ class MessagingViewModel(
 		}
 	}
 	
-	fun submitInput(connectionManager: ConnectionManager?) {
-		val conversation = conversation ?: return
+	/**
+	 * Sends the current ext and attachments
+	 * @param connectionManager The connection manager to use
+	 * @return Whether the message was successfully prepared
+	 */
+	fun submitInput(connectionManager: ConnectionManager?): Boolean {
+		val conversation = conversation ?: return false
 		
+		//Sanitize input
+		val cleanInputText = inputText.trim().ifEmpty { null }
+		
+		//Make a copy of queued file list
+		val cleanQueuedFiles = queuedFiles.toList()
+		
+		//Ignore if we have no content to send,
+		//or if there is an attachment that hasn't been prepared
+		if((cleanInputText == null && cleanQueuedFiles.isEmpty())
+			|| cleanQueuedFiles.any { it.file.isA }) {
+			return false
+		}
+		
+		//Prepare and send the messages in the background
 		viewModelScope.launch {
-			//Sanitize input
-			val cleanInputText = inputText.trim().ifEmpty { null }
-			//Make a copy of queued file list
-			val cleanQueuedFiles = queuedFiles.toList()
-			
-			//Ignore if we have no content to send,
-			//or if there is an attachment that hasn't been prepared
-			if((cleanInputText == null && cleanQueuedFiles.isEmpty())
-				|| cleanQueuedFiles.any { it.file.isA }) {
-				return@launch
-			}
-			
-			
-			//Prepare and send the messages in the background
-			launch {
-				MessageSendHelper.prepareSendMessages(
-					getApplication(),
-					conversation,
-					cleanInputText,
-					cleanQueuedFiles.map { it.toFileDraft() },
-					connectionManager
-				).await()
-			}
-			
-			//Clear input
-			inputText = ""
-			queuedFiles.clear()
-			
-			//Play a sound
-			if(Preferences.getPreferenceMessageSounds(getApplication())) {
-				SoundHelper.playSound(soundPool, soundIDMessageOutgoing)
-			}
-			
-			//If the conversation is archived, unarchive it
-			if(conversation.isArchived) {
+			MessageSendHelper.prepareSendMessages(
+				getApplication(),
+				conversation,
+				cleanInputText,
+				cleanQueuedFiles.map { it.toFileDraft() },
+				connectionManager
+			).await()
+		}
+		
+		//Clear input
+		inputText = ""
+		queuedFiles.clear()
+		
+		//Play a sound
+		if(Preferences.getPreferenceMessageSounds(getApplication())) {
+			SoundHelper.playSound(soundPool, soundIDMessageOutgoing)
+		}
+		
+		//If the conversation is archived, unarchive it
+		if(conversation.isArchived) {
+			viewModelScope.launch {
 				ConversationActionTask.archiveConversations(
 					setOf(conversation),
 					false
 				).await()
 			}
 		}
+		
+		return true
 	}
 	
 	private companion object {

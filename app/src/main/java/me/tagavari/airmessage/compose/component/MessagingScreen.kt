@@ -23,6 +23,7 @@ import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
+import me.tagavari.airmessage.helper.SoundHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -110,7 +111,12 @@ fun MessagingScreen(
 					viewModel.removeQueuedFile(attachment)
 				},
 				attachmentsScrollState = attachmentsScrollState,
-				onSend = { viewModel.submitInput(connectionManager) },
+				onSend = {
+					val messagePrepared = viewModel.submitInput(connectionManager)
+					if(messagePrepared) {
+						SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing)
+					}
+				},
 				onTakePhoto = {
 					if(viewModel.conversation == null) return@MessageInputBar
 					
