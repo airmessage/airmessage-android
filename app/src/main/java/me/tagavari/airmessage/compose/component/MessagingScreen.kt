@@ -13,7 +13,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -51,19 +50,17 @@ fun MessagingScreen(
 		) {
 			Surface(tonalElevation = 2.dp) {
 				CenterAlignedTopAppBar(
-					modifier = Modifier.height(120.dp),
 					//scrollBehavior = scrollBehavior,
 					title = {
 						Column(
 							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.Center,
-							modifier = Modifier.height(120.dp)
+							verticalArrangement = Arrangement.Top
 						) {
 							viewModel.conversation?.let { conversation ->
 								UserIconGroup(members = conversation.members)
 							}
 							
-							Spacer(modifier = Modifier.height(2.dp))
+							Spacer(modifier = Modifier.height(1.dp))
 							
 							viewModel.conversationTitle?.let { title ->
 								Text(
