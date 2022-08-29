@@ -1,8 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="Theme.AirMessage.Compose" parent="android:Theme.Material.Light.NoActionBar">
-		<item name="android:navigationBarColor">@android:color/transparent</item>
+	<style name="Theme.AirMessage.Compose" parent="Theme.Material3.Light.NoActionBar">
 		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+		
+		<item name="android:navigationBarColor">@android:color/transparent</item>
+		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 	</style>
 	
 	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">

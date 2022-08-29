@@ -35,9 +35,11 @@ import androidx.annotation.PluralsRes;
 import androidx.annotation.RequiresApi;
 import androidx.annotation.StringRes;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.graphics.Insets;
 import androidx.core.util.Consumer;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentTransaction;
 import androidx.preference.EditTextPreference;
@@ -509,15 +511,15 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			WindowHelper.enforceContentWidthView(getResources(), getListView());
 			
 			//Setting the list padding
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-				View recyclerView = view.findViewById(R.id.recycler_view);
-				ViewCompat.setOnApplyWindowInsetsListener(recyclerView, (v, insets) -> {
-					recyclerView.setPadding(insets.getSystemWindowInsetLeft(), recyclerView.getPaddingTop(), insets.getSystemWindowInsetRight(), insets.getSystemWindowInsetBottom());
-					return insets.consumeSystemWindowInsets();
-				});
-			}
-			
-			//if(Preferences.getPreferenceAMOLED(getContext())) setDarkAMOLED();
+			ViewCompat.setOnApplyWindowInsetsListener(
+					view.findViewById(R.id.recycler_view),
+					(recyclerView, windowInsets) -> {
+						Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+						//Top inset is handled by app bar
+						recyclerView.setPadding(insets.left, 0, insets.right, insets.bottom);
+						return WindowInsetsCompat.CONSUMED;
+					}
+			);
 		}
 		
 		@Override

@@ -9,7 +9,10 @@
 		<item name="android:windowBackground">@color/colorBackgroundLight</item>
 	</style> -->
 	
-	<style name="Theme.AirMessage.Compose" parent="Theme.Material3.Light.NoActionBar" />
+	<style name="Theme.AirMessage.Compose" parent="Theme.Material3.Light.NoActionBar">
+		<item name="android:statusBarColor">@android:color/transparent</item>
+		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
+	</style>
 	
 	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.DayNight">
 		<item name="colorPrimary">@color/colorPrimary</item>
