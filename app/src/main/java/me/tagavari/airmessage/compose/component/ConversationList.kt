@@ -21,6 +21,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationState
@@ -37,7 +38,8 @@ fun ConversationList(
 	conversations: Result<List<ConversationInfo>>? = null,
 	onSelectConversation: (ConversationInfo) -> Unit = {},
 	onReloadConversations: () -> Unit = {},
-	onNavigateSettings: () -> Unit = {}
+	onNavigateSettings: () -> Unit = {},
+	onNewConversation: () -> Unit = {}
 ) {
 	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 	
@@ -180,81 +182,80 @@ fun ConversationList(
 			}
 		},
 		content = { innerPadding ->
-			//Combine inner and system insets padding
-			val systemInsets = WindowInsets.navigationBars.asPaddingValues()
-			val layoutDirection = LocalLayoutDirection.current
-			
-			val contentPadding = remember(innerPadding, systemInsets, layoutDirection) {
-				PaddingValues(
-					start = innerPadding.calculateStartPadding(layoutDirection) + systemInsets.calculateStartPadding(layoutDirection),
-					top = innerPadding.calculateTopPadding() + systemInsets.calculateTopPadding(),
-					end = innerPadding.calculateEndPadding(layoutDirection) + systemInsets.calculateEndPadding(layoutDirection),
-					bottom = innerPadding.calculateBottomPadding() + systemInsets.calculateBottomPadding()
-				)
-			}
-			
-			if(conversations == null) {
-				Box(
-					modifier = modifier
-						.fillMaxSize()
-						.padding(contentPadding)
-				) {
-					CircularProgressIndicator(
-						modifier = Modifier.align(Alignment.Center)
-					)
-				}
-			} else {
-				conversations.onFailure {
-					Column(
+			Box(modifier = Modifier.fillMaxSize()) {
+				if(conversations == null) {
+					Box(
 						modifier = modifier
 							.fillMaxSize()
-							.padding(contentPadding),
-						verticalArrangement = Arrangement.Center,
-						horizontalAlignment = Alignment.CenterHorizontally
+							.padding(innerPadding)
 					) {
-						Text(text = stringResource(id = R.string.message_loaderror_messages))
-						
-						TextButton(onClick = onReloadConversations) {
-							Text(text = stringResource(id = R.string.action_retry))
+						CircularProgressIndicator(
+							modifier = Modifier.align(Alignment.Center)
+						)
+					}
+				} else {
+					conversations.onFailure {
+						Column(
+							modifier = modifier
+								.fillMaxSize()
+								.padding(innerPadding),
+							verticalArrangement = Arrangement.Center,
+							horizontalAlignment = Alignment.CenterHorizontally
+						) {
+							Text(text = stringResource(id = R.string.message_loaderror_messages))
+							
+							TextButton(onClick = onReloadConversations) {
+								Text(text = stringResource(id = R.string.action_retry))
+							}
+						}
+					}
+					
+					conversations.onSuccess { conversations ->
+						LazyColumn(
+							contentPadding = innerPadding
+						) {
+							items(
+								items = conversations,
+								key = { it.localID }
+							) { conversationInfo ->
+								fun toggleSelection() {
+									conversationInfo.localID.let { localID ->
+										selectedConversations = selectedConversations
+											.toMutableSet().apply {
+												if(contains(localID)) {
+													remove(localID)
+												} else {
+													add(localID)
+												}
+											}
+									}
+								}
+								
+								ConversationListEntry(
+									conversation = conversationInfo,
+									onClick = {
+										if(isActionMode) {
+											toggleSelection()
+										} else {
+											onSelectConversation(conversationInfo)
+										}
+									},
+									onLongClick = { toggleSelection() },
+									selected = selectedConversations.contains(conversationInfo.localID)
+								)
+							}
 						}
 					}
 				}
 				
-				conversations.onSuccess { conversations ->
-					LazyColumn(
-						contentPadding = contentPadding
-					) {
-						items(
-							items = conversations,
-							key = { it.localID }
-						) { conversationInfo ->
-							fun toggleSelection() {
-								conversationInfo.localID.let { localID ->
-									selectedConversations = selectedConversations
-										.toMutableSet().apply {
-											if(contains(localID)) {
-												remove(localID)
-											} else {
-												add(localID)
-											}
-										}
-								}
-							}
-							
-							ConversationListEntry(
-								conversation = conversationInfo,
-								onClick = {
-									if(isActionMode) {
-										toggleSelection()
-									} else {
-										onSelectConversation(conversationInfo)
-									}
-								},
-								onLongClick = { toggleSelection() },
-								selected = selectedConversations.contains(conversationInfo.localID)
-							)
-						}
-					}
+				FloatingActionButton(
+					modifier = Modifier
+						.align(Alignment.BottomEnd)
+						.navigationBarsPadding()
+						.padding(16.dp),
+					onClick = onNewConversation
+				) {
+					Icon(Icons.Outlined.Message, stringResource(id = R.string.action_newconversation))
 				}
 			}
 		}
