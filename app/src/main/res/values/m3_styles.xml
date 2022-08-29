@@ -29,4 +29,6 @@
 		<item name="elevationOverlayColor">@color/md_theme_light_surfaceTint</item>
 		<item name="colorPrimaryInverse">@color/md_theme_light_inversePrimary</item>
 	</style>
+	
+	<style name="Theme.AirMessage.M3.API" />
 </resources>
