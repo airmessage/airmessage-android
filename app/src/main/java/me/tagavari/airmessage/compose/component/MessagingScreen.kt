@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -12,6 +13,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -90,6 +92,7 @@ fun MessagingScreen(
 			val scope = rememberCoroutineScope()
 			val captureMedia = rememberMediaCapture()
 			val requestMedia = rememberMediaRequest()
+			val attachmentsScrollState = rememberScrollState()
 			
 			MessageInputBar(
 				modifier = Modifier
@@ -101,19 +104,29 @@ fun MessagingScreen(
 				onRemoveAttachment = { attachment ->
 					viewModel.removeQueuedFile(attachment)
 				},
+				attachmentsScrollState = attachmentsScrollState,
 				onSend = { viewModel.submitInput(connectionManager) },
 				onTakePhoto = {
 					if(viewModel.conversation == null) return@MessageInputBar
 					
 					scope.launch {
 						captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
-							?.let { viewModel.addQueuedFile(it) }
+							?.let { file ->
+								viewModel.addQueuedFile(file)
+								attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
+							}
 					}
 				},
 				onOpenContentPicker = {
 					scope.launch {
-						requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
-							.forEach { viewModel.addQueuedFile(it) }
+						val uriList = requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
+						if(uriList.isNotEmpty()) {
+							for(uri in uriList) {
+								viewModel.addQueuedFile(uri)
+							}
+							
+							attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
+						}
 					}
 				},
 				collapseButtons = viewModel.collapseInputButtons,

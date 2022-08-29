@@ -2,9 +2,11 @@ package me.tagavari.airmessage.compose.component
 
 import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -33,6 +35,7 @@ fun MessageInputBar(
 	onMessageTextChange: (String) -> Unit,
 	attachments: List<QueuedFile>,
 	onRemoveAttachment: (QueuedFile) -> Unit,
+	attachmentsScrollState: ScrollState = rememberScrollState(),
 	onSend: () -> Unit,
 	onTakePhoto: () -> Unit,
 	onOpenContentPicker: () -> Unit,
@@ -71,6 +74,7 @@ fun MessageInputBar(
 						onMessageTextChange = onMessageTextChange,
 						attachments = attachments,
 						onRemoveAttachment = onRemoveAttachment,
+						attachmentsScrollState = attachmentsScrollState,
 						collapseButtons = collapseButtons,
 						onChangeCollapseButtons = onChangeCollapseButtons,
 						onTakePhoto = onTakePhoto,

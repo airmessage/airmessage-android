@@ -5,10 +5,12 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -47,6 +49,7 @@ fun MessageInputBarText(
 	onMessageTextChange: (String) -> Unit,
 	attachments: List<QueuedFile>,
 	onRemoveAttachment: (QueuedFile) -> Unit,
+	attachmentsScrollState: ScrollState = rememberScrollState(),
 	collapseButtons: Boolean,
 	onChangeCollapseButtons: (Boolean) -> Unit,
 	onTakePhoto: () -> Unit,
@@ -183,7 +186,8 @@ fun MessageInputBarText(
 								consumerB = { file -> IntentHelper.openAttachmentFile(context, file, attachment.fileType) },
 							)
 						},
-						onRemove = onRemoveAttachment
+						onRemove = onRemoveAttachment,
+						scrollState = attachmentsScrollState
 					)
 				}
 				

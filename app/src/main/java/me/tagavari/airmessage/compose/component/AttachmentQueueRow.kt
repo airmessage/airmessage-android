@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -15,12 +16,13 @@ import me.tagavari.airmessage.messaging.QueuedFile
 fun AttachmentQueueRow(
 	attachments: List<QueuedFile>,
 	onClick: (QueuedFile) -> Unit,
-	onRemove: (QueuedFile) -> Unit
+	onRemove: (QueuedFile) -> Unit,
+	scrollState: ScrollState = rememberScrollState()
 ) {
 	Row(
 		modifier = Modifier
 			.height(192.dp)
-			.horizontalScroll(rememberScrollState())
+			.horizontalScroll(scrollState)
 			.padding(8.dp),
 		horizontalArrangement = Arrangement.spacedBy(8.dp)
 	) {
