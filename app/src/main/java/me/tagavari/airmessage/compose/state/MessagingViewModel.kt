@@ -55,8 +55,8 @@ class MessagingViewModel(
 	val messages = mutableStateListOf<ConversationItem>()
 	val queuedFiles = mutableStateListOf<QueuedFile>()
 	
-	private val _scrollToBottomFlow = MutableSharedFlow<Unit>()
-	val scrollToBottomFlow = _scrollToBottomFlow.asSharedFlow()
+	private val _messageAdditionFlow = MutableSharedFlow<MessageAdditionEvent>()
+	val messageAdditionFlow = _messageAdditionFlow.asSharedFlow()
 	
 	//Sound
 	val soundPool = SoundHelper.getSoundPool()
@@ -148,8 +148,18 @@ class MessagingViewModel(
 				//Apply the update
 				applyMessageUpdate(resultList)
 				
-				//Scroll to the bottom of the list
-				_scrollToBottomFlow.emit(Unit)
+				//Notify listeners of new items
+				if(resultList.any { result ->
+						result.newItems.any { it is MessageInfo && it.isOutgoing }
+					}) {
+					_messageAdditionFlow.emit(MessageAdditionEvent.OUTGOING_MESSAGE)
+				}
+				
+				if(resultList.any { result ->
+						result.newItems.any { it is MessageInfo && !it.isOutgoing }
+					}) {
+					_messageAdditionFlow.emit(MessageAdditionEvent.INCOMING_MESSAGE)
+				}
 			}
 			is ReduxEventMessaging.ConversationUpdate -> {
 				//Ignore if we don't have a conversation loaded
@@ -385,6 +395,11 @@ class MessagingViewModel(
 		}
 		
 		return true
+	}
+	
+	enum class MessageAdditionEvent {
+		INCOMING_MESSAGE,
+		OUTGOING_MESSAGE
 	}
 	
 	private companion object {

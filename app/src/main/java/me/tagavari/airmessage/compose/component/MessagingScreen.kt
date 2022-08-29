@@ -9,11 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -42,10 +43,18 @@ fun MessagingScreen(
 	}
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
+	val haptic = LocalHapticFeedback.current
+	
 	LaunchedEffect(Unit) {
-		//Hook up scroll to bottom listener
-		viewModel.scrollToBottomFlow.collect {
+		viewModel.messageAdditionFlow.collect { event ->
+			//Scroll to the bottom when a new message is received
 			scrollState.animateScrollToItem(0)
+			
+			//Create feedback when a new incoming message is received
+			if(event == MessagingViewModel.MessageAdditionEvent.INCOMING_MESSAGE) {
+				SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageIncoming)
+				haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+			}
 		}
 	}
 	
