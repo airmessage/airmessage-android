@@ -13,6 +13,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -39,6 +40,13 @@ fun MessagingScreen(
 		}
 	}
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+	
+	LaunchedEffect(Unit) {
+		//Hook up scroll to bottom listener
+		viewModel.scrollToBottomFlow.collect {
+			scrollState.animateScrollToItem(0)
+		}
+	}
 	
 	CompositionLocalProvider(
 		LocalAudioPlayback provides rememberAudioPlayback()

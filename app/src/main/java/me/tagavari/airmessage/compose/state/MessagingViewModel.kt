@@ -9,6 +9,9 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
@@ -47,8 +50,11 @@ class MessagingViewModel(
 	private var lazyLoader: DatabaseManager.ConversationLazyLoader? = null
 	var lazyLoadState by mutableStateOf(MessageLazyLoadState.IDLE)
 		private set
-	var messages = mutableStateListOf<ConversationItem>()
-	var queuedFiles = mutableStateListOf<QueuedFile>()
+	val messages = mutableStateListOf<ConversationItem>()
+	val queuedFiles = mutableStateListOf<QueuedFile>()
+	
+	private val _scrollToBottomFlow = MutableSharedFlow<Unit>()
+	val scrollToBottomFlow = _scrollToBottomFlow.asSharedFlow()
 	
 	//Sound
 	private val soundPool = SoundHelper.getSoundPool()
@@ -129,7 +135,7 @@ class MessagingViewModel(
 		}
 	}
 	
-	private fun applyMessageUpdate(event: ReduxEventMessaging) {
+	private suspend fun applyMessageUpdate(event: ReduxEventMessaging) {
 		when(event) {
 			is ReduxEventMessaging.Message -> {
 				//Filter results relevant to this conversation
@@ -137,7 +143,11 @@ class MessagingViewModel(
 					.filter { it.first.localID == conversationID }
 					.flatMap { it.second }
 				
+				//Apply the update
 				applyMessageUpdate(resultList)
+				
+				//Scroll to the bottom for new outgoing items
+				_scrollToBottomFlow.emit(Unit)
 			}
 			is ReduxEventMessaging.ConversationUpdate -> {
 				//Ignore if we don't have a conversation loaded
@@ -216,26 +226,24 @@ class MessagingViewModel(
 	}
 	
 	private fun applyMessageUpdate(resultList: List<ReplaceInsertResult>) {
-		messages = messages.toMutableStateList().also { messages ->
-			for(result in resultList) {
-				//Add new items
-				for(newItem in result.newItems) {
-					val messageBeforeIndex = messages.indexOfLast { item ->
-						ConversationHelper.conversationItemComparator.compare(newItem, item) > 0
-					}
-					val insertIndex = messageBeforeIndex + 1
-					
-					messages.add(insertIndex, newItem)
+		for(result in resultList) {
+			//Add new items
+			for(newItem in result.newItems) {
+				val messageBeforeIndex = messages.indexOfLast { item ->
+					ConversationHelper.conversationItemComparator.compare(newItem, item) > 0
 				}
+				val insertIndex = messageBeforeIndex + 1
 				
-				//Apply updated items
-				for(updatedItem in result.updatedItems) {
-					val updatedItemIndex = messages.indexOfLast {
-						it.localID == updatedItem.localID
-					}
-					if(updatedItemIndex != -1) {
-						messages[updatedItemIndex] = updatedItem
-					}
+				messages.add(insertIndex, newItem)
+			}
+			
+			//Apply updated items
+			for(updatedItem in result.updatedItems) {
+				val updatedItemIndex = messages.indexOfLast {
+					it.localID == updatedItem.localID
+				}
+				if(updatedItemIndex != -1) {
+					messages[updatedItemIndex] = updatedItem
 				}
 			}
 		}
@@ -334,8 +342,7 @@ class MessagingViewModel(
 			
 			//Ignore if we have no content to send,
 			//or if there is an attachment that hasn't been prepared
-			if(cleanInputText == null
-				|| cleanQueuedFiles.isEmpty()
+			if((cleanInputText == null && cleanQueuedFiles.isEmpty())
 				|| cleanQueuedFiles.any { it.file.isA }) {
 				return@launch
 			}
