@@ -34,6 +34,9 @@ class ConversationsCompose : ComponentActivity() {
 							putExtra(Messaging.intentParamTargetID, conversation.localID)
 						}.let { context.startActivity(it) }
 					},
+					onReloadConversations = {
+						viewModel.loadConversations()
+					},
 					onNavigateSettings = {
 						context.startActivity(Intent(context, Preferences::class.java))
 					}

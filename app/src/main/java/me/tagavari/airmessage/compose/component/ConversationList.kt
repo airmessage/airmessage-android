@@ -278,8 +278,7 @@ fun PreviewConversationList() {
 					isError = false
 				)
 			)
-		)),
-		onReloadConversations = {}
+		))
 	)
 }
 
@@ -287,8 +286,7 @@ fun PreviewConversationList() {
 @Composable
 fun PreviewConversationListLoading() {
 	ConversationList(
-		conversations = null,
-		onReloadConversations = {}
+		conversations = null
 	)
 }
 
@@ -296,7 +294,6 @@ fun PreviewConversationListLoading() {
 @Composable
 fun PreviewConversationListError() {
 	ConversationList(
-		conversations = Result.failure(Exception("Failed to load conversations")),
-		onReloadConversations = {}
+		conversations = Result.failure(Exception("Failed to load conversations"))
 	)
 }
