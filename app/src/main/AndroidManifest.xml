@@ -103,7 +103,7 @@
 			android:label="@string/screen_newconversation"
 			android:name=".activity.NewMessage"
 			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize|stateVisible">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>

@@ -23,6 +23,10 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.*;
 import androidx.annotation.*;
 import androidx.appcompat.app.AlertDialog;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.lifecycle.*;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
@@ -97,7 +101,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the view model and plugin values
 	private ActivityViewModel viewModel;
 	
-	private PluginQNavigation pluginQNavigation;
 	private PluginConnectionService pluginCS;
 	private PluginRXDisposable pluginRXCD;
 	
@@ -206,7 +209,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 	};
 	
 	public NewMessage() {
-		addPlugin(pluginQNavigation = new PluginQNavigation());
 		addPlugin(pluginCS = new PluginConnectionService());
 		addPlugin(pluginRXCD = new PluginRXDisposable());
 	}
@@ -238,17 +240,17 @@ public class NewMessage extends AppCompatCompositeActivity {
 		groupMessagePermission = findViewById(R.id.group_permission);
 		groupMessageError = findViewById(R.id.group_error);
 		
+		//Enabling edge-to-edge rendering
+		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+		
+		ViewCompat.setOnApplyWindowInsetsListener(contactListView, (view, windowInsets) -> {
+			Insets insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars());
+ 			view.setPadding(insets.left, 0, insets.right, insets.bottom);
+			return WindowInsetsCompat.CONSUMED;
+		});
+		
 		//Enforcing the maximum content width
 		WindowHelper.enforceContentWidthView(getResources(), contactListView);
-		
-		//Setting the list padding
-		PluginQNavigation.setViewForInsets(findViewById(android.R.id.content), contactListView);
-		
-		//Configuring the AMOLED theme
-		if(ThemeHelper.shouldUseAMOLED(this)) setDarkAMOLED();
-		
-		//Setting the status bar color
-		PlatformHelper.updateChromeOSStatusBar(this);
 		
 		//Adding the input listeners
 		recipientInput.addTextChangedListener(recipientInputTextWatcher);
@@ -298,20 +300,6 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Hiding the service selector input
 			findViewById(R.id.group_service).setVisibility(View.GONE);
 		}
-	}
-	
-	void setDarkAMOLED() {
-		ThemeHelper.setActivityAMOLEDBase(this);
-		findViewById(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED);
-	}
-	
-	void setDarkAMOLEDSamsung() {
-		ThemeHelper.setActivityAMOLEDBase(this);
-		findViewById(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED);
-		
-		contactListView.setBackgroundResource(R.drawable.background_amoledsamsung);
-		contactListView.setClipToOutline(true);
-		contactListView.getLayoutParams().height = ViewGroup.LayoutParams.WRAP_CONTENT;
 	}
 	
 	private void restoreInputBar() {

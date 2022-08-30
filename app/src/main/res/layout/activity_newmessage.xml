@@ -1,28 +1,23 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
 	xmlns:tools="http://schemas.android.com/tools"
 	tools:context=".activity.NewMessage"
 	android:id="@+id/root"
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
-	android:orientation="vertical"
-	android:fitsSystemWindows="true"
-	android:clipChildren="false"
-	android:clipToPadding="false">
+	android:orientation="vertical">
 	<!-- App bar -->
 	<com.google.android.material.appbar.AppBarLayout
 		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="@color/colorToolbar">
+		android:fitsSystemWindows="true">
 		<!-- Toolbar -->
 		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
 			android:layout_width="match_parent"
-			android:layout_height="?android:attr/actionBarSize"
-			android:theme="@style/SolidActionBarClear"
-			app:titleTextAppearance="@style/LightToolbarText">
+			android:layout_height="?android:attr/actionBarSize">
 		</com.google.android.material.appbar.MaterialToolbar>
 
 		<!-- Custom views -->
@@ -115,13 +110,12 @@
 					android:id="@+id/button_recipients"
 					android:layout_width="wrap_content"
 					android:layout_height="wrap_content"
-					android:layout_alignParentEnd="true"
 					android:padding="10dp"
 					android:background="?android:attr/selectableItemBackgroundBorderless"
 					android:onClick="toggleInputType"
 					android:src="@drawable/dialpad"
-					android:tintMode="src_in"
-					android:tint="?android:attr/colorControlNormal" />
+					app:tintMode="src_in"
+					app:tint="?android:attr/colorControlNormal" />
 			</LinearLayout>
 
 			<com.google.android.material.progressindicator.LinearProgressIndicator
@@ -131,25 +125,17 @@
 				app:layout_constraintLeft_toLeftOf="parent"
 				app:layout_constraintRight_toRightOf="parent"
 				app:layout_constraintBottom_toBottomOf="parent"
-				android:layout_alignParentBottom="true"
 				android:indeterminate="true"
 				android:alpha="0"
 				android:visibility="gone" />
 		</androidx.constraintlayout.widget.ConstraintLayout>
-
-		<!-- AMOLED divider -->
-		<View
-			android:tag="@string/tag_amoleddivider"
-			style="@style/Divider"
-			android:visibility="gone" />
 	</com.google.android.material.appbar.AppBarLayout>
 
 	<!-- Contact list -->
 	<RelativeLayout
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:clipChildren="false"
-		android:clipToPadding="false">
+		app:layout_behavior="@string/appbar_scrolling_view_behavior">
 		<!-- Contacts list -->
 		<androidx.recyclerview.widget.RecyclerView
 			android:id="@+id/list_contacts"
@@ -158,7 +144,6 @@
 			android:scrollbars="vertical"
 			android:theme="@style/OverscrollNeutralizer"
 			app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
-			android:clipChildren="false"
 			android:clipToPadding="false" />
 
 		<!-- Permissions group -->
@@ -237,4 +222,4 @@
 			android:alpha="0"
 			android:visibility="gone" />
 	</RelativeLayout>
-</LinearLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>
