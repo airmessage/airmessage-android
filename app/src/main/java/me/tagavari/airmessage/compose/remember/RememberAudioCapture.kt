@@ -12,8 +12,6 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
-import me.tagavari.airmessage.constants.FileNameConstants
-import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import java.io.File
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
@@ -42,6 +40,8 @@ fun rememberAudioCapture(): AudioCaptureState {
 	}
 	
 	val isRecording = remember { mutableStateOf(false) }
+	var recordingStopDeferred by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
+	val currentRecordingStopDeferred by rememberUpdatedState(recordingStopDeferred)
 	
 	val recordingFile = remember { mutableStateOf<File?>(null) }
 	val recordingDuration = remember { mutableStateOf(0) }
@@ -57,13 +57,10 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 	}
 	
-	fun stopAudioRecording(forceDiscard: Boolean = false): File? {
+	fun stopAudioRecording(forceDiscard: Boolean = false): Boolean {
 		if(BuildConfig.DEBUG && !isRecording.value) {
 			Log.w(TAG, "Tried to stop audio recording while no recording is present!")
 		}
-		
-		//Get the recording state
-		val localRecordingFile = recordingFile.value ?: return null
 		
 		//Reset the recording state
 		isRecording.value = false
@@ -77,15 +74,12 @@ fun rememberAudioCapture(): AudioCaptureState {
 			false
 		}
 		
-		if(!cleanStop || forceDiscard) {
-			AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, localRecordingFile)
-			return null
-		}
-		
-		return localRecordingFile
+		val recordingOK = cleanStop && !forceDiscard
+		currentRecordingStopDeferred?.complete(recordingOK)
+		return recordingOK
 	}
 	
-	suspend fun startAudioRecording(): Boolean {
+	suspend fun startAudioRecording(targetFile: File): Boolean {
 		if(BuildConfig.DEBUG && isRecording.value) {
 			Log.w(TAG, "Tried to start audio recording while already recording!")
 		}
@@ -115,15 +109,6 @@ fun rememberAudioCapture(): AudioCaptureState {
 				stopAudioRecording()
 			}
 			
-			//Find a target file
-			val targetFile = withContext(Dispatchers.IO) {
-				AttachmentStorageHelper.prepareContentFile(
-					context,
-					AttachmentStorageHelper.dirNameDraftPrepare,
-					FileNameConstants.recordingName
-				)
-			}
-			
 			//Set the media recorder file
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) setOutputFile(targetFile)
 			else setOutputFile(targetFile.absolutePath)
@@ -141,17 +126,22 @@ fun rememberAudioCapture(): AudioCaptureState {
 			}
 		}
 		
+		//Initialize the recording deferred
+		val deferred = CompletableDeferred<Boolean>()
+		recordingStopDeferred = deferred
+		
 		//Start recording
 		mediaRecorder.start()
 		isRecording.value = true
 		
-		return true
+		//Wait until we finish recording
+		return deferred.await()
 	}
 	
 	return object : AudioCaptureState(mediaRecorder, isRecording, recordingDuration) {
-		override suspend fun startRecording() = startAudioRecording()
+		override suspend fun startRecording(file: File) = startAudioRecording(file)
 		
-		override fun stopRecording(forceDiscard: Boolean): File? = stopAudioRecording(forceDiscard)
+		override fun stopRecording(forceDiscard: Boolean) = stopAudioRecording(forceDiscard)
 	}
 }
 
@@ -161,15 +151,17 @@ abstract class AudioCaptureState(
 	val duration: State<Int>
 ) {
 	/**
-	 * Starts audio recording
+	 * Starts audio recording, and suspends until recording is complete
+	 * @param file The file to write to
+	 * @return Whether the recording succeeded or not
 	 */
-	abstract suspend fun startRecording(): Boolean
+	abstract suspend fun startRecording(file: File): Boolean
 	
 	/**
 	 * Stops audio recording. If recording was successful, a reference to the
 	 * output file is returned.
 	 * @param forceDiscard Whether to deliberately fail this recording
-	 * @return A reference to the output file, or null if the recording failed
+	 * @return Whether the recording succeeded or not
 	 */
-	abstract fun stopRecording(forceDiscard: Boolean = false): File?
+	abstract fun stopRecording(forceDiscard: Boolean = false): Boolean
 }

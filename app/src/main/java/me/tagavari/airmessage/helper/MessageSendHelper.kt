@@ -234,7 +234,7 @@ object MessageSendHelper {
 	 */
 	@JvmStatic
 	@CheckReturnValue
-	fun sendMessageMMSSMS(context: Context?, conversationInfo: ConversationInfo, messageInfo: MessageInfo): Completable {
+	fun sendMessageMMSSMS(context: Context, conversationInfo: ConversationInfo, messageInfo: MessageInfo): Completable {
 		return Completable.fromAction {
 			//Configuring the message settings
 			val transaction = MMSSMSHelper.getMMSSMSTransaction(context, conversationInfo.localID, messageInfo.localID)

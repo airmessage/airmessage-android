@@ -10,21 +10,26 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.google.android.mms.ContentType
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.remember.deriveAmplitudeList
 import me.tagavari.airmessage.compose.remember.rememberAudioCapture
+import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
+import me.tagavari.airmessage.messaging.LocalFile
 import me.tagavari.airmessage.messaging.QueuedFile
-import java.io.File
 
 private data class RecordingData(
-	val file: File,
+	val file: LocalFile,
 	val duration: Int
 )
 
@@ -37,6 +42,7 @@ fun MessageInputBar(
 	onRemoveAttachment: (QueuedFile) -> Unit,
 	attachmentsScrollState: ScrollState = rememberScrollState(),
 	onSend: () -> Unit,
+	onSendFile: (LocalFile) -> Unit,
 	onTakePhoto: () -> Unit,
 	onOpenContentPicker: () -> Unit,
 	collapseButtons: Boolean = false,
@@ -67,6 +73,8 @@ fun MessageInputBar(
 				val playbackManager = LocalAudioPlayback.current
 				var playbackState by remember { mutableStateOf<AudioPlaybackState>(AudioPlaybackState.Stopped) }
 				
+				val context = LocalContext.current
+				
 				if(!showRecording) {
 					val scope = rememberCoroutineScope()
 					MessageInputBarText(
@@ -81,7 +89,39 @@ fun MessageInputBar(
 						onOpenContentPicker = onOpenContentPicker,
 						onStartAudioRecording = {
 							scope.launch {
-								audioCapture.startRecording()
+								//Find a target file
+								val targetFile = withContext(Dispatchers.IO) {
+									AttachmentStorageHelper.prepareContentFile(
+										context,
+										AttachmentStorageHelper.dirNameDraftPrepare,
+										FileNameConstants.recordingName
+									)
+								}
+								
+								val recordingOK = audioCapture.startRecording(targetFile)
+								
+								//If the recording failed, clean up the file
+								if(!recordingOK) {
+									AttachmentStorageHelper.deleteContentFile(
+										AttachmentStorageHelper.dirNameDraftPrepare,
+										targetFile
+									)
+									return@launch
+								}
+								
+								val recordingDuration = audioCapture.duration.value
+								
+								//Set the recording data
+								recordingData = RecordingData(
+									file = LocalFile(
+										file = targetFile,
+										fileName = targetFile.name,
+										fileType = ContentType.AUDIO_AMR,
+										fileSize = targetFile.length(),
+										directoryID = AttachmentStorageHelper.dirNameDraftPrepare
+									),
+									duration = recordingDuration
+								)
 							}
 						},
 						serviceHandler = serviceHandler,
@@ -96,26 +136,13 @@ fun MessageInputBar(
 					isRecording = audioCapture.isRecording.value,
 					onStopRecording = {
 						if(audioCapture.isRecording.value) {
-							val recordingDuration = audioCapture.duration.value
-							val recordingFile = audioCapture.stopRecording()
-							
-							if(recordingFile != null) {
-								recordingData = RecordingData(
-									file = recordingFile,
-									duration = recordingDuration
-								)
-							}
+							audioCapture.stopRecording()
 						}
 					},
 					onSend = {
-						//Stop recording and get the file, or grab a pending file
-						val file = if(audioCapture.isRecording.value) {
-							audioCapture.stopRecording(true)
-						} else recordingData?.file
-						if(file == null) return@MessageInputBarAudio
-						
 						//Send the file
-						
+						recordingData?.file?.let { onSendFile(it) }
+						recordingData = null
 					},
 					onDiscard = {
 						//Stop recording if we're recording
@@ -124,12 +151,7 @@ fun MessageInputBar(
 						}
 						
 						//Delete the recording file
-						recordingData?.let { recordingData ->
-							AttachmentStorageHelper.deleteContentFile(
-								AttachmentStorageHelper.dirNameDraftPrepare,
-								recordingData.file
-							)
-						}
+						recordingData?.file?.deleteFile()
 						recordingData = null
 					},
 					onTogglePlay = {
@@ -144,7 +166,7 @@ fun MessageInputBar(
 									playbackManager.resume()
 								}
 							} else {
-								playbackManager.play(Uri.fromFile(file)).collect { playbackState = it }
+								playbackManager.play(Uri.fromFile(file.file)).collect { playbackState = it }
 							}
 						}
 					},
@@ -170,6 +192,7 @@ private fun PreviewMessageInputBar() {
 			attachments = listOf(),
 			onRemoveAttachment = {},
 			onSend = {},
+			onSendFile = {},
 			onTakePhoto = {},
 			onOpenContentPicker = {},
 			collapseButtons = false,

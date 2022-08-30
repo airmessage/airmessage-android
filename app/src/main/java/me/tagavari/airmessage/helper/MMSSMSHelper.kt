@@ -461,7 +461,7 @@ object MMSSMSHelper {
 	 * @return The transaction to use when sending the message
 	 */
 	@JvmStatic
-	fun getMMSSMSTransaction(context: Context?, conversationLocalID: Long, messageLocalID: Long): Transaction {
+	fun getMMSSMSTransaction(context: Context, conversationLocalID: Long, messageLocalID: Long): Transaction {
 		val settings = Settings()
 		settings.deliveryReports = Preferences.getPreferenceSMSDeliveryReports(context)
 		

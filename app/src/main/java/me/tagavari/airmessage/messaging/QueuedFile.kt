@@ -9,6 +9,7 @@ import androidx.core.database.getStringOrNull
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.constants.MIMEConstants
+import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.util.Union
 import java.io.File
@@ -63,6 +64,22 @@ data class QueuedFile constructor(
 			fileType,
 			mediaStoreID,
 			modificationDate
+		)
+	}
+	
+	/**
+	 * Converts this QueuedFile to a [LocalFile]
+	 */
+	fun toLocalFile(): LocalFile? {
+		val localFile = file.nullableB
+			?: return null
+		
+		return LocalFile(
+			file = localFile,
+			fileName = fileName,
+			fileType = fileType,
+			fileSize = fileSize,
+			directoryID = AttachmentStorageHelper.dirNameAttachment
 		)
 	}
 	

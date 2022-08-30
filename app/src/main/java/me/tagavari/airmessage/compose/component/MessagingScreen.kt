@@ -126,6 +126,9 @@ fun MessagingScreen(
 						SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing)
 					}
 				},
+				onSendFile = { file ->
+					viewModel.submitFileDirect(connectionManager, file)
+				},
 				onTakePhoto = {
 					if(viewModel.conversation == null) return@MessageInputBar
 					

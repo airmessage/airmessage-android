@@ -344,9 +344,9 @@ class MessagingViewModel(
 	}
 	
 	/**
-	 * Sends the current ext and attachments
+	 * Sends the current text and attachments
 	 * @param connectionManager The connection manager to use
-	 * @return Whether the message was successfully prepared
+	 * @return Whether the message was successfully prepared and sent
 	 */
 	fun submitInput(connectionManager: ConnectionManager?): Boolean {
 		val conversation = conversation ?: return false
@@ -366,13 +366,19 @@ class MessagingViewModel(
 		
 		//Prepare and send the messages in the background
 		viewModelScope.launch {
-			MessageSendHelper.prepareSendMessages(
+			MessageSendHelperCoroutine.prepareMessage(
 				getApplication(),
 				conversation,
 				cleanInputText,
-				cleanQueuedFiles.map { it.toFileDraft() },
-				connectionManager
-			).await()
+				cleanQueuedFiles.map { it.toLocalFile()!! }
+			).forEach { message ->
+				MessageSendHelperCoroutine.sendMessage(
+					getApplication(),
+					connectionManager,
+					conversation,
+					message
+				)
+			}
 		}
 		
 		//Clear input
@@ -389,6 +395,33 @@ class MessagingViewModel(
 					setOf(conversation),
 					false
 				).await()
+			}
+		}
+		
+		return true
+	}
+	
+	/**
+	 * Sends a single file directory as an attachment
+	 * @param connectionManager The connection manager to use
+	 * @return Whether the message was successfully prepared and sent
+	 */
+	fun submitFileDirect(connectionManager: ConnectionManager?, file: LocalFile): Boolean {
+		val conversation = conversation ?: return false
+		
+		viewModelScope.launch {
+			MessageSendHelperCoroutine.prepareMessage(
+				getApplication(),
+				conversation,
+				null,
+				listOf(file)
+			).forEach { message ->
+				MessageSendHelperCoroutine.sendMessage(
+					getApplication(),
+					connectionManager,
+					conversation,
+					message
+				)
 			}
 		}
 		
