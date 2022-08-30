@@ -6,8 +6,6 @@ import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.content.res.ColorStateList;
-import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -15,32 +13,49 @@ import android.provider.Telephony;
 import android.text.Editable;
 import android.text.InputType;
 import android.text.TextWatcher;
-import android.transition.ChangeBounds;
-import android.transition.Fade;
-import android.transition.TransitionManager;
-import android.view.*;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
 import android.view.inputmethod.EditorInfo;
-import android.widget.*;
-import androidx.annotation.*;
-import androidx.appcompat.app.AlertDialog;
+import android.widget.EditText;
+import android.widget.ImageButton;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.annotation.ColorRes;
+import androidx.annotation.DrawableRes;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.annotation.StringRes;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
-import androidx.lifecycle.*;
+import androidx.lifecycle.AndroidViewModel;
+import androidx.lifecycle.MutableLiveData;
+import androidx.lifecycle.Observer;
+import androidx.lifecycle.ViewModel;
+import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.RecyclerView;
-import com.bumptech.glide.Glide;
-import com.bumptech.glide.load.DataSource;
-import com.bumptech.glide.load.engine.GlideException;
-import com.bumptech.glide.request.RequestListener;
-import com.bumptech.glide.request.target.Target;
-import com.google.android.material.dialog.MaterialAlertDialogBuilder;
+
+import com.google.android.material.chip.Chip;
 import com.google.android.material.progressindicator.LinearProgressIndicator;
 import com.google.android.material.snackbar.Snackbar;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
-import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import io.reactivex.rxjava3.subjects.PublishSubject;
 import kotlin.Pair;
@@ -52,7 +67,6 @@ import me.tagavari.airmessage.component.ContactListReactiveUpdate;
 import me.tagavari.airmessage.component.ContactsRecyclerAdapter;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
-import me.tagavari.airmessage.compositeplugin.PluginQNavigation;
 import me.tagavari.airmessage.compositeplugin.PluginRXDisposable;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.constants.ColorConstants;
@@ -60,7 +74,9 @@ import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.ConversationState;
 import me.tagavari.airmessage.enums.ServiceHandler;
 import me.tagavari.airmessage.enums.ServiceType;
-import me.tagavari.airmessage.helper.*;
+import me.tagavari.airmessage.helper.AddressHelper;
+import me.tagavari.airmessage.helper.ConversationColorHelper;
+import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.messaging.ChatCreateAction;
 import me.tagavari.airmessage.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.ConversationPreview;
@@ -68,17 +84,7 @@ import me.tagavari.airmessage.messaging.MemberInfo;
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
 import me.tagavari.airmessage.redux.ReduxEventMessaging;
 import me.tagavari.airmessage.task.ContactsTask;
-import me.tagavari.airmessage.util.AddressInfo;
 import me.tagavari.airmessage.util.ContactInfo;
-
-import java.lang.ref.WeakReference;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 public class NewMessage extends AppCompatCompositeActivity {
 	//Creating the constants
@@ -119,6 +125,8 @@ public class NewMessage extends AppCompatCompositeActivity {
 	private ViewGroup groupMessageError;
 	//private ListView contactListView;
 	//private ListAdapter contactsListAdapter;
+	
+	private Map<String, View> recipientListGroupMap = new HashMap<>();
 	
 	private ServiceChipData[] serviceChipDataArray = new ServiceChipData[availableServiceArray.length];
 	private ServiceChipData currentActiveServiceChip = null;
@@ -193,7 +201,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Checking if the string passes validation
 				if(AddressHelper.validateAddress(cleanString)) {
 					//Adding a chip
-					addChip(new ContactChip(NewMessage.this, cleanString, AddressHelper.normalizeAddress(cleanString), NewMessage.this::removeChip));
+					addChip(new ContactChip(cleanString, AddressHelper.normalizeAddress(cleanString)));
 					
 					//Clearing the text input
 					recipientInput.setText("");
@@ -282,7 +290,7 @@ public class NewMessage extends AppCompatCompositeActivity {
 		//Configuring the list
 		contactsListAdapter = new ContactsRecyclerAdapter(this, viewModel.contactList, (address) -> {
 			//Adding the chip
-			addChip(new ContactChip(this, address, AddressHelper.normalizeAddress(address), this::removeChip));
+			addChip(new ContactChip(address, AddressHelper.normalizeAddress(address)));
 
 			//Clearing the text
 			recipientInput.setText("");
@@ -323,8 +331,10 @@ public class NewMessage extends AppCompatCompositeActivity {
 			//Adding the views
 			int chipIndex = 0;
 			for(ContactChip chip : viewModel.userChips) {
-				((ViewGroup) chip.getView().getParent()).removeView(chip.getView());
-				recipientListGroup.addView(chip.getView(), chipIndex);
+				addChip(chip);
+				View chipView = chip.getView(this, this::removeChip);
+				recipientListGroupMap.put(chip.getAddress(), chipView);
+				recipientListGroup.addView(chipView, chipIndex);
 				chipIndex++;
 			}
 		}
@@ -339,37 +349,28 @@ public class NewMessage extends AppCompatCompositeActivity {
 			MessageServiceDescription serviceDescription = availableServiceArray[i];
 			
 			//Creating the service chip view
-			ViewGroup chipView = (ViewGroup) getLayoutInflater().inflate(R.layout.listitem_servicechip, viewGroup, false);
-			TextView label = chipView.findViewById(R.id.label);
-			ImageView icon = chipView.findViewById(R.id.icon);
+			Chip chipView = new Chip(this);
 			
 			//Creating the service chip data
-			ServiceChipData serviceChipData = new ServiceChipData(serviceDescription, chipView, label, icon);
+			ServiceChipData serviceChipData = new ServiceChipData(serviceDescription, chipView);
 			serviceChipDataArray[i] = serviceChipData;
 			
 			//Setting the label text and icon
-			label.setText(serviceDescription.title);
-			icon.setImageResource(serviceDescription.icon);
+			chipView.setText(serviceDescription.title);
+			chipView.setCheckable(true);
+			chipView.setCheckedIconResource(R.drawable.check);
+			chipView.setCheckedIconVisible(true);
 			
 			//Checking if this is the currently selected service
 			if(serviceDescription == viewModel.currentService) {
-				//Showing the label
-				label.setVisibility(View.VISIBLE);
-				
-				//Coloring the label
-				label.setTextColor(getResources().getColor(serviceDescription.color, null));
-				
-				//Coloring the icon
-				icon.setImageTintList(ColorStateList.valueOf(getResources().getColor(serviceDescription.color, null)));
+				//Set the chip as selected
+				chipView.setChecked(true);
 				
 				//Setting the view as the current active view
 				currentActiveServiceChip = serviceChipData;
 			} else {
-				//Hiding the label
-				label.setVisibility(View.GONE);
-				
-				//Coloring the icon
-				icon.setImageTintList(ColorStateList.valueOf(ResourceHelper.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+				//Set the chip as non-selected
+				chipView.setChecked(false);
 			}
 			
 			//Setting the click listener
@@ -377,18 +378,11 @@ public class NewMessage extends AppCompatCompositeActivity {
 				//Ignoring if this is the currently active service
 				if(currentActiveServiceChip == serviceChipData) return;
 				
-				//Starting a transition
-				TransitionManager.beginDelayedTransition(findViewById(R.id.list_service));
-				
 				//Disabling the old view
-				currentActiveServiceChip.getLabel().setVisibility(View.GONE);
-				currentActiveServiceChip.getLabel().setTextColor(ColorStateList.valueOf(ResourceHelper.resolveColorAttr(this, android.R.attr.textColorSecondary)));
-				currentActiveServiceChip.getIcon().setImageTintList(ColorStateList.valueOf(ResourceHelper.resolveColorAttr(this, android.R.attr.colorControlNormal)));
+				currentActiveServiceChip.getView().setChecked(false);
 				
 				//Enabling the new view
-				label.setVisibility(View.VISIBLE);
-				label.setTextColor(getResources().getColor(serviceDescription.color, null));
-				icon.setImageTintList(ColorStateList.valueOf(getResources().getColor(serviceDescription.color, null)));
+				chipView.setCheckable(true);
 				
 				//Setting the new selected service view
 				currentActiveServiceChip = serviceChipData;
@@ -602,7 +596,9 @@ public class NewMessage extends AppCompatCompositeActivity {
 		viewModel.userChips.add(chip);
 		
 		//Adding the view
-		recipientListGroup.addView(chip.getView(), viewModel.userChips.size() - 1);
+		View chipView = chip.getView(this, this::removeChip);
+		recipientListGroupMap.put(chip.getAddress(), chipView);
+		recipientListGroup.addView(chipView, viewModel.userChips.size() - 1);
 		
 		//Setting the confirm button as visible
 		confirmMenuItem.setVisible(true);
@@ -627,7 +623,11 @@ public class NewMessage extends AppCompatCompositeActivity {
 		viewModel.userChips.remove(chip);
 		
 		//Removing the view
-		recipientListGroup.removeView(chip.getView());
+		View chipView = recipientListGroupMap.get(chip.getAddress());
+		if(chipView != null) {
+			recipientListGroup.removeView(chipView);
+			recipientListGroupMap.remove(chip.getAddress());
+		}
 		
 		//Checking if there are no more chips
 		if(viewModel.userChips.isEmpty()) {
@@ -853,31 +853,19 @@ public class NewMessage extends AppCompatCompositeActivity {
 	
 	private static class ServiceChipData {
 		private final MessageServiceDescription serviceDescription;
-		private final ViewGroup view;
-		private final TextView label;
-		private final ImageView icon;
+		private final Chip view;
 		
-		public ServiceChipData(MessageServiceDescription serviceDescription, ViewGroup view, TextView label, ImageView icon) {
+		public ServiceChipData(MessageServiceDescription serviceDescription, Chip view) {
 			this.serviceDescription = serviceDescription;
 			this.view = view;
-			this.label = label;
-			this.icon = icon;
 		}
 		
 		public MessageServiceDescription getServiceDescription() {
 			return serviceDescription;
 		}
 		
-		public ViewGroup getView() {
+		public Chip getView() {
 			return view;
-		}
-		
-		public TextView getLabel() {
-			return label;
-		}
-		
-		public ImageView getIcon() {
-			return icon;
 		}
 	}
 }

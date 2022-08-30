@@ -12,7 +12,8 @@
 		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:fitsSystemWindows="true">
+		android:fitsSystemWindows="true"
+		app:liftOnScroll="false">
 		<!-- Toolbar -->
 		<com.google.android.material.appbar.MaterialToolbar
 			android:id="@+id/toolbar"
@@ -34,8 +35,8 @@
 				app:layout_constraintTop_toTopOf="parent"
 				android:orientation="horizontal">
 				<TextView
-					android:layout_width="72dp"
-					android:layout_height="45dp"
+					android:layout_width="60dp"
+					android:layout_height="48dp"
 					android:text="@string/part_via"
 					android:gravity="center"
 					android:textColor="?android:attr/textColorSecondary"
@@ -46,17 +47,12 @@
 					android:layout_height="match_parent"
 					android:layout_weight="1"
 					android:scrollbars="none"
-					android:overScrollMode="never"
 					android:requiresFadingEdge="horizontal">
-					<LinearLayout
+					<com.google.android.material.chip.ChipGroup
 						android:id="@+id/list_service"
 						android:layout_width="wrap_content"
 						android:layout_height="match_parent"
-						android:gravity="center"
-						android:orientation="horizontal"
-						android:showDividers="middle"
-						android:divider="@drawable/divider_replysuggestions"
-						android:paddingEnd="8dp" />
+						app:singleLine="true" />
 				</HorizontalScrollView>
 			</LinearLayout>
 
@@ -70,8 +66,8 @@
 				app:layout_constraintTop_toBottomOf="@id/group_service"
 				android:orientation="horizontal">
 				<TextView
-					android:layout_width="72dp"
-					android:layout_height="45dp"
+					android:layout_width="60dp"
+					android:layout_height="48dp"
 					android:text="@string/part_to"
 					android:gravity="center"
 					android:textColor="?android:attr/textColorSecondary"
@@ -82,15 +78,12 @@
 					android:layout_width="0dp"
 					android:layout_height="wrap_content"
 					android:layout_weight="1"
-					android:paddingTop="6.5dp"
-					android:paddingBottom="6.5dp"
-					android:minHeight="45dp"
+					android:minHeight="48dp"
 					app:alignContent="flex_start"
 					app:alignItems="flex_start"
 					app:dividerDrawable="@drawable/user_divider"
 					app:showDivider="middle"
-					app:flexWrap="wrap" >
-
+					app:flexWrap="wrap">
 					<EditText
 						android:id="@+id/input_recipients"
 						android:layout_width="wrap_content"
@@ -100,7 +93,7 @@
 						android:imeOptions="actionDone|flagNoExtractUi"
 						android:inputType="textEmailAddress"
 						android:maxLines="1"
-						android:minHeight="32dp"
+						android:minHeight="48dp"
 						android:minWidth="50dp"
 						app:layout_flexGrow="1"
 						android:textSize="14sp" />

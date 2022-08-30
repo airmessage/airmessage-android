@@ -34,7 +34,6 @@ import me.tagavari.airmessage.component.ContactListReactiveUpdate
 import me.tagavari.airmessage.component.ContactsRecyclerAdapter
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity
 import me.tagavari.airmessage.connection.ConnectionManager
-import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException
 import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.constants.ColorConstants
 import me.tagavari.airmessage.enums.FaceTimeInitiateCode
@@ -54,6 +53,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
     //State
     private val viewModel: ActivityViewModel by viewModels()
     private val csLink = ConnectionServiceLink(this)
+    private val recipientListGroupMap = mutableMapOf<String, View>()
     
     //Views
     private lateinit var recipientListGroup: ViewGroup
@@ -102,12 +102,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
             //Check if the string passes validation
             if(validateAddress(cleanString)) {
                 //Add a chip
-                addChip(ContactChip(
-                    this@NewFaceTime,
-                    cleanString,
-                    normalizeAddress(cleanString),
-                    { removeChip(it) }
-                ))
+                addChip(ContactChip(cleanString, normalizeAddress(cleanString)))
                 
                 //Clearing the text input
                 recipientInput.setText("")
@@ -223,7 +218,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
         //Configure the list
         contactListAdapter = ContactsRecyclerAdapter(this, viewModel.contactList) { address: String ->
             //Add the chip
-            addChip(ContactChip(this, address, normalizeAddress(address), this::removeChip))
+            addChip(ContactChip(address, normalizeAddress(address)))
         
             //Clear the text
             recipientInput.setText("")
@@ -286,9 +281,8 @@ class NewFaceTime : AppCompatCompositeActivity() {
             recipientInput.hint = ""
             
             //Adding the views
-            for((chipIndex, chip) in viewModel.userChips.withIndex()) {
-                (chip.view.parent as ViewGroup).removeView(chip.view)
-                recipientListGroup.addView(chip.view, chipIndex)
+            for(chip in viewModel.userChips) {
+                addChip(chip)
             }
         }
     }
@@ -309,7 +303,9 @@ class NewFaceTime : AppCompatCompositeActivity() {
         viewModel.userChips.add(chip)
         
         //Add the view
-        recipientListGroup.addView(chip.view, viewModel.userChips.size - 1)
+        val chipView = chip.getView(this, this::removeChip)
+        recipientListGroupMap[chip.address] = chipView
+        recipientListGroup.addView(chipView, viewModel.userChips.size - 1)
         
         //Enable the confirm button
         buttonConfirm.isEnabled = true
@@ -326,7 +322,10 @@ class NewFaceTime : AppCompatCompositeActivity() {
         viewModel.userChips.remove(chip)
         
         //Remove the view
-        recipientListGroup.removeView(chip.view)
+        recipientListGroupMap[chip.address]?.let { chipView ->
+            recipientListGroup.removeView(chipView)
+            recipientListGroupMap.remove(chip.address)
+        }
         
         //Check if there are no more chips
         if(viewModel.userChips.isEmpty()) {
