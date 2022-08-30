@@ -55,10 +55,11 @@ object AttachmentStorageHelper {
 	fun deleteContentFile(directoryID: String, file: File): Boolean {
 		return if(getDirectoryLayout(directoryID) == dirLayoutIsolated) {
 			//Delete the file and its parent folder
-			file.delete() && file.parentFile!!.delete()
+			(!file.exists() || file.delete())
+					&& file.parentFile!!.let { !it.exists() || it.delete() }
 		} else {
 			//Just delete the file
-			file.delete()
+			!file.exists() || file.delete()
 		}
 	}
 	

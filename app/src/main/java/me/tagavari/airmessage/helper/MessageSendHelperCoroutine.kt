@@ -72,9 +72,7 @@ object MessageSendHelperCoroutine {
 			}
 			
 			//Write the items to the database
-			MessageActionTask.writeMessages(conversationInfo, preparedMessageList)
-			
-			return@withContext preparedMessageList
+			return@withContext MessageActionTask.writeMessages(conversationInfo, preparedMessageList).await()
 		}
 	}
 	

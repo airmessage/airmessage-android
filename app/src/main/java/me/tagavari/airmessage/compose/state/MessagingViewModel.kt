@@ -354,15 +354,15 @@ class MessagingViewModel(
 		//Sanitize input
 		val cleanInputText = inputText.trim().ifEmpty { null }
 		
-		//Make a copy of queued file list
-		val cleanQueuedFiles = queuedFiles.toList()
-		
 		//Ignore if we have no content to send,
 		//or if there is an attachment that hasn't been prepared
-		if((cleanInputText == null && cleanQueuedFiles.isEmpty())
-			|| cleanQueuedFiles.any { it.file.isA }) {
+		if((cleanInputText == null && queuedFiles.isEmpty())
+			|| queuedFiles.any { it.file.isA }) {
 			return false
 		}
+		
+		//Convert the queued files to local files
+		val localFiles = queuedFiles.map { it.toLocalFile()!! }
 		
 		//Prepare and send the messages in the background
 		viewModelScope.launch {
@@ -370,7 +370,7 @@ class MessagingViewModel(
 				getApplication(),
 				conversation,
 				cleanInputText,
-				cleanQueuedFiles.map { it.toLocalFile()!! }
+				localFiles
 			).forEach { message ->
 				MessageSendHelperCoroutine.sendMessage(
 					getApplication(),

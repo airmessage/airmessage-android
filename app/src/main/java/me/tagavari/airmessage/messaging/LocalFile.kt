@@ -16,8 +16,9 @@ class LocalFile(
 	/**
 	 * Moves this file and cleans up its directory structure
 	 */
-	fun moveFile(file: File): Boolean {
-		return file.renameTo(file) && deleteFile()
+	fun moveFile(targetFile: File): Boolean {
+		if(!file.exists()) return true
+		return file.renameTo(targetFile) && deleteFile()
 	}
 	
 	/**

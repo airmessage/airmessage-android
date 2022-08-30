@@ -142,6 +142,9 @@ fun MessageInputBar(
 						//Send the file
 						recordingData?.file?.let { onSendFile(it) }
 						recordingData = null
+						
+						//Reset the playback state
+						playbackState = AudioPlaybackState.Stopped
 					},
 					onDiscard = {
 						//Stop recording if we're recording
@@ -152,6 +155,9 @@ fun MessageInputBar(
 						//Delete the recording file
 						recordingData?.file?.deleteFile()
 						recordingData = null
+						
+						//Reset the playback state
+						playbackState = AudioPlaybackState.Stopped
 					},
 					onTogglePlay = {
 						val file = recordingData?.file ?: return@MessageInputBarAudio

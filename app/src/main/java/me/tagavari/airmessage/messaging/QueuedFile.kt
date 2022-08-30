@@ -79,7 +79,7 @@ data class QueuedFile constructor(
 			fileName = fileName,
 			fileType = fileType,
 			fileSize = fileSize,
-			directoryID = AttachmentStorageHelper.dirNameAttachment
+			directoryID = AttachmentStorageHelper.dirNameDraft
 		)
 	}
 	
