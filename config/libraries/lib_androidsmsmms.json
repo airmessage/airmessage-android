@@ -1,0 +1,10 @@
+{
+	"uniqueId": "com.klinkerapps:android-smsmms:custom",
+	"developers": [
+		{"name": "Jake Klinker"}
+	],
+	"artifactVersion": "custom",
+	"description": "Library for easily sending SMS and MMS for Android devices",
+	"name": "Android SMS/MMS Sending Library",
+	"licenses": ["Apache-2.0"]
+}

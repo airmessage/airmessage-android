@@ -1,0 +1,10 @@
+{
+	"uniqueId": "io.github.ponnamkarthik:richlinkpreview:custom",
+	"developers": [
+		{"name": "Karthik Ponnam"}
+	],
+	"artifactVersion": "custom",
+	"description": " A Rich Link Preview Library for Android",
+	"name": "RichLink-Preview",
+	"licenses": ["Apache-2.0"]
+}

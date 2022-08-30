@@ -189,7 +189,7 @@
 			android:exported="false"
 			android:name=".activity.Licenses"
 			android:label="@string/screen_licenses"
-			android:theme="@style/DayNight.NoActionBar">
+			android:theme="@style/Theme.AirMessage.M3.API">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 		

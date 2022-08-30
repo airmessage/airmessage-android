@@ -3,7 +3,7 @@ plugins {
 	id "kotlin-android"
 	id "kotlin-parcelize"
 
-	id "com.mikepenz.aboutlibraries.plugin"
+	id "com.mikepenz.aboutlibraries.plugin" version "$aboutlibs_version"
 }
 
 def isFullVariant = getGradle().getStartParameter().getTaskRequests().any { request ->
@@ -237,7 +237,7 @@ dependencies {
 
 	//About libraries
 	implementation "com.mikepenz:aboutlibraries-core:$aboutlibs_version"
-	implementation "com.mikepenz:aboutlibraries:$aboutlibs_version"
+	implementation "com.mikepenz:aboutlibraries-compose:$aboutlibs_version"
 
 	//Tools
 	implementation "com.googlecode.ez-vcard:ez-vcard:0.11.3"
@@ -269,4 +269,8 @@ repositories {
 	maven {
 		url "https://jitpack.io"
 	}
+}
+
+aboutLibraries {
+	configPath = "config"
 }

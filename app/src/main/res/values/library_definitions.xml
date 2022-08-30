@@ -1,9 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-	<string name="define_plu_richlinkpreview" translatable="false">2018;PonnamKarthik</string>
-	<string name="library_richlinkpreview_author" translatable="false">Karthik Ponnam</string>
-	<string name="library_richlinkpreview_libraryName" translatable="false">RichLink-Preview</string>
-	<string name="library_richlinkpreview_licenseIds" translatable="false">apache_2_0</string>
-	<string name="library_richlinkpreview_isOpenSource" translatable="false">true</string>
-	<string name="library_richlinkpreview_repositoryLink" translatable="false">https://github.com/PonnamKarthik/RichLinkPreview</string>
-</resources>
