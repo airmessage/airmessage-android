@@ -1225,9 +1225,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		//Checking if we have any new incoming messages
 		if(incomingMessageCount > 0) {
 			//Playing a sound
-			if(Preferences.getPreferenceMessageSounds(this)) {
-				SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageIncoming);
-			}
+			SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageIncoming);
 			
 			//Updating the unread count
 			if(!wasScrolledToBottom) {
@@ -1718,9 +1716,7 @@ public class Messaging extends AppCompatCompositeActivity {
 		viewModel.clearConversationActions();
 		
 		//Playing a sound
-		if(Preferences.getPreferenceMessageSounds(this)) {
-			SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing);
-		}
+		SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing);
 	}
 	
 	/**

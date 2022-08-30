@@ -32,8 +32,6 @@
 	<string name="preference_features_messagepreviews_key" translatable="false">pref_key_features_messagepreviews</string>
 	<string name="preference_features_messagepreviews_title">Message previews</string>
 	<string name="preference_features_messagepreviews_description">Display web link and location previews in chats</string>
-	<string name="preference_features_messagesounds_key" translatable="false">pref_key_features_messagesounds</string>
-	<string name="preference_features_messagesounds_title">In-app messaging sounds</string>
 
     <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
     <string name="preferencegroup_messagenotifications_title">Notifications</string>

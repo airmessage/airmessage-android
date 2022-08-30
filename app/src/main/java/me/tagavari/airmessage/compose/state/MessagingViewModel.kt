@@ -380,9 +380,7 @@ class MessagingViewModel(
 		queuedFiles.clear()
 		
 		//Play a sound
-		if(Preferences.getPreferenceMessageSounds(getApplication())) {
-			SoundHelper.playSound(soundPool, soundIDMessageOutgoing)
-		}
+		SoundHelper.playSound(soundPool, soundIDMessageOutgoing)
 		
 		//If the conversation is archived, unarchive it
 		if(conversation.isArchived) {
