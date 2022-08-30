@@ -2,12 +2,14 @@ package me.tagavari.airmessage.compose.component
 
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -106,8 +108,11 @@ fun MessageInfoListEntry(
 			}
 			
 			//Message contents
+			val messageContentsAlpha by animateFloatAsState(if(isUnconfirmed) 0.5F else 1F)
 			Column(
-				modifier = Modifier.weight(1F),
+				modifier = Modifier
+					.weight(1F)
+					.alpha(messageContentsAlpha),
 				horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start
 			) {
 				messageInfo.messageTextComponent?.let { textComponent ->
