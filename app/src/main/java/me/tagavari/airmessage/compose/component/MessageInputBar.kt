@@ -74,9 +74,9 @@ fun MessageInputBar(
 				var playbackState by remember { mutableStateOf<AudioPlaybackState>(AudioPlaybackState.Stopped) }
 				
 				val context = LocalContext.current
+				val scope = rememberCoroutineScope()
 				
 				if(!showRecording) {
-					val scope = rememberCoroutineScope()
 					MessageInputBarText(
 						messageText = messageText,
 						onMessageTextChange = onMessageTextChange,
@@ -130,7 +130,6 @@ fun MessageInputBar(
 					)
 				}
 				
-				val scope = rememberCoroutineScope()
 				MessageInputBarAudio(
 					duration = audioCapture.duration.value,
 					isRecording = audioCapture.isRecording.value,

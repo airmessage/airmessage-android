@@ -9,7 +9,12 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import java.io.File
@@ -40,8 +45,10 @@ fun rememberAudioCapture(): AudioCaptureState {
 	}
 	
 	val isRecording = remember { mutableStateOf(false) }
-	var recordingStopDeferred by remember { mutableStateOf<CompletableDeferred<Boolean>?>(null) }
-	val currentRecordingStopDeferred by rememberUpdatedState(recordingStopDeferred)
+	val recordingStopFlow = remember { MutableSharedFlow<Boolean>(
+		extraBufferCapacity = 1,
+		onBufferOverflow = BufferOverflow.DROP_OLDEST
+	) }
 	
 	val recordingFile = remember { mutableStateOf<File?>(null) }
 	val recordingDuration = remember { mutableStateOf(0) }
@@ -65,6 +72,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		//Reset the recording state
 		isRecording.value = false
 		
+		//Stop recording
 		val cleanStop: Boolean = try {
 			mediaRecorder.stop()
 			true
@@ -74,8 +82,9 @@ fun rememberAudioCapture(): AudioCaptureState {
 			false
 		}
 		
+		//Return the result
 		val recordingOK = cleanStop && !forceDiscard
-		currentRecordingStopDeferred?.complete(recordingOK)
+		recordingStopFlow.tryEmit(recordingOK)
 		return recordingOK
 	}
 	
@@ -126,16 +135,17 @@ fun rememberAudioCapture(): AudioCaptureState {
 			}
 		}
 		
-		//Initialize the recording deferred
-		val deferred = CompletableDeferred<Boolean>()
-		recordingStopDeferred = deferred
-		
 		//Start recording
 		mediaRecorder.start()
 		isRecording.value = true
 		
 		//Wait until we finish recording
-		return deferred.await()
+		return try {
+			recordingStopFlow.first()
+		} catch(exception: InterruptedException) {
+			Log.w(TAG, "Interrupted while recording audio!")
+			throw exception
+		}
 	}
 	
 	return object : AudioCaptureState(mediaRecorder, isRecording, recordingDuration) {
