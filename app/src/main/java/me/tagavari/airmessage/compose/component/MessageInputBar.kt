@@ -71,7 +71,7 @@ fun MessageInputBar(
 				val showRecording = audioCapture.isRecording.value || recordingData != null
 				
 				val playbackManager = LocalAudioPlayback.current
-				var playbackState by remember { mutableStateOf<AudioPlaybackState>(AudioPlaybackState.Stopped) }
+				val playbackState by playbackManager.stateForKey(key = recordingData?.file)
 				
 				val context = LocalContext.current
 				val scope = rememberCoroutineScope()
@@ -140,11 +140,11 @@ fun MessageInputBar(
 					},
 					onSend = {
 						//Send the file
-						recordingData?.file?.let { onSendFile(it) }
+						recordingData?.file?.let { file ->
+							playbackManager.stop(key = file)
+							onSendFile(file)
+						}
 						recordingData = null
-						
-						//Reset the playback state
-						playbackState = AudioPlaybackState.Stopped
 					},
 					onDiscard = {
 						//Stop recording if we're recording
@@ -153,15 +153,15 @@ fun MessageInputBar(
 						}
 						
 						//Delete the recording file
-						recordingData?.file?.deleteFile()
+						recordingData?.file?.also { file ->
+							playbackManager.stop(key = file)
+							file.deleteFile()
+						}
 						recordingData = null
-						
-						//Reset the playback state
-						playbackState = AudioPlaybackState.Stopped
 					},
 					onTogglePlay = {
 						val file = recordingData?.file ?: return@MessageInputBarAudio
-						val state = playbackState
+						val state: AudioPlaybackState = playbackState
 						
 						scope.launch {
 							if(state is AudioPlaybackState.Playing) {
@@ -171,7 +171,7 @@ fun MessageInputBar(
 									playbackManager.resume()
 								}
 							} else {
-								playbackManager.play(Uri.fromFile(file.file)).collect { playbackState = it }
+								playbackManager.play(key = file, uri = Uri.fromFile(file.file))
 							}
 						}
 					},

@@ -164,8 +164,8 @@ fun MessageInfoListEntry(
 								}
 							)
 						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio)) {
-							var playbackState by remember { mutableStateOf<AudioPlaybackState>(AudioPlaybackState.Stopped) }
 							val playbackManager = LocalAudioPlayback.current
+							val playbackState by playbackManager.stateForKey(key = attachmentFile)
 							val scope = rememberCoroutineScope()
 							
 							MessageBubbleAudio(
@@ -174,7 +174,7 @@ fun MessageInfoListEntry(
 								audioPlaybackState = playbackState,
 								onTogglePlayback = {
 									scope.launch {
-										val state = playbackState
+										val state: AudioPlaybackState = playbackState
 										
 										if(state is AudioPlaybackState.Playing) {
 											if(state.playing) {
@@ -183,7 +183,7 @@ fun MessageInfoListEntry(
 												playbackManager.resume()
 											}
 										} else {
-											playbackManager.play(Uri.fromFile(attachmentFile)).collect { playbackState = it }
+											playbackManager.play(key = attachmentFile, Uri.fromFile(attachmentFile))
 										}
 									}
 								}
