@@ -3,10 +3,7 @@ package me.tagavari.airmessage.compose.component
 import android.text.format.DateUtils
 import android.util.LruCache
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,83 +39,87 @@ fun MessageBubbleAudio(
 ) {
 	val colors = flow.colors
 	
-	Surface(
-		modifier = Modifier.width(200.dp),
-		color = colors.background,
-		shape = flow.bubbleShape,
-		contentColor = colors.foreground,
-		onClick = onTogglePlayback
+	CompositionLocalProvider(
+		LocalMinimumTouchTargetEnforcement provides false
 	) {
-		Row(
-			modifier = Modifier
-				.height(40.dp),
-			verticalAlignment = Alignment.CenterVertically
+		Surface(
+			modifier = Modifier.width(200.dp),
+			color = colors.background,
+			shape = flow.bubbleShape,
+			contentColor = colors.foreground,
+			onClick = onTogglePlayback
 		) {
-			val isPlaying =
-				audioPlaybackState is AudioPlaybackState.Playing && audioPlaybackState.playing
-			
-			//Get the amplitude list
-			val audioPreview by if(LocalInspectionMode.current) {
-				remember { mutableStateOf<AudioPreviewData?>(AudioPreviewData.Preview) }
-			} else {
-				produceState<AudioPreviewData?>(null) {
-					audioPreviewCacheMutex.withLock {
-						//Look up a previous value in the cache
-						audioPreviewCache[file]?.let {
-							value = it
-							return@withLock
-						}
-						
-						//Process the file
-						@Suppress("BlockingMethodInNonBlockingContext")
-						val amplitudeList = withContext(Dispatchers.IO) {
-							AudioDecodeHelper.getAudioPreviewData(file)
-						}
-						
-						//Save the value in the cache
-						audioPreviewCache.put(file, amplitudeList)
-						value = amplitudeList
-					}
-				}
-			}
-			
-			Icon(
-				modifier = Modifier.padding(start = 8.dp),
-				painter = painterResource(
-					if(isPlaying) R.drawable.pause_circle_rounded
-					else R.drawable.play_circle_rounded
-				),
-				contentDescription = null
-			)
-			
-			Spacer(modifier = Modifier.width(8.dp))
-			
-			AudioVisualizer(
+			Row(
 				modifier = Modifier
-					.weight(1F)
-					.fillMaxHeight()
-					.padding(vertical = 1.dp),
-				amplitudeList = audioPreview?.amplitude ?: emptyList(),
-				displayType = AudioVisualizerDisplayType.SUMMARY,
-				progress = if(audioPlaybackState is AudioPlaybackState.Playing)
-					audioPlaybackState.time.toFloat() / audioPlaybackState.totalDuration.toFloat()
-				else 1F
-			)
-			
-			Spacer(modifier = Modifier.width(8.dp))
-			
-			Text(
-				modifier = Modifier.padding(end = 12.dp),
-				text = remember(audioPlaybackState, audioPreview) {
-					if(audioPlaybackState is AudioPlaybackState.Playing) {
-						DateUtils.formatElapsedTime(audioPlaybackState.time / 1000)
-					} else {
-						audioPreview?.let { audioPreview ->
-							DateUtils.formatElapsedTime(audioPreview.duration)
-						} ?: "-"
+					.height(40.dp),
+				verticalAlignment = Alignment.CenterVertically
+			) {
+				val isPlaying =
+					audioPlaybackState is AudioPlaybackState.Playing && audioPlaybackState.playing
+				
+				//Get the amplitude list
+				val audioPreview by if(LocalInspectionMode.current) {
+					remember { mutableStateOf<AudioPreviewData?>(AudioPreviewData.Preview) }
+				} else {
+					produceState<AudioPreviewData?>(null) {
+						audioPreviewCacheMutex.withLock {
+							//Look up a previous value in the cache
+							audioPreviewCache[file]?.let {
+								value = it
+								return@withLock
+							}
+							
+							//Process the file
+							@Suppress("BlockingMethodInNonBlockingContext")
+							val amplitudeList = withContext(Dispatchers.IO) {
+								AudioDecodeHelper.getAudioPreviewData(file)
+							}
+							
+							//Save the value in the cache
+							audioPreviewCache.put(file, amplitudeList)
+							value = amplitudeList
+						}
 					}
 				}
-			)
+				
+				Icon(
+					modifier = Modifier.padding(start = 8.dp),
+					painter = painterResource(
+						if(isPlaying) R.drawable.pause_circle_rounded
+						else R.drawable.play_circle_rounded
+					),
+					contentDescription = null
+				)
+				
+				Spacer(modifier = Modifier.width(8.dp))
+				
+				AudioVisualizer(
+					modifier = Modifier
+						.weight(1F)
+						.fillMaxHeight()
+						.padding(vertical = 1.dp),
+					amplitudeList = audioPreview?.amplitude ?: emptyList(),
+					displayType = AudioVisualizerDisplayType.SUMMARY,
+					progress = if(audioPlaybackState is AudioPlaybackState.Playing)
+						audioPlaybackState.time.toFloat() / audioPlaybackState.totalDuration.toFloat()
+					else 1F
+				)
+				
+				Spacer(modifier = Modifier.width(8.dp))
+				
+				Text(
+					modifier = Modifier.padding(end = 12.dp),
+					text = remember(audioPlaybackState, audioPreview) {
+						if(audioPlaybackState is AudioPlaybackState.Playing) {
+							DateUtils.formatElapsedTime(audioPlaybackState.time / 1000)
+						} else {
+							audioPreview?.let { audioPreview ->
+								DateUtils.formatElapsedTime(audioPreview.duration)
+							} ?: "-"
+						}
+					}
+				)
+			}
 		}
 	}
 }
