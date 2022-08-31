@@ -3473,6 +3473,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		getWritableDatabase().update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.ConversationEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 	}
 	
+	@Nullable
 	public String getMessageErrorDetails(long messageID) {
 		try(Cursor cursor = getReadableDatabase().query(Contract.MessageEntry.TABLE_NAME, new String[]{Contract.MessageEntry.COLUMN_NAME_ERRORDETAILS}, Contract.StickerEntry._ID + " = ?", new String[]{Long.toString(messageID)}, null, null, null, "1")) {
 			if(cursor.moveToNext()) return cursor.getString(0);
