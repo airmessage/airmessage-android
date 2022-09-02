@@ -348,6 +348,8 @@
 	<string name="part_camera">Caméra</string>
 	<string name="action_deletemessage">Enlever le message</string>
 	<string name="action_getnotifications">Recevoir les notifications</string>
+	<string name="action_mutenotifications">Désactiver les notifications</string>
+	<string name="action_sendcurrentlocation">Envoyer ma position actuelle</string>
 	<string name="message_loaderror_gallery">Échec du chargement de la galerie de photos</string>
 	<string name="message_loaderror_documents">Échec du chargement des documents</string>
 	<string name="message_searchnoresults">Aucun résultat</string>

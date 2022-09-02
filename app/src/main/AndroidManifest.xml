@@ -245,6 +245,10 @@
 			android:name=".compose.MessagingCompose"
 			android:theme="@style/Theme.AirMessage.Compose"
 			android:windowSoftInputMode="adjustResize" />
+		
+		<activity
+			android:name=".compose.ConversationDetailsCompose"
+			android:theme="@style/Theme.AirMessage.Compose" />
 
 		<!-- Notification response -->
 		<receiver

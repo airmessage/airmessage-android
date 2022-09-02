@@ -2,13 +2,16 @@ package me.tagavari.airmessage.compose.component
 
 import android.app.Application
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
@@ -29,8 +32,9 @@ import me.tagavari.airmessage.helper.SoundHelper
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MessagingScreen(
+	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {},
-	conversationID: Long
+	onClickDetails: () -> Unit
 ) {
 	val application = LocalContext.current.applicationContext as Application
 	val viewModel = viewModel<MessagingViewModel>(factory = MessagingViewModelFactory(application, conversationID))
@@ -71,6 +75,10 @@ fun MessagingScreen(
 					//scrollBehavior = scrollBehavior,
 					title = {
 						Column(
+							modifier = Modifier
+								.clip(RoundedCornerShape(12.dp))
+								.clickable(onClick = onClickDetails)
+								.padding(horizontal = 8.dp, vertical = 4.dp),
 							horizontalAlignment = Alignment.CenterHorizontally,
 							verticalArrangement = Arrangement.Top
 						) {

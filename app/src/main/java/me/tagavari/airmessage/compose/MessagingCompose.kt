@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
@@ -31,6 +32,7 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 			ConnectionServiceLocalProvider(activity = this) {
 				AirMessageAndroidTheme {
 					MessagingScreen(
+						conversationID = conversationID,
 						navigationIcon = {
 							IconButton(onClick = { finish() }) {
 								Icon(
@@ -39,7 +41,11 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 								)
 							}
 						},
-						conversationID = conversationID
+						onClickDetails = {
+							Intent(this, ConversationDetailsCompose::class.java).apply {
+								putExtra(Messaging.intentParamTargetID, conversationID)
+							}.let { startActivity(it) }
+						}
 					)
 				}
 			}

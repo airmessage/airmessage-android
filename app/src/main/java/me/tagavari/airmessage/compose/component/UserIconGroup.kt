@@ -18,8 +18,8 @@ import me.tagavari.airmessage.messaging.MemberInfo
  */
 @Composable
 fun UserIconGroup(
-	members: List<MemberInfo>,
-	modifier: Modifier = Modifier
+	modifier: Modifier = Modifier,
+	members: List<MemberInfo>
 ) {
 	Box(modifier.size(40.dp, 40.dp)) {
 		when(members.size) {

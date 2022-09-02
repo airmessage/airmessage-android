@@ -64,6 +64,7 @@
 	<string name="action_editconversationcolor">Change conversation color</string>
 	<string name="action_confirmparticipants">Confirm participants</string>
 	<string name="action_getnotifications">Get notifications</string>
+	<string name="action_mutenotifications">Mute notifications</string>
 	<string name="action_pinconversation">Pin conversation</string>
 	<string name="action_copytoclipboard">Copy to clipboard</string>
 	<string name="action_savetofile">Save to file</string>
@@ -86,6 +87,7 @@
 	<string name="action_answercall">Answer</string>
 	<string name="action_declinecall">Decline</string>
 	<string name="action_endcall">End call</string>
+	<string name="action_sendcurrentlocation">Send my current location</string>
 	
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>

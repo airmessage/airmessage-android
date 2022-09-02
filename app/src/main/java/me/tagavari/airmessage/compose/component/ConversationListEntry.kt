@@ -12,7 +12,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -26,13 +25,12 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.remember.produceConversationTitle
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
-import me.tagavari.airmessage.helper.ConversationBuildHelper
 import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationPreview
@@ -47,13 +45,7 @@ fun ConversationListEntry(
 	active: Boolean = false,
 	selected: Boolean = false
 ) {
-	val context = LocalContext.current
-	val title by produceState(
-		initialValue = ConversationBuildHelper.buildConversationTitleDirect(context, conversation),
-		conversation
-	) {
-		value = ConversationBuildHelper.buildConversationTitle(context, conversation).await()
-	}
+	val title by produceConversationTitle(conversation)
 	
 	val preview = conversation.dynamicPreview
 	
@@ -126,6 +118,8 @@ fun ConversationListEntry(
 				Column(
 					horizontalAlignment = Alignment.End
 				) {
+					val context = LocalContext.current
+					
 					val stringNotSent = stringResource(id = R.string.message_senderror)
 					
 					val isPreviewError = remember(preview) {

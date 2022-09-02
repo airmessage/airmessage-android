@@ -49,6 +49,8 @@
 	<string name="action_editconversationcolor">会話の色を変更</string>
 	<string name="action_confirmparticipants">参加者を確認</string>
 	<string name="action_getnotifications">通知の受け取り</string>
+	<string name="action_mutenotifications">通知のミュート</string>
+	<string name="action_sendcurrentlocation">現在地を送信する</string>
 	<string name="action_short_picture">カメラ</string>
 	<string name="action_short_video">ビデオ</string>
 	<string name="screen_details">詳細</string>
