@@ -17,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -107,7 +108,7 @@ fun ConversationDetails(
 									ConversationActionTask.muteConversations(
 										setOf(conversation),
 										!conversation.isMuted
-									)
+									).await()
 								}
 							})
 							.padding(16.dp),
