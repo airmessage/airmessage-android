@@ -8,11 +8,8 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.focus.focusTarget
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.platform.LocalTextInputService
-import androidx.compose.ui.platform.SoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -48,6 +45,8 @@ fun ConversationDetailsHeader(
 	}
 	val title: String = generatedTitle ?: fallbackTitle
 	
+	val isRenameSupported = conversation.serviceHandler != ServiceHandler.appleBridge
+	
 	var showRenameDialog by remember { mutableStateOf(false) }
 	var conversationNameInput by remember { mutableStateOf("") }
 	
@@ -67,15 +66,17 @@ fun ConversationDetailsHeader(
 			style = MaterialTheme.typography.titleLarge
 		)
 		
-		TextButton(onClick = {
-			//Only let the user rename the conversation after we've determined
-			//the conversation's actual name
-			generatedTitle?.let { generatedTitle ->
-				showRenameDialog = true
-				conversationNameInput = generatedTitle
+		if(isRenameSupported) {
+			TextButton(onClick = {
+				//Only let the user rename the conversation after we've determined
+				//the conversation's actual name
+				generatedTitle?.let { generatedTitle ->
+					showRenameDialog = true
+					conversationNameInput = generatedTitle
+				}
+			}) {
+				Text(stringResource(id = R.string.action_renamegroup))
 			}
-		}) {
-			Text(stringResource(id = R.string.action_renamegroup))
 		}
 	}
 	
@@ -149,8 +150,8 @@ private fun PreviewConversationDetailsHeader() {
 					guid = null,
 					externalID = -1,
 					state = ConversationState.ready,
-					serviceHandler = ServiceHandler.appleBridge,
-					serviceType = ServiceType.appleMessage,
+					serviceHandler = ServiceHandler.systemMessaging,
+					serviceType = ServiceType.systemSMS,
 					conversationColor = 0xFFFF1744.toInt(),
 					members = mutableListOf(
 						MemberInfo("1", 0xFFFF1744.toInt()),
