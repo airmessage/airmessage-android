@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.CloudOff
@@ -15,10 +17,12 @@ import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.constants.ExternalLinkConstants
 import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper
 import me.tagavari.airmessage.helper.ErrorDetailsAction
 import me.tagavari.airmessage.helper.ErrorDetailsHelper
+import me.tagavari.airmessage.helper.IntentHelper
 
 @Composable
 fun ConnectionErrorCard(
@@ -40,8 +44,13 @@ fun ConnectionErrorCard(
 					connectionManager.connect()
 				}
 			}
-			ErrorDetailsAction.UPDATE_APP -> {}
-			ErrorDetailsAction.UPDATE_SERVER -> {}
+			ErrorDetailsAction.UPDATE_APP -> {
+				Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+					.let { context.startActivity(it) }
+			}
+			ErrorDetailsAction.UPDATE_SERVER -> {
+				IntentHelper.launchUri(context, ExternalLinkConstants.serverUpdateAddress)
+			}
 			ErrorDetailsAction.CHANGE_PASSWORD -> {}
 		}
 	}
