@@ -216,7 +216,7 @@ public class FragmentOnboardingConnect extends FragmentCommunication<FragmentCom
 			buttonError.setOnClickListener(view -> startConnection());
 		} else {
 			buttonError.setText(errorDetails.getButton().getLabel());
-			buttonError.setOnClickListener(view -> errorDetails.getButton().getClickListener().invoke(requireActivity(), requireActivity().getSupportFragmentManager(), getCommunicationsCallback().getConnectionManager()));
+			buttonError.setOnClickListener(view -> errorDetails.getButton().performActionActivity(requireActivity(), requireActivity().getSupportFragmentManager(), getCommunicationsCallback().getConnectionManager()));
 		}
 	}
 	

@@ -355,7 +355,7 @@ public class FragmentOnboardingManual extends FragmentCommunication<FragmentComm
 		} else {
 			buttonError.setVisibility(View.GONE);
 			buttonError.setText(errorDetails.getButton().getLabel());
-			buttonError.setOnClickListener(view -> errorDetails.getButton().getClickListener().invoke(getActivity(), getActivity().getSupportFragmentManager(), getCommunicationsCallback().getConnectionManager()));
+			buttonError.setOnClickListener(view -> errorDetails.getButton().performActionActivity(getActivity(), getActivity().getSupportFragmentManager(), getCommunicationsCallback().getConnectionManager()));
 		}
 	}
 	

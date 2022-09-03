@@ -29,7 +29,7 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 		val conversationID = intent.getLongExtra(Messaging.intentParamTargetID, -1)
 		
 		setContent {
-			ConnectionServiceLocalProvider(activity = this) {
+			ConnectionServiceLocalProvider(context = this) {
 				AirMessageAndroidTheme {
 					MessagingScreen(
 						conversationID = conversationID,

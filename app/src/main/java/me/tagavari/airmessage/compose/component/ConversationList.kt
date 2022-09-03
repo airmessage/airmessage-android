@@ -11,18 +11,19 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -30,6 +31,8 @@ import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationPreview
 import me.tagavari.airmessage.messaging.MemberInfo
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.redux.ReduxEventConnection
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -54,6 +57,9 @@ fun ConversationList(
 	BackHandler(isActionMode) {
 		stopActionMode()
 	}
+	
+	//Network state
+	val connectionState by ReduxEmitterNetwork.connectionStateSubject.subscribeAsState(initial = null)
 	
 	Scaffold(
 		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -214,6 +220,17 @@ fun ConversationList(
 						LazyColumn(
 							contentPadding = innerPadding
 						) {
+							//Connection state
+							val localConnectionState: ReduxEventConnection? = connectionState
+							if(localConnectionState is ReduxEventConnection.Disconnected) {
+								item {
+									ConnectionErrorCard(
+										connectionManager = LocalConnectionManager.current,
+										code = localConnectionState.code
+									)
+								}
+							}
+							
 							items(
 								items = conversations,
 								key = { it.localID }

@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.compose.provider
 
-import android.app.Activity
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -22,14 +21,14 @@ val LocalConnectionManager = compositionLocalOf<ConnectionManager?> { null }
  */
 @Composable
 fun ConnectionServiceLocalProvider(
-	activity: Activity,
+	context: Context,
 	body: @Composable () -> Unit
 ) {
 	var connectionManager by remember {
 		mutableStateOf<ConnectionManager?>(null)
 	}
 	
-	DisposableEffect(activity) {
+	DisposableEffect(context) {
 		var isServiceBound = false
 		
 		//Create the service connection
@@ -51,16 +50,16 @@ fun ConnectionServiceLocalProvider(
 		}
 		
 		//Make sure we have a configured connection
-		if(SharedPreferencesManager.isConnectionConfigured(activity)) {
+		if(SharedPreferencesManager.isConnectionConfigured(context)) {
 			//Start the persistent connection service if required
-			if(SharedPreferencesManager.isConnectionConfigured(activity)
-				&& SharedPreferencesManager.getProxyType(activity) == ProxyType.direct) {
-				ConnectionServiceLaunchHelper.launchPersistent(activity)
+			if(SharedPreferencesManager.isConnectionConfigured(context)
+				&& SharedPreferencesManager.getProxyType(context) == ProxyType.direct) {
+				ConnectionServiceLaunchHelper.launchPersistent(context)
 			}
 			
 			//Bind to the connection service
-			activity.bindService(
-				Intent(activity, ConnectionService::class.java),
+			context.bindService(
+				Intent(context, ConnectionService::class.java),
 				serviceConnection,
 				Context.BIND_AUTO_CREATE
 			)
@@ -69,7 +68,7 @@ fun ConnectionServiceLocalProvider(
 		onDispose {
 			//Unbind when we go out of scope
 			if(isServiceBound) {
-				activity.unbindService(serviceConnection)
+				context.unbindService(serviceConnection)
 			}
 		}
 	}
