@@ -423,6 +423,8 @@
 	</string>
 	<string name="message_serverupdate_failed">Failed to install update</string>
 	
+	<string name="message_locationfrom">Location from %s</string>
+	
 	<string name="message_facetime_intro">Use AirMessage to make and receive FaceTime calls on this device</string>
 	
 	<string name="message_facetime_calling" translatable="false">FaceTime&#8230;</string>

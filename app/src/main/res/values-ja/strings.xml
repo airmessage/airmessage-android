@@ -548,4 +548,5 @@
 	<string name="error_badmembers">参加者は FaceTime では利用できません</string>
 	<string name="notificationchannel_incomingcall">着信</string>
 	<string name="notificationchannel_incomingcall_desc">FaceTime 通話の着信に関する通知</string>
+	<string name="message_locationfrom">%s からの位置情報</string>
 </resources>

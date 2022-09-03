@@ -557,4 +557,5 @@
 	<string name="error_badmembers">Les participants ne sont pas disponibles sur FaceTime</string>
 	<string name="notificationchannel_incomingcall">Appels entrants</string>
 	<string name="notificationchannel_incomingcall_desc">Notifications concernant les appels FaceTime entrants</string>
+	<string name="message_locationfrom">Position du %s</string>
 </resources>

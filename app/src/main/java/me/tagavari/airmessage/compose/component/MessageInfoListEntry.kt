@@ -51,6 +51,7 @@ import me.tagavari.airmessage.task.MessageActionTask
 import me.tagavari.airmessage.util.MessageFlow
 import me.tagavari.airmessage.util.MessageFlowSpacing
 import me.tagavari.airmessage.util.MessagePartFlow
+import java.util.*
 
 /**
  * A message list entry that displays a [MessageInfo]
@@ -207,6 +208,15 @@ fun MessageInfoListEntry(
 									}
 								}
 							)
+						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation)) {
+							MessageBubbleLocation(
+								flow = attachmentFlow,
+								file = attachmentFile,
+								date = Date(messageInfo.date),
+								onClick = { uri ->
+									IntentHelper.launchUri(context, uri)
+								}
+							)
 						} else {
 							MessageBubbleFile(
 								flow = attachmentFlow,
@@ -286,7 +296,7 @@ fun MessageInfoListEntry(
 							.combinedClickable(
 								onClick = {
 									showErrorDialog = true
-							  	},
+								},
 								onLongClick = {
 									haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 									openDetailDialog()
