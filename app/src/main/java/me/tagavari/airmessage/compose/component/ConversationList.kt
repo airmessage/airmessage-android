@@ -17,11 +17,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
@@ -33,6 +37,7 @@ import me.tagavari.airmessage.messaging.ConversationPreview
 import me.tagavari.airmessage.messaging.MemberInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
+import me.tagavari.airmessage.task.ConversationActionTask
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -44,7 +49,9 @@ fun ConversationList(
 	onNavigateSettings: () -> Unit = {},
 	onNewConversation: () -> Unit = {}
 ) {
+	val snackbarHostState = remember { SnackbarHostState() }
 	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+	val scope = rememberCoroutineScope()
 	
 	//Action mode
 	var selectedConversations by rememberSaveable { mutableStateOf(setOf<Long>()) }
@@ -124,11 +131,13 @@ fun ConversationList(
 								val hasUnarchived: Boolean
 							)
 							
+							val context = LocalContext.current
+							
+							val conversationsSequence = selectedConversations
+								.asSequence()
+								.mapNotNull { conversationsMap[it] }
+							
 							val selectionContents = remember(selectedConversations) {
-								val conversationsSequence = selectedConversations
-									.asSequence()
-									.mapNotNull { conversationsMap[it] }
-								
 								SelectionContents(
 									hasMuted = conversationsSequence.any { it.isMuted },
 									hasUnmuted = conversationsSequence.any { !it.isMuted },
@@ -137,8 +146,55 @@ fun ConversationList(
 								)
 							}
 							
+							@OptIn(DelicateCoroutinesApi::class)
+							fun setConversationsMuted(muted: Boolean) {
+								GlobalScope.launch {
+									ConversationActionTask.muteConversations(
+										conversationsSequence.toSet(),
+										muted
+									).await()
+								}
+							}
+							
+							@OptIn(DelicateCoroutinesApi::class)
+							fun setConversationsArchived(archived: Boolean) {
+								val targetConversations = conversationsSequence.toSet()
+								
+								GlobalScope.launch {
+									ConversationActionTask.archiveConversations(
+										targetConversations,
+										archived
+									).await()
+								}
+								
+								scope.launch {
+									val result = snackbarHostState.showSnackbar(
+										message = context.resources.getQuantityString(
+											if(archived) R.plurals.message_conversationarchived else R.plurals.message_conversationunarchived,
+											targetConversations.size,
+											targetConversations.size
+										),
+										actionLabel = context.resources.getString(R.string.action_undo),
+										duration = SnackbarDuration.Short
+									)
+									
+									if(result == SnackbarResult.ActionPerformed) {
+										GlobalScope.launch {
+											//Reverse the action
+											ConversationActionTask.muteConversations(
+												targetConversations,
+												!archived
+											).await()
+										}
+									}
+								}
+							}
+							
 							if(selectionContents.hasMuted) {
-								IconButton(onClick = {}) {
+								IconButton(onClick = {
+									setConversationsMuted(false)
+									stopActionMode()
+								}) {
 									Icon(
 										imageVector = Icons.Outlined.NotificationsActive,
 										contentDescription = stringResource(id = R.string.action_unmute)
@@ -147,7 +203,10 @@ fun ConversationList(
 							}
 							
 							if(selectionContents.hasUnmuted) {
-								IconButton(onClick = {}) {
+								IconButton(onClick = {
+									setConversationsMuted(true)
+									stopActionMode()
+								}) {
 									Icon(
 										imageVector = Icons.Outlined.NotificationsOff,
 										contentDescription = stringResource(id = R.string.action_mute)
@@ -156,7 +215,10 @@ fun ConversationList(
 							}
 							
 							if(selectionContents.hasArchived) {
-								IconButton(onClick = {}) {
+								IconButton(onClick = {
+									setConversationsArchived(false)
+									stopActionMode()
+								}) {
 									Icon(
 										imageVector = Icons.Outlined.Unarchive,
 										contentDescription = stringResource(id = R.string.action_unarchive)
@@ -165,7 +227,10 @@ fun ConversationList(
 							}
 							
 							if(selectionContents.hasUnarchived) {
-								IconButton(onClick = {}) {
+								IconButton(onClick = {
+									setConversationsArchived(true)
+									stopActionMode()
+								}) {
 									Icon(
 										imageVector = Icons.Outlined.Archive,
 										contentDescription = stringResource(id = R.string.action_archive)
@@ -188,92 +253,89 @@ fun ConversationList(
 			}
 		},
 		content = { innerPadding ->
-			Box(modifier = Modifier.fillMaxSize()) {
-				if(conversations == null) {
-					Box(
+			if(conversations == null) {
+				Box(
+					modifier = modifier
+						.fillMaxSize()
+						.padding(innerPadding)
+				) {
+					CircularProgressIndicator(
+						modifier = Modifier.align(Alignment.Center)
+					)
+				}
+			} else {
+				conversations.onFailure {
+					Column(
 						modifier = modifier
 							.fillMaxSize()
-							.padding(innerPadding)
+							.padding(innerPadding),
+						verticalArrangement = Arrangement.Center,
+						horizontalAlignment = Alignment.CenterHorizontally
 					) {
-						CircularProgressIndicator(
-							modifier = Modifier.align(Alignment.Center)
-						)
-					}
-				} else {
-					conversations.onFailure {
-						Column(
-							modifier = modifier
-								.fillMaxSize()
-								.padding(innerPadding),
-							verticalArrangement = Arrangement.Center,
-							horizontalAlignment = Alignment.CenterHorizontally
-						) {
-							Text(text = stringResource(id = R.string.message_loaderror_messages))
-							
-							TextButton(onClick = onReloadConversations) {
-								Text(text = stringResource(id = R.string.action_retry))
-							}
-						}
-					}
-					
-					conversations.onSuccess { conversations ->
-						LazyColumn(
-							contentPadding = innerPadding
-						) {
-							//Connection state
-							val localConnectionState: ReduxEventConnection? = connectionState
-							if(localConnectionState is ReduxEventConnection.Disconnected) {
-								item {
-									ConnectionErrorCard(
-										connectionManager = LocalConnectionManager.current,
-										code = localConnectionState.code
-									)
-								}
-							}
-							
-							items(
-								items = conversations,
-								key = { it.localID }
-							) { conversationInfo ->
-								fun toggleSelection() {
-									conversationInfo.localID.let { localID ->
-										selectedConversations = selectedConversations
-											.toMutableSet().apply {
-												if(contains(localID)) {
-													remove(localID)
-												} else {
-													add(localID)
-												}
-											}
-									}
-								}
-								
-								ConversationListEntry(
-									conversation = conversationInfo,
-									onClick = {
-										if(isActionMode) {
-											toggleSelection()
-										} else {
-											onSelectConversation(conversationInfo)
-										}
-									},
-									onLongClick = { toggleSelection() },
-									selected = selectedConversations.contains(conversationInfo.localID)
-								)
-							}
+						Text(text = stringResource(id = R.string.message_loaderror_messages))
+						
+						TextButton(onClick = onReloadConversations) {
+							Text(text = stringResource(id = R.string.action_retry))
 						}
 					}
 				}
 				
-				FloatingActionButton(
-					modifier = Modifier
-						.align(Alignment.BottomEnd)
-						.navigationBarsPadding()
-						.padding(16.dp),
-					onClick = onNewConversation
-				) {
-					Icon(Icons.Outlined.Message, stringResource(id = R.string.action_newconversation))
+				conversations.onSuccess { conversations ->
+					LazyColumn(
+						contentPadding = innerPadding
+					) {
+						//Connection state
+						val localConnectionState: ReduxEventConnection? = connectionState
+						if(localConnectionState is ReduxEventConnection.Disconnected) {
+							item {
+								ConnectionErrorCard(
+									connectionManager = LocalConnectionManager.current,
+									code = localConnectionState.code
+								)
+							}
+						}
+						
+						items(
+							items = conversations,
+							key = { it.localID }
+						) { conversationInfo ->
+							fun toggleSelection() {
+								conversationInfo.localID.let { localID ->
+									selectedConversations = selectedConversations
+										.toMutableSet().apply {
+											if(contains(localID)) {
+												remove(localID)
+											} else {
+												add(localID)
+											}
+										}
+								}
+							}
+							
+							ConversationListEntry(
+								conversation = conversationInfo,
+								onClick = {
+									if(isActionMode) {
+										toggleSelection()
+									} else {
+										onSelectConversation(conversationInfo)
+									}
+								},
+								onLongClick = { toggleSelection() },
+								selected = selectedConversations.contains(conversationInfo.localID)
+							)
+						}
+					}
 				}
+			}
+		},
+		snackbarHost = { SnackbarHost(snackbarHostState) },
+		floatingActionButton = {
+			FloatingActionButton(
+				modifier = Modifier.navigationBarsPadding(),
+				onClick = onNewConversation
+			) {
+				Icon(Icons.Outlined.Message, stringResource(id = R.string.action_newconversation))
 			}
 		}
 	)
