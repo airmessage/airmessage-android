@@ -66,9 +66,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				})
 			}
 			is ReduxEventMessaging.ConversationDelete -> {
-				conversations = Result.success(conversationList.toMutableList().also { list ->
-					list.filter { it.localID != event.conversationInfo.localID }
-				})
+				conversations = Result.success(conversationList.filter { it.localID != event.conversationInfo.localID })
 			}
 			else -> {}
 		}

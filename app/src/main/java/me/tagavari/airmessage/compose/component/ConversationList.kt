@@ -59,6 +59,7 @@ fun ConversationList(
 	fun stopActionMode() {
 		selectedConversations = setOf()
 	}
+	var promptDeleteConversations by remember { mutableStateOf(false) }
 	
 	//Stop action mode when back is pressed
 	BackHandler(isActionMode) {
@@ -170,7 +171,8 @@ fun ConversationList(
 								scope.launch {
 									val result = snackbarHostState.showSnackbar(
 										message = context.resources.getQuantityString(
-											if(archived) R.plurals.message_conversationarchived else R.plurals.message_conversationunarchived,
+											if(archived) R.plurals.message_conversationarchived
+											else R.plurals.message_conversationunarchived,
 											targetConversations.size,
 											targetConversations.size
 										),
@@ -238,7 +240,9 @@ fun ConversationList(
 								}
 							}
 							
-							IconButton(onClick = {}) {
+							IconButton(onClick = {
+								promptDeleteConversations = true
+							}) {
 								Icon(
 									imageVector = Icons.Outlined.Delete,
 									contentDescription = stringResource(id = R.string.action_delete)
@@ -339,6 +343,61 @@ fun ConversationList(
 			}
 		}
 	)
+	
+	if(promptDeleteConversations) {
+		val context = LocalContext.current
+		
+		AlertDialog(
+			onDismissRequest = { promptDeleteConversations = false },
+			confirmButton = {
+				TextButton(
+					onClick = {
+						//Get concrete conversation objects
+						val conversationsList = selectedConversations
+							.mapNotNull { conversationID ->
+								conversations?.getOrNull()?.firstOrNull { it.localID == conversationID }
+							}
+						
+						//Delete the conversations
+						@OptIn(DelicateCoroutinesApi::class)
+						GlobalScope.launch {
+							ConversationActionTask.deleteConversations(context, conversationsList).await()
+						}
+						
+						//Dismiss the dialog and stop action mode
+						promptDeleteConversations = false
+						stopActionMode()
+					}
+				) {
+					Text(stringResource(R.string.action_delete))
+				}
+			},
+			dismissButton = {
+				TextButton(
+					onClick = {
+						promptDeleteConversations = false
+					}
+				) {
+					Text(stringResource(android.R.string.cancel))
+				}
+			},
+			icon = {
+				Icon(
+					imageVector = Icons.Outlined.Delete,
+					contentDescription = null
+				)
+			},
+			title = {
+				val selectedCount = selectedConversations.size
+				Text(
+					text = context.resources.getQuantityString(
+						R.plurals.message_confirm_deleteconversation,
+						selectedCount
+					)
+				)
+			}
+		)
+	}
 }
 
 @Preview(name = "Conversation list")
