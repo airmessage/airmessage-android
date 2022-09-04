@@ -88,6 +88,8 @@
 	<string name="action_declinecall">Decline</string>
 	<string name="action_endcall">End call</string>
 	<string name="action_sendcurrentlocation">Send my current location</string>
+	<string name="action_showpassword">Show password</string>
+	<string name="action_hidepassword">Hide password</string>
 	
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -275,6 +277,9 @@
 	<string name="message_setup_sync_warning_title">Skip clearing messages?</string>
 	<string name="message_setup_sync_description">Only use this if you are connecting to the same computer and Apple account that was previously being used.\n\nRetaining your old conversations may cause them to merge with your new conversations or lose functionality.</string>
 	
+	<string name="message_endpoint_connected">Connected</string>
+	<string name="message_endpoint_notreachable">Not reachable</string>
+	
 	<string name="message_renamegroup_onlyyouvisibility">Only you can see this group name</string>
 	
 	<string name="message_messageeffect_invisibleink">Message sent with Invisible Ink</string>
@@ -384,7 +389,7 @@
 	
 	<string name="message_onboardinginstructions_title">Get started in 2 easy steps</string>
 	<string name="message_onboardinginstructions_macmini_title">Set up your server</string>
-	<string name="message_onboardinginstructions_macmini_desc">A server installed on a Mac computer is required to route your messages for you.\n\nVisit airmessage.org on your computer to download.</string>
+	<string name="message_onboardinginstructions_macmini_desc">A server installed on a Mac computer is required to route your messages for you.\n\nVisit <a href="https://airmessage.org">airmessage.org</a> on your computer to download.</string>
 	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
 	<string name="message_onboardinginstructions_airmessage_desc">Log in with your account to get your messages on this device.</string>
 	
