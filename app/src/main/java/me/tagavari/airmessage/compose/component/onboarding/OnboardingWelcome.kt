@@ -1,9 +1,11 @@
 package me.tagavari.airmessage.compose.component.onboarding
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.SettingsEthernet
@@ -13,14 +15,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.ExperimentalTextApi
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.UrlAnnotation
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
-import me.tagavari.airmessage.compose.util.annotatedStringResource
+import me.tagavari.airmessage.helper.IntentHelper
 
+@OptIn(ExperimentalTextApi::class)
 @Composable
 fun OnboardingWelcome(
 	modifier: Modifier = Modifier,
@@ -73,10 +82,45 @@ fun OnboardingWelcome(
 				
 				Spacer(modifier = Modifier.height(10.dp))
 				
-				Text(
-					text = annotatedStringResource(R.string.message_onboardinginstructions_macmini_desc),
+				val annotatedText = stringResource(R.string.message_onboardinginstructions_macmini_desc).let { string ->
+					buildAnnotatedString {
+						//Set text color
+						pushStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant))
+						
+						append(string)
+						
+						//Highlight the URL
+						val url = "airmessage.org"
+						val urlIndex = string.indexOf(url)
+						assert(urlIndex != -1)
+						
+						addStyle(
+							style = SpanStyle(
+								color = MaterialTheme.colorScheme.primary,
+								textDecoration = TextDecoration.Underline
+							),
+							start = urlIndex,
+							end = urlIndex + url.length
+						)
+						
+						addUrlAnnotation(
+							urlAnnotation = UrlAnnotation("https://airmessage.org"),
+							start = urlIndex,
+							end = urlIndex + url.length
+						)
+					}
+				}
+				
+				val context = LocalContext.current
+				ClickableText(
+					text = annotatedText,
 					style = MaterialTheme.typography.bodyMedium,
-					color = MaterialTheme.colorScheme.onSurfaceVariant
+					onClick = { index ->
+						annotatedText.getUrlAnnotations(index, index)
+							.firstOrNull()?.let { annotation ->
+								IntentHelper.launchUri(context, Uri.parse(annotation.item.url))
+							}
+					}
 				)
 			}
 		}
