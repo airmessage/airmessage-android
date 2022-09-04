@@ -4,14 +4,9 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxEventConnection
 
 /**
  * Displays a vertical list of conversations, as well as notice cards
@@ -26,22 +21,12 @@ fun ConversationList(
 	selectedConversations: Set<Long>,
 	setSelectedConversations: (Set<Long>) -> Unit
 ) {
-	//Network state
-	val connectionState by ReduxEmitterNetwork.connectionStateSubject.subscribeAsState(initial = null)
-	
 	LazyColumn(
 		modifier = modifier,
 		contentPadding = contentPadding
 	) {
-		//Connection state
-		val localConnectionState: ReduxEventConnection? = connectionState
-		if(localConnectionState is ReduxEventConnection.Disconnected) {
-			item {
-				ConnectionErrorCard(
-					connectionManager = LocalConnectionManager.current,
-					code = localConnectionState.code
-				)
-			}
+		item {
+			StatusCardColumn()
 		}
 		
 		items(

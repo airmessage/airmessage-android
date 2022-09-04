@@ -549,4 +549,5 @@
 	<string name="notificationchannel_incomingcall">着信</string>
 	<string name="notificationchannel_incomingcall_desc">FaceTime 通話の着信に関する通知</string>
 	<string name="message_locationfrom">%s からの位置情報</string>
+	<string name="message_permissiondetails_notifications">AirMessage からの通知の送信を許可してください</string>
 </resources>

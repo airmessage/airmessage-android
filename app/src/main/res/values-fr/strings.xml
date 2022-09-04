@@ -558,4 +558,5 @@
 	<string name="notificationchannel_incomingcall">Appels entrants</string>
 	<string name="notificationchannel_incomingcall_desc">Notifications concernant les appels FaceTime entrants</string>
 	<string name="message_locationfrom">Position du %s</string>
+	<string name="message_permissiondetails_notifications">Autoriser AirMessage à envoyer des notifications</string>
 </resources>

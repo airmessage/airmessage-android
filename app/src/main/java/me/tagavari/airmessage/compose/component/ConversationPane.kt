@@ -257,31 +257,39 @@ fun ConversationPane(
 				Column(
 					modifier = Modifier
 						.fillMaxSize()
-						.padding(innerPadding),
-					horizontalAlignment = Alignment.CenterHorizontally,
-					verticalArrangement = Arrangement.Center
+						.padding(innerPadding)
 				) {
-					Text(
-						text = stringResource(R.string.progress_sync),
-						color = MaterialTheme.colorScheme.onSurfaceVariant
-					)
+					StatusCardColumn()
 					
-					Spacer(modifier = Modifier.height(16.dp))
-					
-					if(syncState is ProgressState.Determinate) {
-						val animatedProgress by animateFloatAsState(
-							targetValue = syncState.progress,
-							animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
+					Column(
+						modifier = Modifier
+							.fillMaxWidth()
+							.weight(1F),
+						horizontalAlignment = Alignment.CenterHorizontally,
+						verticalArrangement = Arrangement.Center
+					) {
+						Text(
+							text = stringResource(R.string.progress_sync),
+							color = MaterialTheme.colorScheme.onSurfaceVariant
 						)
 						
-						LinearProgressIndicator(
-							modifier = Modifier.width(150.dp),
-							progress = animatedProgress
-						)
-					} else {
-						LinearProgressIndicator(
-							modifier = Modifier.width(150.dp)
-						)
+						Spacer(modifier = Modifier.height(16.dp))
+						
+						if(syncState is ProgressState.Determinate) {
+							val animatedProgress by animateFloatAsState(
+								targetValue = syncState.progress,
+								animationSpec = ProgressIndicatorDefaults.ProgressAnimationSpec
+							)
+							
+							LinearProgressIndicator(
+								modifier = Modifier.width(150.dp),
+								progress = animatedProgress
+							)
+						} else {
+							LinearProgressIndicator(
+								modifier = Modifier.width(150.dp)
+							)
+						}
 					}
 				}
 			} else if(conversations == null) {

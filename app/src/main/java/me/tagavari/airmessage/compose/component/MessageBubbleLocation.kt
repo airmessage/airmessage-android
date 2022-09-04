@@ -2,10 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import android.net.Uri
 import android.text.format.DateFormat
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -58,10 +55,11 @@ fun MessageBubbleLocation(
 			modifier = Modifier.width(256.dp),
 		) {
 			locationData?.let { data ->
-				MessageBubbleLocationMap(
-					modifier = Modifier.height(200.dp),
-					coords = data.coords
-				)
+				Box(modifier = Modifier.height(200.dp)) {
+					MessageBubbleLocationMap(
+						coords = data.coords
+					)
+				}
 			}
 			
 			Text(
