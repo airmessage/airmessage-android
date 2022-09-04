@@ -26,6 +26,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.component.AlertCard
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.constants.ExternalLinkConstants
+import me.tagavari.airmessage.constants.RegexConstants
 import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.helper.ErrorDetailsAction
 import me.tagavari.airmessage.helper.ErrorDetailsHelper
@@ -165,11 +166,22 @@ fun OnboardingManual(
 					)
 				}
 				
+				val inputOK by remember {
+					derivedStateOf {
+						RegexConstants.internetAddress.matcher(inputAddress).find()
+								&& (inputFallbackAddress.isEmpty() || RegexConstants.internetAddress.matcher(inputFallbackAddress).find())
+								&& inputPassword.isNotEmpty()
+					}
+				}
+				
 				Row(
 					modifier = Modifier.fillMaxWidth(),
 					horizontalArrangement = Arrangement.End
 				) {
-					Button(onClick = onConnect) {
+					Button(
+						onClick = onConnect,
+						enabled = inputOK
+					) {
 						Text(stringResource(R.string.action_checkconnection))
 					}
 				}
