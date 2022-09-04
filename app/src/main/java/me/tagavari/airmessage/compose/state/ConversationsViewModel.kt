@@ -33,6 +33,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	fun loadConversations() {
 		viewModelScope.launch {
 			//Load conversations
+			conversations = null
 			conversations = withContext(Dispatchers.IO) {
 				try {
 					Result.success(DatabaseManager.getInstance().fetchSummaryConversations(getApplication(), false))
