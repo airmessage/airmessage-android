@@ -32,7 +32,10 @@ fun AlertCard(
 			}
 			
 			Column(modifier = Modifier.weight(1F)) {
-				message?.invoke()
+				if(message != null) {
+					Spacer(modifier = Modifier.height(1.dp))
+					message()
+				}
 				
 				if(button != null) {
 					Spacer(modifier = Modifier.height(8.dp))
