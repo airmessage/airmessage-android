@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
@@ -26,6 +25,7 @@ import me.tagavari.airmessage.helper.AttachmentStorageHelper.deleteContentFile
 import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileClear
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileUpdate
 import me.tagavari.airmessage.task.ConversationActionTask
 import me.tagavari.airmessage.task.DraftActionTask
@@ -379,6 +379,16 @@ class MessagingViewModel(
 					message
 				)
 			}
+		}
+		
+		//Clear references to draft files
+		GlobalScope.launch {
+			withContext(Dispatchers.IO) {
+				DatabaseManager.getInstance().clearDraftReferences(conversation.localID)
+				DatabaseManager.getInstance().updateConversationDraftMessage(conversation.localID, null, -1)
+			}
+			
+			ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation))
 		}
 		
 		//Clear input
