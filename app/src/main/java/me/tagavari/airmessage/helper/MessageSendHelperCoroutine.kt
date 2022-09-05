@@ -4,11 +4,10 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.text.TextUtils
 import com.klinker.android.send_message.Message
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Completable
-import io.reactivex.rxjava3.core.Observable
-import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.connection.ConnectionManager
@@ -18,7 +17,10 @@ import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.enums.MessageSendErrorCode
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.enums.ServiceHandler
-import me.tagavari.airmessage.messaging.*
+import me.tagavari.airmessage.messaging.AttachmentInfo
+import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.LocalFile
+import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload
 import me.tagavari.airmessage.task.MessageActionTask
 import java.io.BufferedInputStream
@@ -178,19 +180,14 @@ object MessageSendHelperCoroutine {
 				connectionManager.sendMessage(conversationInfo.conversationTarget, messageInfo.messageText).await()
 			}
 			messageInfo.attachments.size == 1 -> {
-				connectionManager.sendFile(conversationInfo.conversationTarget, messageInfo.attachments[0].file)
-					.flatMap { event: ReduxEventAttachmentUpload ->
-						if(event is ReduxEventAttachmentUpload.Complete) {
-							//Updating the attachment's checksum on disk
-							return@flatMap Completable.fromAction {
-								val checksum = event.fileHash
-								DatabaseManager.getInstance().updateAttachmentChecksum(messageInfo.attachments[0].localID, checksum)
-							}.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).andThen(
-								Observable.empty<Unit>())
-						} else {
-							return@flatMap Observable.empty<Unit>()
+				connectionManager.sendFile(conversationInfo.conversationTarget, messageInfo.attachments[0].file).asFlow()
+					.filterIsInstance<ReduxEventAttachmentUpload.Complete>()
+					.firstOrNull()
+					?.let { event ->
+						withContext(Dispatchers.IO) {
+							DatabaseManager.getInstance().updateAttachmentChecksum(messageInfo.attachments[0].localID, event.fileHash)
 						}
-					}.ignoreElements().await()
+					}
 			}
 			else -> {
 				throw IllegalArgumentException("Cannot send message of this type")
