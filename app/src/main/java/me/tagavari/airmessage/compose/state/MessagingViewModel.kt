@@ -11,13 +11,11 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
-import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.connection.ConnectionManager
@@ -332,7 +330,8 @@ class MessagingViewModel(
 		ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileUpdate(conversation, queuedFile.toFileDraft(), false, updateTime))
 		
 		//Remove the file from disk
-		viewModelScope.launch {
+		@OptIn(DelicateCoroutinesApi::class)
+		GlobalScope.launch {
 			withContext(Dispatchers.IO) {
 				//Delete the file
 				deleteContentFile(AttachmentStorageHelper.dirNameDraft, file)
@@ -348,6 +347,7 @@ class MessagingViewModel(
 	 * @param connectionManager The connection manager to use
 	 * @return Whether the message was successfully prepared and sent
 	 */
+	@OptIn(DelicateCoroutinesApi::class)
 	fun submitInput(connectionManager: ConnectionManager?): Boolean {
 		val conversation = conversation ?: return false
 		
@@ -365,7 +365,7 @@ class MessagingViewModel(
 		val localFiles = queuedFiles.map { it.toLocalFile()!! }
 		
 		//Prepare and send the messages in the background
-		viewModelScope.launch {
+		GlobalScope.launch {
 			MessageSendHelperCoroutine.prepareMessage(
 				getApplication(),
 				conversation,
@@ -390,7 +390,7 @@ class MessagingViewModel(
 		
 		//If the conversation is archived, unarchive it
 		if(conversation.isArchived) {
-			viewModelScope.launch {
+			GlobalScope.launch {
 				ConversationActionTask.archiveConversations(
 					setOf(conversation),
 					false
