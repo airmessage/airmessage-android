@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import android.util.TypedValue
+import android.widget.EditText
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
@@ -12,7 +14,6 @@ import androidx.compose.foundation.gestures.forEachGesture
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AddCircleOutline
 import androidx.compose.material.icons.outlined.PhotoCamera
@@ -21,8 +22,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -31,7 +31,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.widget.addTextChangedListener
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
@@ -192,7 +193,7 @@ fun MessageInputBarText(
 				}
 				
 				Row {
-					BasicTextField(
+					/* BasicTextField(
 						value = messageText,
 						onValueChange = onMessageTextChange,
 						modifier = Modifier
@@ -220,6 +221,48 @@ fun MessageInputBarText(
 							}
 							
 							innerTextField()
+						}
+					) */
+					
+					val context = LocalContext.current
+					MaterialTheme.typography.labelMedium.letterSpacing
+					val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+					AndroidView(
+						modifier = Modifier
+							.weight(1F)
+							.heightIn(min = 40.dp, max = 100.dp)
+							.padding(horizontal = 12.dp, vertical = 8.dp)
+							.align(Alignment.CenterVertically),
+						factory = { ctx ->
+							EditText(ctx).apply {
+								addTextChangedListener { text ->
+									onMessageTextChange(text?.toString() ?: "")
+								}
+								
+								setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
+								letterSpacing
+								background = null
+								setPadding(0, 0, 0, 0)
+								setOnFocusChangeListener { _, hasFocus ->
+									inputFieldFocus = hasFocus
+								}
+							}
+						},
+						update = { editText ->
+							//Update the placer holder
+							editText.setHintTextColor(placeholderColor.toArgb())
+							
+							//Update the text
+							if(editText.text!!.toString() != messageText) {
+								editText.setText(messageText)
+							}
+							
+							//Update the placeholder
+							editText.hint = LanguageHelper.getMessageFieldPlaceholder(
+								context.resources,
+								serviceHandler,
+								serviceType
+							)
 						}
 					)
 					
