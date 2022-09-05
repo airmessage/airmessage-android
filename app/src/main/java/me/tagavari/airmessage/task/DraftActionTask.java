@@ -1,12 +1,22 @@
 package me.tagavari.airmessage.task;
 
 import android.content.Context;
-import android.content.res.AssetFileDescriptor;
+
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStream;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.connection.exception.AMRequestException;
+import me.tagavari.airmessage.container.ReadableBlob;
+import me.tagavari.airmessage.container.ReadableBlobFile;
+import me.tagavari.airmessage.container.ReadableBlobUri;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.MessageSendErrorCode;
 import me.tagavari.airmessage.helper.AttachmentStorageHelper;
@@ -15,8 +25,7 @@ import me.tagavari.airmessage.helper.DataStreamHelper;
 import me.tagavari.airmessage.messaging.FileDraft;
 import me.tagavari.airmessage.messaging.FileLinked;
 
-import java.io.*;
-
+@Deprecated
 public class DraftActionTask {
 	/**
 	 * Prepares a {@link FileLinked} to a {@link FileDraft}
@@ -46,15 +55,7 @@ public class DraftActionTask {
 			emitter.onSuccess(draft);
 		}).subscribeOn(Schedulers.single()).observeOn(Schedulers.io()).doOnSuccess(draft -> {
 			//Copying and compressing the file
-			if(linkedFile.getFile().isA()) {
-				try(FileInputStream fileInputStream = new FileInputStream(linkedFile.getFile().getA())) {
-					copyCompressStreamToFile(fileInputStream.getFD(), linkedFile.getFileSize(), linkedFile.getFileType(), draft.getFile(), compressionTarget);
-				}
-			} else {
-				try(AssetFileDescriptor assetFileDescriptor = context.getContentResolver().openAssetFileDescriptor(linkedFile.getFile().getB(), "r")) {
-					copyCompressStreamToFile(assetFileDescriptor.getFileDescriptor(), linkedFile.getFileSize(), linkedFile.getFileType(), draft.getFile(), compressionTarget);
-				}
-			}
+			copyCompressStreamToFile(linkedFile.getFile().map(ReadableBlobFile::new, ReadableBlobUri::new), linkedFile.getFileSize(), linkedFile.getFileType(), draft.getFile(), compressionTarget);
 		}).doOnTerminate(() -> {
 			//Deleting the source file
 			if(isDraftPrepare && linkedFile.getFile().isA()) {
@@ -65,13 +66,13 @@ public class DraftActionTask {
 	
 	/**
 	 * Copies a FileDescriptor (compressing if necessary) to a file
-	 * @param fileDescriptor The file descriptor to copy from
+	 * @param blob The blob to copy from
 	 * @param fileSize The size of the file
 	 * @param fileType The type of the file
 	 * @param targetFile The file to copy to
 	 * @param compressionTarget The upper file size limit (or -1 if not needed)
 	 */
-	private static void copyCompressStreamToFile(FileDescriptor fileDescriptor, long fileSize, String fileType, File targetFile, int compressionTarget) throws AMRequestException {
+	private static void copyCompressStreamToFile(ReadableBlob blob, long fileSize, String fileType, File targetFile, int compressionTarget) throws AMRequestException {
 		//Checking if the file must be compressed
 		if(compressionTarget != -1 && fileSize > compressionTarget) {
 			//Checking if compression is not applicable
@@ -81,14 +82,14 @@ public class DraftActionTask {
 			
 			//Compressing the file to the target file
 			try {
-				DataCompressionHelper.compressFile(fileDescriptor, fileType, compressionTarget, targetFile, true);
+				DataCompressionHelper.compressFile(blob, fileType, compressionTarget, targetFile);
 			} catch(IOException exception) {
 				throw new AMRequestException(MessageSendErrorCode.localIO, exception);
 			}
 		} else {
 			//Just copy the file
 			try(OutputStream outputStream = new BufferedOutputStream(new FileOutputStream(targetFile))) {
-				DataStreamHelper.copyStream(new BufferedInputStream(new FileInputStream(fileDescriptor)), outputStream);
+				DataStreamHelper.copyStream(new BufferedInputStream(blob.openInputStream()), outputStream);
 			} catch(IOException exception) {
 				throw new AMRequestException(MessageSendErrorCode.localIO, exception);
 			}

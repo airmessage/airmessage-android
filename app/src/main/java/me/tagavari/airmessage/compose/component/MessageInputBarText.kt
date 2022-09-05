@@ -32,8 +32,13 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.util.component1
+import androidx.core.util.component2
+import androidx.core.view.ViewCompat
 import androidx.core.widget.addTextChangedListener
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.container.ReadableBlob
+import me.tagavari.airmessage.container.ReadableBlobContentInfo
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.helper.IntentHelper
@@ -50,6 +55,7 @@ fun MessageInputBarText(
 	onMessageTextChange: (String) -> Unit,
 	attachments: List<QueuedFile>,
 	onRemoveAttachment: (QueuedFile) -> Unit,
+	onInputContent: (List<ReadableBlob>) -> Unit,
 	attachmentsScrollState: ScrollState = rememberScrollState(),
 	collapseButtons: Boolean,
 	onChangeCollapseButtons: (Boolean) -> Unit,
@@ -183,7 +189,7 @@ fun MessageInputBarText(
 						onClick = { attachment ->
 							//Open the file
 							attachment.file.accept(
-								consumerA = { uri -> IntentHelper.launchUri(context, uri)},
+								consumerA = { blob -> context.startActivity(blob.getOpenIntent(context)) },
 								consumerB = { file -> IntentHelper.openAttachmentFile(context, file, attachment.fileType) },
 							)
 						},
@@ -245,6 +251,19 @@ fun MessageInputBarText(
 								setPadding(0, 0, 0, 0)
 								setOnFocusChangeListener { _, hasFocus ->
 									inputFieldFocus = hasFocus
+								}
+								
+								ViewCompat.setOnReceiveContentListener(
+									this,
+									arrayOf("image/*")
+								) { _, contentInfo ->
+									val (uriPayloads, otherPayloads) = contentInfo.partition { it.uri != null }
+									val contentList = List(uriPayloads.clip.itemCount) { i -> ReadableBlobContentInfo(contentInfo, i) }
+									onInputContent(contentList)
+									
+									// Return anything that we didn't handle ourselves. This preserves the default platform
+									// behavior for text and anything else for which we are not implementing custom handling.
+									otherPayloads
 								}
 							}
 						},
@@ -315,6 +334,7 @@ private fun PreviewMessageInputBarText() {
 				onMessageTextChange = {},
 				attachments = listOf(),
 				onRemoveAttachment = {},
+				onInputContent = {},
 				onTakePhoto = {},
 				onOpenContentPicker = {},
 				collapseButtons = false,

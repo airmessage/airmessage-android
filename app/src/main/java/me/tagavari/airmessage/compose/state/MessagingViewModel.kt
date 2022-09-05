@@ -18,17 +18,24 @@ import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.constants.FileNameConstants
+import me.tagavari.airmessage.constants.MIMEConstants
+import me.tagavari.airmessage.container.LocalFile
+import me.tagavari.airmessage.container.ReadableBlob
+import me.tagavari.airmessage.container.ReadableBlobUri
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.*
-import me.tagavari.airmessage.helper.AttachmentStorageHelper.deleteContentFile
-import me.tagavari.airmessage.messaging.*
+import me.tagavari.airmessage.messaging.ConversationInfo
+import me.tagavari.airmessage.messaging.ConversationItem
+import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.messaging.QueuedFile
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileClear
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileUpdate
 import me.tagavari.airmessage.task.ConversationActionTask
-import me.tagavari.airmessage.task.DraftActionTask
+import me.tagavari.airmessage.task.DraftActionTaskCoroutine
 import me.tagavari.airmessage.util.ReplaceInsertResult
 import java.io.File
 
@@ -259,57 +266,63 @@ class MessagingViewModel(
 		}
 	}
 	
-	private fun addQueuedFile(queuedFile: QueuedFile) {
+	private fun addQueuedFiles(newQueuedFiles: List<QueuedFile>) {
 		val conversation = conversation ?: return
 		
 		//Add the queued file to the list
-		queuedFiles.add(queuedFile)
+		queuedFiles.addAll(newQueuedFiles)
 		
 		val updateTime = System.currentTimeMillis()
 		
 		viewModelScope.launch {
-			//Prepare the queued file
-			val fileDraft: FileDraft = try {
-				DraftActionTask.prepareLinkedToDraft(
-					getApplication(),
-					queuedFile.toFileLinked(),
-					conversation.localID,
-					conversation.fileCompressionTarget ?: -1,
-					true,
-					updateTime
-				).await()
-			} catch(exception: Throwable) {
-				//Log the error
-				Log.w(TAG, "Failed to queue draft", exception)
-				CrashlyticsBridge.recordException(exception)
+			for(queuedFile in newQueuedFiles) {
+				//Prepare the queued file
+				val updatedQueuedFile = try {
+					DraftActionTaskCoroutine.prepareLinkedToDraft(
+						getApplication(),
+						queuedFile,
+						conversation.localID,
+						conversation.fileCompressionTarget ?: -1,
+						true,
+						updateTime
+					)
+				} catch(exception: Exception) {
+					//Log the error
+					Log.w(TAG, "Failed to queue draft", exception)
+					CrashlyticsBridge.recordException(exception)
+					
+					//Dequeue the file
+					queuedFiles.remove(queuedFile)
+					
+					continue
+				}
 				
-				//Dequeue the file
-				queuedFiles.remove(queuedFile)
-				
-				return@launch
+				//Update the queue
+				val index = queuedFiles.indexOf(queuedFile)
+				if(index == -1) return@launch
+				queuedFiles[index] = updatedQueuedFile
 			}
-			
-			//Update the queue
-			val index = queuedFiles.indexOf(queuedFile)
-			if(index == -1) return@launch
-			queuedFiles[index] = QueuedFile(fileDraft)
+		}
+	}
+	
+	/**
+	 * Adds a readable blob as a queued file
+	 */
+	fun addQueuedFileBlobs(readableBlobList: List<ReadableBlob>) {
+		viewModelScope.launch {
+			addQueuedFiles(readableBlobList.map { QueuedFile.fromReadableBlob(it) })
 		}
 	}
 	
 	/**
 	 * Adds a local draft file as a queued file
 	 */
-	fun addQueuedFile(file: File) = addQueuedFile(QueuedFile(file))
+	fun addQueuedFile(file: File) = addQueuedFiles(listOf(QueuedFile(file)))
 	
 	/**
 	 * Adds a URI as a queued file
 	 */
-	fun addQueuedFile(uri: Uri) {
-		viewModelScope.launch {
-			val queuedFile = QueuedFile.fromURI(uri, getApplication())
-			addQueuedFile(queuedFile)
-		}
-	}
+	fun addQueuedFile(uri: Uri) = addQueuedFileBlobs(listOf(ReadableBlobUri(uri)))
 	
 	fun removeQueuedFile(queuedFile: QueuedFile) {
 		//Get the conversation
@@ -334,7 +347,7 @@ class MessagingViewModel(
 		GlobalScope.launch {
 			withContext(Dispatchers.IO) {
 				//Delete the file
-				deleteContentFile(AttachmentStorageHelper.dirNameDraft, file)
+				AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraft, file)
 				
 				//Remove the item from the database
 				DatabaseManager.getInstance().removeDraftReference(localID, updateTime)
@@ -362,7 +375,7 @@ class MessagingViewModel(
 		}
 		
 		//Convert the queued files to local files
-		val localFiles = queuedFiles.map { it.toLocalFile()!! }
+		val localFiles = queuedFiles.map { it.asLocalFile()!! }
 		
 		//Prepare and send the messages in the background
 		GlobalScope.launch {
@@ -416,15 +429,47 @@ class MessagingViewModel(
 	 * @param connectionManager The connection manager to use
 	 * @return Whether the message was successfully prepared and sent
 	 */
-	fun submitFileDirect(connectionManager: ConnectionManager?, file: LocalFile): Boolean {
+	fun submitFileDirect(connectionManager: ConnectionManager?, file: ReadableBlob): Boolean {
 		val conversation = conversation ?: return false
 		
 		viewModelScope.launch {
+			val fileData = file.getData()
+			
+			val targetFile = withContext(Dispatchers.IO) {
+				//Find a target file
+				val targetFile = AttachmentStorageHelper.prepareContentFile(
+					context = getApplication(),
+					directory = AttachmentStorageHelper.dirNameDraft,
+					fileName = fileData.name ?: FileNameConstants.defaultFileName
+				)
+				
+				//Copy and compress the draft file
+				try {
+					DraftActionTaskCoroutine.copyCompressAttachment(file, targetFile, conversation.fileCompressionTarget ?: -1)
+				} catch(exception: Exception) {
+					Log.w(TAG, "Failed to prepare direct file", exception)
+					AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraft, targetFile)
+					return@withContext null
+				} finally {
+					//Clean up the file
+					file.invalidate()
+				}
+				
+				return@withContext LocalFile(
+					file = targetFile,
+					fileName = targetFile.name,
+					fileType = fileData.type ?: MIMEConstants.defaultMIMEType,
+					fileSize = fileData.size ?: -1,
+					directoryID = AttachmentStorageHelper.dirNameDraft
+				)
+			} ?: return@launch
+			
+			//Send the message
 			MessageSendHelperCoroutine.prepareMessage(
 				getApplication(),
 				conversation,
 				null,
-				listOf(file)
+				listOf(targetFile)
 			).forEach { message ->
 				MessageSendHelperCoroutine.sendMessage(
 					getApplication(),

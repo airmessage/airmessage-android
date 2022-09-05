@@ -8,11 +8,11 @@ import android.os.Build
 import androidx.exifinterface.media.ExifInterface
 import com.otaliastudios.transcoder.Transcoder
 import com.otaliastudios.transcoder.TranscoderListener
-import com.otaliastudios.transcoder.TranscoderOptions
 import com.otaliastudios.transcoder.resize.AtMostResizer
 import com.otaliastudios.transcoder.strategy.DefaultAudioStrategy
 import com.otaliastudios.transcoder.strategy.DefaultVideoStrategy
-import com.otaliastudios.transcoder.strategy.TrackStrategy
+import me.tagavari.airmessage.container.ReadableBlob
+import me.tagavari.airmessage.container.ReadableBlobByteArray
 import java.io.*
 import java.util.concurrent.ExecutionException
 import kotlin.math.sqrt
@@ -34,35 +34,36 @@ object DataCompressionHelper {
 	
 	/**
 	 * Compresses a stream to a file
-	 * @param fileDescriptor The file source to compress
-	 * @param mimeType The file's type
+	 * @param file The file source to compress
+	 * @param mimeType The MIME type of the file
 	 * @param maxBytes The upper limit to compress to
 	 * @param output The output file to save to
-	 * @param streamToOutput Whether to write directly to the target file as we read, or rename the file on top of the output file once we're done
 	 * This is useful when we're streaming the input file back and want to write back to the same file
 	 */
 	@JvmStatic
 	@Throws(IllegalArgumentException::class, IOException::class)
-	fun compressFile(fileDescriptor: FileDescriptor, mimeType: String, maxBytes: Int, output: File, streamToOutput: Boolean) {
+	fun compressFile(file: ReadableBlob, mimeType: String, maxBytes: Int, output: File) {
 		when(mimeType) {
 			"image/jpeg", "image/webp" -> {
-				val data = compressBitmapLossy(
-						loadCorrectBitmap(fileDescriptor),
-						if(mimeType == "image/jpeg") CompressFormat.JPEG
-						else {
-							if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) CompressFormat.WEBP_LOSSY
-							else CompressFormat.WEBP
-						},
-						maxBytes)
+				val format = if(mimeType == "image/jpeg") {
+					CompressFormat.JPEG
+				} else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+					CompressFormat.WEBP_LOSSY
+				} else {
+					@Suppress("DEPRECATION")
+					CompressFormat.WEBP
+				}
+				
+				val data = compressBitmapLossy(loadCorrectBitmap(file), format, maxBytes)
 				BufferedOutputStream(FileOutputStream(output)).use { outputStream -> outputStream.write(data) }
 			}
 			"image/png" -> {
-				val data = compressBitmapLossless(loadCorrectBitmap(fileDescriptor), maxBytes)
+				val data = compressBitmapLossless(loadCorrectBitmap(file), maxBytes)
 				BufferedOutputStream(FileOutputStream(output)).use { outputStream -> outputStream.write(data) }
 			}
 			"video/mp4" -> {
 				try {
-					compressVideo(fileDescriptor, output, streamToOutput)
+					compressVideo(file, output)
 				} catch(exception: InterruptedException) {
 					throw IOException(exception)
 				} catch(exception: ExecutionException) {
@@ -74,81 +75,35 @@ object DataCompressionHelper {
 	}
 	
 	/**
-	 * Compresses a bitmap
-	 * @param fileBytes The bytes of the bitmap to compress
-	 * @param mimeType The data type of the bitmap
-	 * @param maxBytes The upper limit to compress to
-	 * @return The compressed bitmap
+	 * Rotates an image to be upright based on its EXIF data
+	 * @param file The readable blob to read from
+	 * @return The bitmap in an upright position
 	 */
-	@JvmStatic
 	@Throws(IOException::class)
-	fun compressBitmap(fileBytes: ByteArray, mimeType: String, maxBytes: Int): ByteArray? {
-		return when(mimeType) {
-			"image/jpeg", "image/webp" -> compressBitmapLossy(
-					loadCorrectBitmap(fileBytes),
-					if(mimeType == "image/jpeg") CompressFormat.JPEG
-					else {
-						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) CompressFormat.WEBP_LOSSY
-						else CompressFormat.WEBP
-					},
-					maxBytes)
-			"image/png" -> compressBitmapLossless(loadCorrectBitmap(fileBytes), maxBytes)
-			else -> throw IllegalArgumentException("Unknown MIME type: $mimeType")
-		}
-	}
-	
-	/**
-	 * Rotates an image to be upright based on its EXIF data
-	 * @param fileDescriptor The file descriptor to read from
-	 * @return The bitmap in an upright position
-	 */
-	private fun loadCorrectBitmap(fileDescriptor: FileDescriptor): Bitmap? {
-		//Getting the bitmap from the image
-		var bitmap = BitmapFactory.decodeFileDescriptor(fileDescriptor) ?: return null
+	private fun loadCorrectBitmap(file: ReadableBlob): Bitmap? {
+		//Get the bitmap from the image
+		val bitmap = file.openInputStream().use { fileStream ->
+			BitmapFactory.decodeStream(fileStream)
+		} ?: return null
 		
-		//Reading the image's EXIF data
-		var exif: ExifInterface? = null
-		try {
-			exif = ExifInterface(fileDescriptor)
+		//Read the image's EXIF data
+		val exif = try {
+			file.openInputStream().use { fileStream ->
+				ExifInterface(fileStream)
+			}
 		} catch(exception: IOException) {
-			//Printing the stack trace
 			exception.printStackTrace()
+			
+			//Ignore any exceptions
+			null
 		}
 		
-		//Fixing the bitmap orientation
-		if(exif != null) {
-			bitmap = rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
+		return if(exif != null) {
+			//Fix the bitmap orientation
+			rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
+		} else {
+			bitmap
 		}
-		
-		//Returning the bitmap
-		return bitmap
-	}
-	
-	/**
-	 * Rotates an image to be upright based on its EXIF data
-	 * @param fileBytes The bytes to read from
-	 * @return The bitmap in an upright position
-	 */
-	private fun loadCorrectBitmap(fileBytes: ByteArray): Bitmap? {
-		//Reading the image's EXIF data
-		var exif: ExifInterface? = null
-		try {
-			exif = ExifInterface(ByteArrayInputStream(fileBytes))
-		} catch(exception: IOException) {
-			//Printing the stack trace
-			exception.printStackTrace()
-		}
-		
-		//Getting the bitmap from the image
-		var bitmap = BitmapFactory.decodeByteArray(fileBytes, 0, fileBytes.size) ?: return null
-		
-		//Fixing the bitmap orientation
-		if(exif != null) {
-			bitmap = rotateBitmap(bitmap, exif.getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL))
-		}
-		
-		//Returning the bitmap
-		return bitmap
 	}
 	
 	/**
@@ -259,47 +214,55 @@ object DataCompressionHelper {
 	
 	/**
 	 * Compresses a video file
-	 * @param fileDescriptor The file descriptor of the video to compress
+	 * @param file The readable blob to compress
 	 * @param outputFile The file to write the output to
-	 * @param streamToOutput Whether to stream to the output file, or rename over it once we're done
 	 */
 	@Throws(InterruptedException::class, ExecutionException::class)
-	fun compressVideo(fileDescriptor: FileDescriptor?, outputFile: File, streamToOutput: Boolean) {
-		val audioStrategy: TrackStrategy = DefaultAudioStrategy.Builder()
-				.channels(1)
-				.bitRate(24000)
-				.build()
-		val videoStrategy: TrackStrategy = DefaultVideoStrategy.Builder()
-				.frameRate(12)
-				.bitRate(240000)
-				.addResizer(AtMostResizer(144, 176))
-				.build()
-		val temporaryFile: File?
-		val transcoder: TranscoderOptions.Builder
-		if(streamToOutput) {
-			//Write directly to the output file
-			temporaryFile = null
-			transcoder = Transcoder.into(outputFile.path)
-		} else {
-			//Write to the temporary file
-			temporaryFile = FileHelper.findFreeFile(outputFile.parentFile!!, "transcoder_temp", false)
-			transcoder = Transcoder.into(temporaryFile.path)
-		}
-		transcoder.addDataSource(fileDescriptor!!)
-				.setAudioTrackStrategy(audioStrategy)
-				.setVideoTrackStrategy(videoStrategy)
-				.setListener(object : TranscoderListener {
-					override fun onTranscodeProgress(progress: Double) {}
-					override fun onTranscodeCompleted(successCode: Int) {}
-					override fun onTranscodeCanceled() {}
-					override fun onTranscodeFailed(exception: Throwable) {}
-				})
-				.transcode().get()
+	fun compressVideo(file: ReadableBlob, outputFile: File) {
+		val transcoderSource = file.asTranscoderSource()
+			?: throw IllegalArgumentException("Input does not support transcoding!")
 		
-		//Cleaning up the temporary file
-		if(!streamToOutput) {
-			outputFile.delete()
-			temporaryFile!!.renameTo(outputFile)
+		Transcoder.into(outputFile.path).apply {
+			addDataSource(transcoderSource)
+			.setAudioTrackStrategy(
+				DefaultAudioStrategy.Builder()
+					.channels(1)
+					.bitRate(24000)
+					.build()
+			)
+			
+			setVideoTrackStrategy(
+				DefaultVideoStrategy.Builder()
+					.frameRate(12)
+					.bitRate(240000)
+					.addResizer(AtMostResizer(144, 176))
+					.build()
+			)
+			
+			setListener(object : TranscoderListener {
+				override fun onTranscodeProgress(progress: Double) {}
+				override fun onTranscodeCompleted(successCode: Int) {}
+				override fun onTranscodeCanceled() {}
+				override fun onTranscodeFailed(exception: Throwable) {}
+			})
+		}.transcode().get()
+	}
+	
+	//JAVA HELPERS
+	@JvmStatic
+	fun compressBitmap(bytes: ByteArray, mimeType: String, maxBytes: Int): ByteArray? {
+		val blob = ReadableBlobByteArray(bytes, type = mimeType)
+		return when(mimeType) {
+			"image/jpeg", "image/webp" -> compressBitmapLossy(
+				loadCorrectBitmap(blob),
+				if(mimeType == "image/jpeg") CompressFormat.JPEG
+				else {
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) CompressFormat.WEBP_LOSSY
+					else @Suppress("DEPRECATION") CompressFormat.WEBP
+				},
+				maxBytes)
+			"image/png" -> compressBitmapLossless(loadCorrectBitmap(blob), maxBytes)
+			else -> throw IllegalArgumentException("Unknown MIME type: $mimeType")
 		}
 	}
 }

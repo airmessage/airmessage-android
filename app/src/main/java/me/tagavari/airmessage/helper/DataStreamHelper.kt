@@ -21,9 +21,9 @@ object DataStreamHelper {
 	@JvmStatic
 	@Throws(IOException::class)
 	fun copyStream(inputStream: InputStream, outputStream: OutputStream): Long {
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+		return if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 			//Using Android Q's optimized solution
-			return FileUtils.copy(inputStream, outputStream)
+			FileUtils.copy(inputStream, outputStream)
 		} else {
 			//Copying the stream manually
 			val buf = ByteArray(standardBuffer)
@@ -33,7 +33,7 @@ object DataStreamHelper {
 				outputStream.write(buf, 0, len)
 				totalLength += len.toLong()
 			}
-			return totalLength
+			totalLength
 		}
 	}
 }

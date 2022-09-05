@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.messaging
+package me.tagavari.airmessage.container
 
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import java.io.File

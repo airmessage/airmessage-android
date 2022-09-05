@@ -127,6 +127,9 @@ fun MessagingScreen(
 				onRemoveAttachment = { attachment ->
 					viewModel.removeQueuedFile(attachment)
 				},
+				onAddAttachments = { attachments ->
+					viewModel.addQueuedFileBlobs(attachments)
+				},
 				attachmentsScrollState = attachmentsScrollState,
 				onSend = {
 					val messagePrepared = viewModel.submitInput(connectionManager)

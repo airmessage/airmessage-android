@@ -19,7 +19,7 @@ import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.messaging.AttachmentInfo
 import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.LocalFile
+import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.redux.ReduxEventAttachmentUpload
 import me.tagavari.airmessage.task.MessageActionTask

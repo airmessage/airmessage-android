@@ -1518,6 +1518,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param updateTime The time to apply to the draft update
 	 * @return The complete {@link FileDraft}
 	 */
+	@Nullable
 	public FileDraft addDraftReference(Context context, long conversationID, File file, String fileName, long fileSize, String fileType, long mediaStoreID, long modificationDate, long updateTime) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();

@@ -22,10 +22,12 @@ import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.remember.deriveAmplitudeList
 import me.tagavari.airmessage.compose.remember.rememberAudioCapture
 import me.tagavari.airmessage.constants.FileNameConstants
+import me.tagavari.airmessage.container.LocalFile
+import me.tagavari.airmessage.container.ReadableBlob
+import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
-import me.tagavari.airmessage.messaging.LocalFile
 import me.tagavari.airmessage.messaging.QueuedFile
 
 private data class RecordingData(
@@ -40,9 +42,10 @@ fun MessageInputBar(
 	onMessageTextChange: (String) -> Unit,
 	attachments: List<QueuedFile>,
 	onRemoveAttachment: (QueuedFile) -> Unit,
+	onAddAttachments: (List<ReadableBlob>) -> Unit,
 	attachmentsScrollState: ScrollState = rememberScrollState(),
 	onSend: () -> Unit,
-	onSendFile: (LocalFile) -> Unit,
+	onSendFile: (ReadableBlob) -> Unit,
 	onTakePhoto: () -> Unit,
 	onOpenContentPicker: () -> Unit,
 	collapseButtons: Boolean = false,
@@ -82,6 +85,7 @@ fun MessageInputBar(
 						onMessageTextChange = onMessageTextChange,
 						attachments = attachments,
 						onRemoveAttachment = onRemoveAttachment,
+						onInputContent = onAddAttachments,
 						attachmentsScrollState = attachmentsScrollState,
 						collapseButtons = collapseButtons,
 						onChangeCollapseButtons = onChangeCollapseButtons,
@@ -142,7 +146,7 @@ fun MessageInputBar(
 						//Send the file
 						recordingData?.file?.let { file ->
 							playbackManager.stop(key = file)
-							onSendFile(file)
+							onSendFile(ReadableBlobLocalFile(file, deleteOnInvalidate = true))
 						}
 						recordingData = null
 					},
@@ -196,6 +200,7 @@ private fun PreviewMessageInputBar() {
 			onMessageTextChange = {},
 			attachments = listOf(),
 			onRemoveAttachment = {},
+			onAddAttachments = {},
 			onSend = {},
 			onSendFile = {},
 			onTakePhoto = {},
