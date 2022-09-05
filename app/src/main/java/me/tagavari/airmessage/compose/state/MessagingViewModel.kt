@@ -22,6 +22,7 @@ import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlob
+import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.container.ReadableBlobUri
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
@@ -306,7 +307,7 @@ class MessagingViewModel(
 	}
 	
 	/**
-	 * Adds a readable blob as a queued file
+	 * Adds a list of readable blobs as queued files
 	 */
 	fun addQueuedFileBlobs(readableBlobList: List<ReadableBlob>) {
 		viewModelScope.launch {
@@ -317,13 +318,11 @@ class MessagingViewModel(
 	/**
 	 * Adds a local draft file as a queued file
 	 */
-	fun addQueuedFile(file: File) = addQueuedFiles(listOf(QueuedFile(file)))
+	fun addQueuedFile(file: LocalFile) = addQueuedFileBlobs(listOf(ReadableBlobLocalFile(file, deleteOnInvalidate = true)))
 	
 	/**
-	 * Adds a URI as a queued file
+	 * Removes a queued file from the queue
 	 */
-	fun addQueuedFile(uri: Uri) = addQueuedFileBlobs(listOf(ReadableBlobUri(uri)))
-	
 	fun removeQueuedFile(queuedFile: QueuedFile) {
 		//Get the conversation
 		val conversation = conversation ?: return

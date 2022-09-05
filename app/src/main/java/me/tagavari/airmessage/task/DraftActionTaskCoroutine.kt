@@ -36,6 +36,8 @@ object DraftActionTaskCoroutine {
 		isDraftPrepare: Boolean,
 		updateTime: Long
 	): QueuedFile {
+		assert(linkedFile.file.isA) { "Tried to prepare a non-linked file!" }
+		
 		val targetFile: File
 		val draft: FileDraft
 		
@@ -66,6 +68,8 @@ object DraftActionTaskCoroutine {
 		
 		//Delete the draft file
 		if(isDraftPrepare) {
+			linkedFile.file.nullableA?.invalidate()
+			
 			linkedFile.file.nullableB?.let { file ->
 				withContext(Dispatchers.IO) {
 					AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, file)

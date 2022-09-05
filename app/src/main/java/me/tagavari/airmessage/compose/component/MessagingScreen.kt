@@ -27,6 +27,12 @@ import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
+import me.tagavari.airmessage.container.LocalFile
+import me.tagavari.airmessage.container.ReadableBlobFile
+import me.tagavari.airmessage.container.ReadableBlobLocalFile
+import me.tagavari.airmessage.container.ReadableBlobUri
+import me.tagavari.airmessage.helper.AttachmentStorageHelper
+import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.helper.SoundHelper
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -146,7 +152,16 @@ fun MessagingScreen(
 					scope.launch {
 						captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
 							?.let { file ->
-								viewModel.addQueuedFile(file)
+								viewModel.addQueuedFile(
+									LocalFile(
+										file = file,
+										fileName = file.name,
+										fileType = FileHelper.getMimeType(file),
+										fileSize = file.length(),
+										directoryID = AttachmentStorageHelper.dirNameDraftPrepare
+									)
+								)
+								
 								attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
 							}
 					}
@@ -155,10 +170,7 @@ fun MessagingScreen(
 					scope.launch {
 						val uriList = requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
 						if(uriList.isNotEmpty()) {
-							for(uri in uriList) {
-								viewModel.addQueuedFile(uri)
-							}
-							
+							viewModel.addQueuedFileBlobs(uriList.map { ReadableBlobUri(it) })
 							attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
 						}
 					}
