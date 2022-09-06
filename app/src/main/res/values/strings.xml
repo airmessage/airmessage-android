@@ -90,6 +90,7 @@
 	<string name="action_sendcurrentlocation">Send my current location</string>
 	<string name="action_showpassword">Show password</string>
 	<string name="action_hidepassword">Hide password</string>
+	<string name="action_enablelocation">Enable location</string>
 	
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -180,6 +181,11 @@
 	<string name="message_attachmentreqerror_server_notsaved">Attachment file not found</string>
 	<string name="message_attachmentreqerror_server_unreadable">Attachment file unreadable</string>
 	<string name="message_attachmentreqerror_server_io">External error (I/O)</string>
+	
+	<string name="message_locationerror_disabled">Location is disabled</string>
+	<string name="message_locationerror_disabled_desc">Please enable location to continue</string>
+	<string name="message_locationerror_unavailable">Your current location couldn\'t be found</string>
+	<string name="message_locationerror_unavailable_desc">Please try again later</string>
 	
 	<string name="message_syncerror">Couldn\'t sync messages (error code %d)</string>
 	

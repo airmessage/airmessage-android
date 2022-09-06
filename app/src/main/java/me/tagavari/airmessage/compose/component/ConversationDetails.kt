@@ -6,6 +6,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.outlined.GpsOff
+import androidx.compose.material.icons.outlined.NotListedLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -34,6 +36,13 @@ import me.tagavari.airmessage.task.ConversationActionTask
 fun ConversationDetails(
 	conversation: ConversationInfo,
 	onClickMember: (MemberInfo, UserCacheHelper.UserInfo?) -> Unit,
+	isLoadingCurrentLocation: Boolean,
+	onSendCurrentLocation: () -> Unit,
+	noLocationDialog: Boolean,
+	onHideNoLocationDialog: () -> Unit,
+	locationDisabledDialog: Boolean,
+	onHideLocationDisabledDialog: () -> Unit,
+	onPromptEnableLocationServices: () -> Unit,
 	onFinish: () -> Unit
 ) {
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
@@ -93,7 +102,8 @@ fun ConversationDetails(
 						modifier = Modifier
 							.padding(16.dp)
 							.fillMaxWidth(),
-						onClick = {}
+						onClick = onSendCurrentLocation,
+						enabled = !isLoadingCurrentLocation
 					) {
 						Text(stringResource(R.string.action_sendcurrentlocation))
 					}
@@ -105,10 +115,12 @@ fun ConversationDetails(
 							.clickable(onClick = {
 								@OptIn(DelicateCoroutinesApi::class)
 								GlobalScope.launch {
-									ConversationActionTask.muteConversations(
-										setOf(conversation),
-										!conversation.isMuted
-									).await()
+									ConversationActionTask
+										.muteConversations(
+											setOf(conversation),
+											!conversation.isMuted
+										)
+										.await()
 								}
 							})
 							.padding(16.dp),
@@ -127,6 +139,60 @@ fun ConversationDetails(
 			}
 		}
 	)
+	
+	if(noLocationDialog) {
+		AlertDialog(
+			onDismissRequest = onHideNoLocationDialog,
+			confirmButton = {
+				TextButton(onClick = onHideNoLocationDialog) {
+					Text(stringResource(android.R.string.ok))
+				}
+			},
+			icon = {
+				Icon(
+					imageVector = Icons.Outlined.NotListedLocation,
+					contentDescription = null
+				)
+			},
+			title = {
+				Text(stringResource(id = R.string.message_locationerror_unavailable))
+			},
+			text = {
+				Text(stringResource(id = R.string.message_locationerror_unavailable_desc))
+			}
+		)
+	}
+	
+	if(locationDisabledDialog) {
+		AlertDialog(
+			onDismissRequest = onHideLocationDisabledDialog,
+			confirmButton = {
+				TextButton(onClick = {
+					onPromptEnableLocationServices()
+					onHideLocationDisabledDialog()
+				}) {
+					Text(stringResource(R.string.action_enablelocation))
+				}
+			},
+			dismissButton = {
+				TextButton(onClick = onHideLocationDisabledDialog) {
+					Text(stringResource(android.R.string.cancel))
+				}
+			},
+			icon = {
+				Icon(
+					imageVector = Icons.Outlined.GpsOff,
+					contentDescription = null
+				)
+			},
+			title = {
+				Text(stringResource(id = R.string.message_locationerror_disabled))
+			},
+			text = {
+				Text(stringResource(id = R.string.message_locationerror_disabled_desc))
+			}
+		)
+	}
 }
 
 @Preview
@@ -162,6 +228,58 @@ private fun PreviewConversationDetails() {
 				)
 			),
 			onClickMember = { _, _ -> },
+			isLoadingCurrentLocation = false,
+			onSendCurrentLocation = {},
+			noLocationDialog = false,
+			onHideNoLocationDialog = {},
+			locationDisabledDialog = false,
+			onHideLocationDisabledDialog = {},
+			onPromptEnableLocationServices = {},
+			onFinish = {}
+		)
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewConversationDetailsLocation() {
+	AirMessageAndroidTheme {
+		ConversationDetails(
+			conversation = ConversationInfo(
+				localID = 0,
+				guid = null,
+				externalID = -1,
+				state = ConversationState.ready,
+				serviceHandler = ServiceHandler.appleBridge,
+				serviceType = ServiceType.appleMessage,
+				conversationColor = 0xFFFF1744.toInt(),
+				members = mutableListOf(
+					MemberInfo("1", 0xFFFF1744.toInt()),
+					MemberInfo("2", 0xFFF50057.toInt()),
+					MemberInfo("3", 0xFFB317CF.toInt())
+				),
+				title = "A cool conversation",
+				unreadMessageCount = 1,
+				isArchived = false,
+				isMuted = true,
+				messagePreview = ConversationPreview.Message(
+					date = System.currentTimeMillis(),
+					isOutgoing = false,
+					message = "Test message",
+					subject = null,
+					attachments = listOf(),
+					sendStyle = null,
+					isError = false
+				)
+			),
+			onClickMember = { _, _ -> },
+			isLoadingCurrentLocation = true,
+			onSendCurrentLocation = {},
+			noLocationDialog = true,
+			onHideNoLocationDialog = {},
+			locationDisabledDialog = false,
+			onHideLocationDisabledDialog = {},
+			onPromptEnableLocationServices = {},
 			onFinish = {}
 		)
 	}

@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.state
 
+import android.app.Activity
 import android.app.Application
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -9,13 +10,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.flavor.LocationBridge
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.util.LatLngInfo
 
 class ConversationDetailsViewModel(
 	application: Application,
@@ -23,6 +28,11 @@ class ConversationDetailsViewModel(
 ) : AndroidViewModel(application) {
 	var conversation by mutableStateOf<ConversationInfo?>(null)
 		private set
+	
+	var isLoadingCurrentLocation by mutableStateOf(false)
+		private set
+	private val _currentLocation = MutableStateFlow<Result<LatLngInfo>?>(null)
+	val currentLocation = _currentLocation.asStateFlow()
 	
 	init {
 		viewModelScope.launch {
@@ -64,6 +74,25 @@ class ConversationDetailsViewModel(
 				}
 			}
 			else -> {}
+		}
+	}
+	
+	fun loadCurrentLocation(activity: Activity) {
+		viewModelScope.launch {
+			isLoadingCurrentLocation = true
+			
+			val location = runCatching {
+				LocationBridge.getLocation(activity)
+			}
+			_currentLocation.emit(location)
+			
+			isLoadingCurrentLocation = false
+		}
+	}
+	
+	fun clearCurrentLocation() {
+		viewModelScope.launch {
+			_currentLocation.emit(null)
 		}
 	}
 }

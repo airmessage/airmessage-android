@@ -2,7 +2,9 @@ package me.tagavari.airmessage.flavor
 
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.app.PendingIntent
 import android.content.Context
+import android.content.IntentSender
 import android.location.Location
 import android.location.LocationManager
 import android.os.Build
@@ -10,10 +12,22 @@ import androidx.core.content.ContextCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.os.CancellationSignal
 import kotlinx.coroutines.suspendCancellableCoroutine
+import me.tagavari.airmessage.exception.LocationDisabledException
+import me.tagavari.airmessage.exception.LocationUnavailableException
 import me.tagavari.airmessage.util.LatLngInfo
 import kotlin.coroutines.resume
 
-typealias ResolvableApiException = Nothing
+//Stub implementation of GMS' ResolvableApiException
+@Suppress("UNUSED", "UNUSED_PARAMETER")
+class ResolvableApiException private constructor() : Exception() {
+	val resolution: PendingIntent
+		get() = throw IllegalStateException()
+	
+	@Throws(IntentSender.SendIntentException::class)
+	fun startResolutionForResult(activity: Activity, requestCode: Int) {
+		throw IllegalStateException()
+	}
+}
 
 object LocationBridge {
 	/**
@@ -21,14 +35,13 @@ object LocationBridge {
 	 * On FOSS, this uses Android's location services
 	 */
 	@SuppressLint("MissingPermission")
-	suspend fun getLocation(activity: Activity): LatLngInfo? {
+	suspend fun getLocation(activity: Activity): LatLngInfo {
 		//Get the location manager
 		val locationManager = activity.getSystemService(Context.LOCATION_SERVICE) as LocationManager
 		
 		//Fail if location is disabled
 		if(!LocationManagerCompat.isLocationEnabled(locationManager)) {
-			//Ask user to enable location?
-			return null
+			throw LocationDisabledException()
 		}
 		
 		//Find a valid provider
@@ -41,10 +54,10 @@ object LocationBridge {
 			add(LocationManager.NETWORK_PROVIDER)
 		}
 			.firstOrNull { locationManager.isProviderEnabled(it) }
-			?: return null
+			?: throw LocationUnavailableException()
 		
 		//Get the user's current location
-		val location = suspendCancellableCoroutine { cont ->
+		val location = suspendCancellableCoroutine<Location?> { cont ->
 			val cancellationSignal = CancellationSignal()
 			LocationManagerCompat.getCurrentLocation(
 				locationManager,
@@ -58,10 +71,8 @@ object LocationBridge {
 			cont.invokeOnCancellation {
 				cancellationSignal.cancel()
 			}
-		}
+		} ?: throw LocationUnavailableException()
 		
-		return location?.let {
-			LatLngInfo(it.latitude, it.longitude)
-		}
+		return LatLngInfo(location.latitude, location.longitude)
 	}
 }
