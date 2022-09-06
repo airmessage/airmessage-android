@@ -61,6 +61,7 @@ class MessagingViewModel(
 		private set
 	val messages = mutableStateListOf<ConversationItem>()
 	val queuedFiles = mutableStateListOf<QueuedFile>()
+	val messageSelectionState = MessageSelectionState()
 	
 	private val _messageAdditionFlow = MutableSharedFlow<MessageAdditionEvent>()
 	val messageAdditionFlow = _messageAdditionFlow.asSharedFlow()
@@ -558,4 +559,40 @@ enum class MessageLazyLoadState {
 	LOADING,
 	//There are no new messages to load
 	COMPLETE
+}
+
+class MessageSelectionState {
+	var selectedMessageIDs by mutableStateOf(setOf<Long>())
+		private set
+	var selectedAttachmentIDs by mutableStateOf(setOf<Long>())
+		private set
+	
+	fun addMessageID(id: Long) {
+		selectedMessageIDs = selectedMessageIDs.toMutableSet().apply {
+			add(id)
+		}
+	}
+	
+	fun removeMessageID(id: Long) {
+		selectedMessageIDs = selectedMessageIDs.toMutableSet().apply {
+			remove(id)
+		}
+	}
+	
+	fun addAttachmentID(id: Long) {
+		selectedAttachmentIDs = selectedAttachmentIDs.toMutableSet().apply {
+			add(id)
+		}
+	}
+	
+	fun removeAttachmentID(id: Long) {
+		selectedAttachmentIDs = selectedAttachmentIDs.toMutableSet().apply {
+			remove(id)
+		}
+	}
+	
+	fun clear() {
+		selectedMessageIDs = setOf()
+		selectedAttachmentIDs = setOf()
+	}
 }

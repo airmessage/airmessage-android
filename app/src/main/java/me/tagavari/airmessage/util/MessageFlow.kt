@@ -11,8 +11,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
 
-private val radiusUnanchored = 20.dp
-private val radiusAnchored = 5.dp
+private val radiusLarge = 20.dp
+private val radiusSmall = 5.dp
 
 /**
  * A message's position in the thread in accordance with other nearby messages
@@ -26,11 +26,15 @@ data class MessageFlow(
 )
 
 /**
- * A message's position in the thread in accordance with other nearby messages
+ * A message part's position in the thread in accordance
+ * with other nearby messages and the state of the app
  */
 data class MessagePartFlow(
 	//Whether this message is outgoing
 	val isOutgoing: Boolean,
+	
+	//Whether this message is selected
+	val isSelected: Boolean,
 	
 	//Whether this message should be anchored to the message above
 	val anchorTop: Boolean,
@@ -44,17 +48,17 @@ data class MessagePartFlow(
 	val bubbleShape: Shape
 		get() = if(isOutgoing) {
 			RoundedCornerShape(
-				topStart = radiusUnanchored,
-				topEnd = radiusUnanchored,
-				bottomEnd = if(anchorBottom) radiusUnanchored else radiusAnchored,
-				bottomStart = radiusUnanchored
+				topStart = radiusLarge,
+				topEnd = radiusLarge,
+				bottomEnd = if(anchorBottom) radiusLarge else radiusSmall,
+				bottomStart = radiusLarge
 			)
 		} else {
 			RoundedCornerShape(
-				topStart = radiusUnanchored,
-				topEnd = radiusUnanchored,
-				bottomEnd = radiusUnanchored,
-				bottomStart = if(anchorBottom) radiusUnanchored else radiusAnchored
+				topStart = radiusLarge,
+				topEnd = radiusLarge,
+				bottomEnd = radiusLarge,
+				bottomStart = if(anchorBottom) radiusLarge else radiusSmall
 			)
 		}
 	

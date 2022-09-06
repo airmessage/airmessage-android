@@ -14,6 +14,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.compose.state.MessageLazyLoadState
+import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.constants.TimingConstants
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
@@ -28,6 +29,7 @@ fun MessageList(
 	modifier: Modifier = Modifier,
 	conversation: ConversationInfo,
 	messages: List<ConversationItem>,
+	messageSelectionState: MessageSelectionState,
 	scrollState: LazyListState = rememberLazyListState(),
 	onLoadPastMessages: () -> Unit,
 	lazyLoadState: MessageLazyLoadState
@@ -106,6 +108,7 @@ fun MessageList(
 					conversationInfo = conversation,
 					messageInfo = conversationItem,
 					flow = flow,
+					selectionState = messageSelectionState,
 					spacing = spacing,
 					scrollProgress = scrollProgress
 				)

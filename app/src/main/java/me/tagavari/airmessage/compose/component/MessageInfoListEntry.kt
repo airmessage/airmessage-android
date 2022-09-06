@@ -33,6 +33,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
+import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.compose.state.NetworkState
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.data.DatabaseManager
@@ -67,6 +68,7 @@ fun MessageInfoListEntry(
 		anchorTop = false,
 		anchorBottom = false
 	),
+	selectionState: MessageSelectionState = MessageSelectionState(),
 	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
 	scrollProgress: Float = 0F
 ) {
@@ -148,6 +150,7 @@ fun MessageInfoListEntry(
 							MessageBubbleText(
 								flow = MessagePartFlow(
 									isOutgoing = isOutgoing,
+									isSelected = selectionState.selectedMessageIDs.contains(textComponent.localID),
 									anchorTop = flow.anchorTop,
 									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
 									tintRatio = scrollProgress
@@ -163,6 +166,7 @@ fun MessageInfoListEntry(
 				messageInfo.attachments.forEachIndexed { index, attachment ->
 					val attachmentFlow = MessagePartFlow(
 						isOutgoing = isOutgoing,
+						isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID),
 						anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
 						anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
 						tintRatio = scrollProgress

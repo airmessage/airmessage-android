@@ -120,6 +120,7 @@ fun MessagingScreen(
 					conversation = conversation,
 					messages = viewModel.messages,
 					scrollState = scrollState,
+					messageSelectionState = viewModel.messageSelectionState,
 					onLoadPastMessages = { viewModel.loadPastMessages() },
 					lazyLoadState = viewModel.lazyLoadState
 				)
