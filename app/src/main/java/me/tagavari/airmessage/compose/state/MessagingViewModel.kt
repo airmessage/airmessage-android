@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
-import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -23,8 +22,9 @@ import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlob
 import me.tagavari.airmessage.container.ReadableBlobLocalFile
-import me.tagavari.airmessage.container.ReadableBlobUri
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.enums.ServiceHandler
+import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.*
 import me.tagavari.airmessage.messaging.ConversationInfo
@@ -37,8 +37,9 @@ import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileCle
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileUpdate
 import me.tagavari.airmessage.task.ConversationActionTask
 import me.tagavari.airmessage.task.DraftActionTaskCoroutine
+import me.tagavari.airmessage.util.LatLngInfo
 import me.tagavari.airmessage.util.ReplaceInsertResult
-import java.io.File
+import java.io.IOException
 
 class MessagingViewModel(
 	application: Application,
@@ -321,6 +322,53 @@ class MessagingViewModel(
 	fun addQueuedFile(file: LocalFile) = addQueuedFileBlobs(listOf(ReadableBlobLocalFile(file, deleteOnInvalidate = true)))
 	
 	/**
+	 * Sends location data
+	 */
+	@OptIn(DelicateCoroutinesApi::class)
+	fun sendLocation(connectionManager: ConnectionManager?, location: LatLngInfo) {
+		val conversation = conversation ?: return
+		
+		if(conversation.serviceHandler == ServiceHandler.appleBridge
+			&& conversation.serviceType == ServiceType.appleMessage) {
+			//If we're using iMessage, send a specialized location attachment
+			GlobalScope.launch {
+				val file = AttachmentStorageHelper.prepareContentFile(getApplication(), AttachmentStorageHelper.dirNameDraftPrepare, FileNameConstants.locationName)
+				
+				try {
+					//Write the file
+					MapLocationHelper.writeLocationVCard(location, file)
+				} catch(exception: IOException) {
+					exception.printStackTrace()
+					
+					//Clean up
+					AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, file)
+				}
+				
+				//Send the file
+				val localFile = LocalFile(file, file.name, MIMEConstants.mimeTypeVLocation, file.length(), AttachmentStorageHelper.dirNameDraftPrepare)
+				submitFileDirect(connectionManager, ReadableBlobLocalFile(localFile))
+			}
+		} else {
+			//Send a text message
+			GlobalScope.launch {
+				MessageSendHelperCoroutine.prepareMessage(
+					getApplication(),
+					conversation,
+					MapLocationHelper.getMapUri(location).toString(),
+					listOf()
+				).forEach { message ->
+					MessageSendHelperCoroutine.sendMessage(
+						getApplication(),
+						connectionManager,
+						conversation,
+						message
+					)
+				}
+			}
+		}
+	}
+	
+	/**
 	 * Removes a queued file from the queue
 	 */
 	fun removeQueuedFile(queuedFile: QueuedFile) {
@@ -428,10 +476,11 @@ class MessagingViewModel(
 	 * @param connectionManager The connection manager to use
 	 * @return Whether the message was successfully prepared and sent
 	 */
+	@OptIn(DelicateCoroutinesApi::class)
 	fun submitFileDirect(connectionManager: ConnectionManager?, file: ReadableBlob): Boolean {
 		val conversation = conversation ?: return false
 		
-		viewModelScope.launch {
+		GlobalScope.launch {
 			val fileData = file.getData()
 			
 			val targetFile = withContext(Dispatchers.IO) {

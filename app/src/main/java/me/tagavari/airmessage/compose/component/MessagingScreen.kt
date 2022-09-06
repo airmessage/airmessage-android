@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import android.app.Application
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -19,6 +20,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.launch
+import me.tagavari.airmessage.compose.ConversationDetailsCompose
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.MessagingMediaCaptureType
@@ -39,10 +41,10 @@ import me.tagavari.airmessage.helper.SoundHelper
 @Composable
 fun MessagingScreen(
 	conversationID: Long,
-	navigationIcon: @Composable () -> Unit = {},
-	onClickDetails: () -> Unit
+	navigationIcon: @Composable () -> Unit = {}
 ) {
 	val application = LocalContext.current.applicationContext as Application
+	val connectionManager = LocalConnectionManager.current
 	val viewModel = viewModel<MessagingViewModel>(factory = MessagingViewModelFactory(application, conversationID))
 	
 	val scrollState = rememberLazyListState()
@@ -80,10 +82,16 @@ fun MessagingScreen(
 				CenterAlignedTopAppBar(
 					//scrollBehavior = scrollBehavior,
 					title = {
+						val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
+							if(location == null) return@rememberLauncherForActivityResult
+							
+							viewModel.sendLocation(connectionManager, location)
+						}
+						
 						Column(
 							modifier = Modifier
 								.clip(RoundedCornerShape(12.dp))
-								.clickable(onClick = onClickDetails)
+								.clickable(onClick = { conversationDetailsLauncher.launch(conversationID) })
 								.padding(horizontal = 8.dp, vertical = 4.dp),
 							horizontalAlignment = Alignment.CenterHorizontally,
 							verticalArrangement = Arrangement.Top
@@ -117,7 +125,6 @@ fun MessagingScreen(
 				)
 			} ?: Box(modifier = Modifier.weight(1F))
 			
-			val connectionManager = LocalConnectionManager.current
 			val scope = rememberCoroutineScope()
 			val captureMedia = rememberMediaCapture()
 			val requestMedia = rememberMediaRequest()

@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.compose
 
-import android.content.Intent
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.activity.ComponentActivity
@@ -40,11 +39,6 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 									contentDescription = stringResource(id = R.string.action_back)
 								)
 							}
-						},
-						onClickDetails = {
-							Intent(this, ConversationDetailsCompose::class.java).apply {
-								putExtra(Messaging.intentParamTargetID, conversationID)
-							}.let { startActivity(it) }
 						}
 					)
 				}

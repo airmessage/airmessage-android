@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose
 
 import android.app.Application
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
@@ -8,6 +9,7 @@ import android.provider.ContactsContract
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -16,6 +18,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
+import me.tagavari.airmessage.activity.LocationPicker
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.ConversationDetails
 import me.tagavari.airmessage.compose.state.ConversationDetailsViewModel
@@ -26,6 +29,8 @@ import me.tagavari.airmessage.exception.LocationUnavailableException
 import me.tagavari.airmessage.flavor.ResolvableApiException
 import me.tagavari.airmessage.helper.AddressHelper.validateEmail
 import me.tagavari.airmessage.helper.AddressHelper.validatePhoneNumber
+import me.tagavari.airmessage.helper.getParcelableExtraCompat
+import me.tagavari.airmessage.util.LatLngInfo
 
 class ConversationDetailsCompose : ComponentActivity() {
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -119,6 +124,21 @@ class ConversationDetailsCompose : ComponentActivity() {
 						}
 					)
 				}
+			}
+		}
+	}
+	
+	object ResultContract : ActivityResultContract<Long, LatLngInfo?>() {
+		override fun createIntent(context: Context, input: Long) =
+			Intent(context, ConversationDetailsCompose::class.java).apply {
+				putExtra(Messaging.intentParamTargetID, input)
+			}
+		
+		override fun parseResult(resultCode: Int, intent: Intent?): LatLngInfo? {
+			return if(resultCode != RESULT_OK || intent == null) {
+				null
+			} else {
+				intent.getParcelableExtraCompat(LocationPicker.intentParamLocation)
 			}
 		}
 	}
