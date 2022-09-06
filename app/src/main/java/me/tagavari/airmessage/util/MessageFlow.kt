@@ -44,17 +44,17 @@ data class MessagePartFlow(
 	val bubbleShape: Shape
 		get() = if(isOutgoing) {
 			RoundedCornerShape(
-				radiusUnanchored,
-				if(anchorTop) radiusAnchored else radiusUnanchored,
-				if(anchorBottom) radiusAnchored else radiusUnanchored,
-				radiusUnanchored
+				topStart = radiusUnanchored,
+				topEnd = radiusUnanchored,
+				bottomEnd = if(anchorBottom) radiusUnanchored else radiusAnchored,
+				bottomStart = radiusUnanchored
 			)
 		} else {
 			RoundedCornerShape(
-				if(anchorTop) radiusAnchored else radiusUnanchored,
-				radiusUnanchored,
-				radiusUnanchored,
-				if(anchorBottom) radiusAnchored else radiusUnanchored
+				topStart = radiusUnanchored,
+				topEnd = radiusUnanchored,
+				bottomEnd = radiusUnanchored,
+				bottomStart = if(anchorBottom) radiusUnanchored else radiusAnchored
 			)
 		}
 	
