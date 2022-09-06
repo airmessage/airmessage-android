@@ -54,8 +54,8 @@ fun MessageBubbleLocation(
 		Column(
 			modifier = Modifier.width(256.dp),
 		) {
-			locationData?.let { data ->
-				Box(modifier = Modifier.height(200.dp)) {
+			Box(modifier = Modifier.height(200.dp)) {
+				locationData?.let { data ->
 					MessageBubbleLocationMap(
 						coords = data.coords
 					)
