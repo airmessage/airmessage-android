@@ -183,6 +183,7 @@ dependencies {
 	//Coroutines
 	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
 	implementation "org.jetbrains.kotlinx:kotlinx-coroutines-rx3:1.6.4"
+	fullImplementation "org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.6.4"
 	
 	//Android architecture components
 	def lifecycle_version = "2.5.1"
