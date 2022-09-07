@@ -567,6 +567,11 @@ class MessageSelectionState {
 	var selectedAttachmentIDs by mutableStateOf(setOf<Long>())
 		private set
 	
+	fun isEmpty() = selectedMessageIDs.isEmpty() && selectedAttachmentIDs.isEmpty()
+	
+	val size: Int
+		get() = selectedMessageIDs.size + selectedAttachmentIDs.size
+	
 	fun addMessageID(id: Long) {
 		selectedMessageIDs = selectedMessageIDs.toMutableSet().apply {
 			add(id)

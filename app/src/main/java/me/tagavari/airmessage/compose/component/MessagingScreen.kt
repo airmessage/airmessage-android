@@ -1,25 +1,41 @@
 package me.tagavari.airmessage.compose.component
 
 import android.app.Application
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.outlined.ContentCopy
+import androidx.compose.material.icons.outlined.CopyAll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import io.reactivex.rxjava3.kotlin.toFlowable
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ConversationDetailsCompose
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -30,14 +46,14 @@ import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
 import me.tagavari.airmessage.container.LocalFile
-import me.tagavari.airmessage.container.ReadableBlobFile
-import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.container.ReadableBlobUri
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import me.tagavari.airmessage.helper.FileHelper
+import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.helper.SoundHelper
+import me.tagavari.airmessage.messaging.MessageInfo
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MessagingScreen(
 	conversationID: Long,
@@ -79,39 +95,123 @@ fun MessagingScreen(
 				.nestedScroll(scrollBehavior.nestedScrollConnection)
 		) {
 			Surface(tonalElevation = 2.dp) {
-				CenterAlignedTopAppBar(
-					//scrollBehavior = scrollBehavior,
-					title = {
-						val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
-							if(location == null) return@rememberLauncherForActivityResult
-							
-							viewModel.sendLocation(connectionManager, location)
+				Crossfade(targetState = !viewModel.messageSelectionState.isEmpty()) { isActionMode ->
+					if(!isActionMode) {
+						CenterAlignedTopAppBar(
+							//scrollBehavior = scrollBehavior,
+							title = {
+								val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
+									if(location == null) return@rememberLauncherForActivityResult
+									
+									viewModel.sendLocation(connectionManager, location)
+								}
+								
+								Column(
+									modifier = Modifier
+										.clip(RoundedCornerShape(12.dp))
+										.clickable(onClick = {
+											conversationDetailsLauncher.launch(
+												conversationID
+											)
+										})
+										.padding(horizontal = 8.dp, vertical = 4.dp),
+									horizontalAlignment = Alignment.CenterHorizontally,
+									verticalArrangement = Arrangement.Top
+								) {
+									viewModel.conversation?.let { conversation ->
+										UserIconGroup(members = conversation.members)
+									}
+									
+									Spacer(modifier = Modifier.height(1.dp))
+									
+									viewModel.conversationTitle?.let { title ->
+										Text(
+											text = title,
+											style = MaterialTheme.typography.bodySmall
+										)
+									}
+								}
+							},
+							navigationIcon = navigationIcon
+						)
+					} else {
+						val selectionCount = viewModel.messageSelectionState.size
+						fun stopActionMode() {
+							viewModel.messageSelectionState.clear()
 						}
 						
-						Column(
-							modifier = Modifier
-								.clip(RoundedCornerShape(12.dp))
-								.clickable(onClick = { conversationDetailsLauncher.launch(conversationID) })
-								.padding(horizontal = 8.dp, vertical = 4.dp),
-							horizontalAlignment = Alignment.CenterHorizontally,
-							verticalArrangement = Arrangement.Top
-						) {
-							viewModel.conversation?.let { conversation ->
-								UserIconGroup(members = conversation.members)
+						SmallTopAppBar(
+							title = {
+								Text(pluralStringResource(id = R.plurals.message_selectioncount, selectionCount, selectionCount))
+							},
+							navigationIcon = {
+								IconButton(onClick = { stopActionMode() }) {
+									Icon(
+										imageVector = Icons.Filled.Close,
+										contentDescription = stringResource(id = android.R.string.cancel)
+									)
+								}
+							},
+							actions = {
+								if(selectionCount == 1) {
+									val context = LocalContext.current
+									
+									IconButton(onClick = {
+										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()?.let { messageID ->
+											//Find the selected message
+											val message = (viewModel.messages.firstOrNull { it.localID == messageID } as? MessageInfo)
+												?.messageTextComponent ?: return@let
+											
+											//Copy the text to the clipboard
+											val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@let
+											clipboardManager.setPrimaryClip(ClipData.newPlainText(
+												null,
+												LanguageHelper.textComponentToString(context.resources, message)
+											))
+											
+											//Show a confirmation toast
+											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+												Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+											}
+										}
+										
+										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()?.let { attachmentID ->
+											//Find the attachment
+											val attachment = viewModel.messages.asSequence()
+												.mapNotNull { it as? MessageInfo }
+												.flatMap { it.attachments }
+												.firstOrNull { it.localID == attachmentID }
+												?: return@let
+											
+											val file = attachment.file ?: return@let
+											val fileURI = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+											
+											//Copy the file to the clipboard
+											val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@let
+											clipboardManager.setPrimaryClip(ClipData.newUri(
+												context.contentResolver,
+												null,
+												fileURI
+											))
+											
+											//Show a confirmation toast
+											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+												Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+											}
+										}
+										
+										stopActionMode()
+									}) {
+										Icon(
+											imageVector = Icons.Outlined.ContentCopy,
+											contentDescription = stringResource(id = R.string.action_copy)
+										)
+									}
+								}
 							}
-							
-							Spacer(modifier = Modifier.height(1.dp))
-							
-							viewModel.conversationTitle?.let { title ->
-								Text(
-									text = title,
-									style = MaterialTheme.typography.bodySmall
-								)
-							}
-						}
-					},
-					navigationIcon = navigationIcon
-				)
+						)
+					}
+				}
 			}
 			
 			viewModel.conversation?.let { conversation ->

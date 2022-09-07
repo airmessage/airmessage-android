@@ -2,8 +2,6 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.SpannableString
 import android.text.method.LinkMovementMethod
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,7 +25,6 @@ import me.tagavari.airmessage.util.MessagePartFlow
 /**
  * A message bubble that displays a text message
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleText(
 	flow: MessagePartFlow,
@@ -37,19 +34,19 @@ fun MessageBubbleText(
 ) {
 	val colors = flow.colors
 	
+	fun onClick() {
+		//Deselect with a single tap
+		if(flow.isSelected) {
+			onSetSelected(false)
+		}
+	}
+	
+	fun onLongClick() {
+		//Toggle selection
+		onSetSelected(!flow.isSelected)
+	}
+	
 	Surface(
-		modifier = Modifier.combinedClickable(
-			onClick = {
-				//Deselect with a single tap
-				if(flow.isSelected) {
-					onSetSelected(false)
-				}
-			},
-			onLongClick = {
-				//Toggle selection
-				onSetSelected(!flow.isSelected)
-			}
-		),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground
@@ -100,6 +97,19 @@ fun MessageBubbleText(
 						
 						//Set linkified text
 						view.text = linkifiedText
+						
+						if(flow.isSelected) {
+							view.setOnClickListener {
+								onClick()
+							}
+						} else {
+							view.isClickable = false
+						}
+						
+						view.setOnLongClickListener {
+							onLongClick()
+							true
+						}
 					}
 				)
 			}
