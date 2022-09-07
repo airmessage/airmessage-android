@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import me.tagavari.airmessage.activity.LocationPicker
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.ConversationDetails
 import me.tagavari.airmessage.compose.state.ConversationDetailsViewModel
@@ -138,7 +137,7 @@ class ConversationDetailsCompose : ComponentActivity() {
 			return if(resultCode != RESULT_OK || intent == null) {
 				null
 			} else {
-				intent.getParcelableExtraCompat(LocationPicker.intentParamLocation)
+				intent.getParcelableExtraCompat(intentParamLocation)
 			}
 		}
 	}
