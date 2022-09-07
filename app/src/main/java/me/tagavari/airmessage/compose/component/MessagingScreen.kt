@@ -157,47 +157,43 @@ fun MessagingScreen(
 									val context = LocalContext.current
 									
 									IconButton(onClick = {
+										//Get the clipboard manager
+										val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@IconButton
+										
 										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()?.let { messageID ->
 											//Find the selected message
 											val message = (viewModel.messages.firstOrNull { it.localID == messageID } as? MessageInfo)
-												?.messageTextComponent ?: return@let
+												?.messageTextComponent ?: return@IconButton
 											
 											//Copy the text to the clipboard
-											val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@let
 											clipboardManager.setPrimaryClip(ClipData.newPlainText(
 												null,
 												LanguageHelper.textComponentToString(context.resources, message)
 											))
-											
-											//Show a confirmation toast
-											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-												Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
-											}
 										}
 										
 										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()?.let { attachmentID ->
-											//Find the attachment
+											//Find the selected attachment
 											val attachment = viewModel.messages.asSequence()
 												.mapNotNull { it as? MessageInfo }
 												.flatMap { it.attachments }
 												.firstOrNull { it.localID == attachmentID }
-												?: return@let
+												?: return@IconButton
 											
-											val file = attachment.file ?: return@let
-											val fileURI = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+											val file = attachment.file ?: return@IconButton
+											val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
 											
 											//Copy the file to the clipboard
-											val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@let
 											clipboardManager.setPrimaryClip(ClipData.newUri(
 												context.contentResolver,
 												null,
-												fileURI
+												fileUri
 											))
-											
-											//Show a confirmation toast
-											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-												Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
-											}
+										}
+										
+										//Show a confirmation toast
+										if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+											Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
 										}
 										
 										stopActionMode()
