@@ -158,6 +158,13 @@ fun MessageInfoListEntry(
 								),
 								subject = textComponent.subject,
 								text = textComponent.text,
+								onSetSelected = { selected ->
+									if(selected) {
+										selectionState.addMessageID(textComponent.localID)
+									} else {
+										selectionState.removeMessageID(textComponent.localID)
+									}
+								}
 							)
 						}
 					}

@@ -2,6 +2,8 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.SpannableString
 import android.text.method.LinkMovementMethod
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -25,15 +27,29 @@ import me.tagavari.airmessage.util.MessagePartFlow
 /**
  * A message bubble that displays a text message
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleText(
 	flow: MessagePartFlow,
 	subject: String? = null,
-	text: String? = null
+	text: String? = null,
+	onSetSelected: (Boolean) -> Unit
 ) {
 	val colors = flow.colors
 	
 	Surface(
+		modifier = Modifier.combinedClickable(
+			onClick = {
+				//Deselect with a single tap
+				if(flow.isSelected) {
+					onSetSelected(false)
+				}
+			},
+			onLongClick = {
+				//Toggle selection
+				onSetSelected(!flow.isSelected)
+			}
+		),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground
@@ -59,7 +75,7 @@ fun MessageBubbleText(
 			//Body text
 			if(text != null) {
 				val trimmedText = text.trim()
-				
+
 				val context = LocalContext.current
 				val linkifiedText by produceState(initialValue = SpannableString(trimmedText), trimmedText) {
 					value = LinkifyHelper.linkifyText(context, trimmedText)
@@ -103,7 +119,8 @@ private fun PreviewMessageBubbleText() {
 				anchorTop = false,
 				tintRatio = 0F
 			),
-			text = "Cats are cool"
+			text = "Cats are cool",
+			onSetSelected = {}
 		)
 	}
 }
@@ -121,7 +138,8 @@ private fun PreviewMessageBubbleSubject() {
 				tintRatio = 0F
 			),
 			subject = "An important message",
-			text = "Hello there friend!"
+			text = "Hello there friend!",
+			onSetSelected = {}
 		)
 	}
 }
