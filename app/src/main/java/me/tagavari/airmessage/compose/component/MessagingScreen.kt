@@ -3,6 +3,7 @@ package me.tagavari.airmessage.compose.component
 import android.app.Application
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
 import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -17,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.ContentCopy
 import androidx.compose.material.icons.outlined.CopyAll
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -51,6 +53,8 @@ import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.helper.SoundHelper
+import me.tagavari.airmessage.messaging.AttachmentInfo
+import me.tagavari.airmessage.messaging.MessageComponentText
 import me.tagavari.airmessage.messaging.MessageInfo
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -156,40 +160,44 @@ fun MessagingScreen(
 								if(selectionCount == 1) {
 									val context = LocalContext.current
 									
+									fun getSelectedMessageText(messageID: Long): MessageComponentText? {
+										return (viewModel.messages.firstOrNull { it.localID == messageID } as? MessageInfo)
+											?.messageTextComponent
+									}
+									
+									fun getSelectedMessageAttachment(attachmentID: Long): AttachmentInfo? {
+										return viewModel.messages.asSequence()
+											.mapNotNull { it as? MessageInfo }
+											.flatMap { it.attachments }
+											.firstOrNull { it.localID == attachmentID }
+									}
+									
 									IconButton(onClick = {
 										//Get the clipboard manager
 										val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@IconButton
 										
-										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()?.let { messageID ->
-											//Find the selected message
-											val message = (viewModel.messages.firstOrNull { it.localID == messageID } as? MessageInfo)
-												?.messageTextComponent ?: return@IconButton
-											
-											//Copy the text to the clipboard
-											clipboardManager.setPrimaryClip(ClipData.newPlainText(
-												null,
-												LanguageHelper.textComponentToString(context.resources, message)
-											))
-										}
+										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()
+											?.let { getSelectedMessageText(it) }
+											?.let { message ->
+												val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+												
+												//Copy the text to the clipboard
+												clipboardManager.setPrimaryClip(ClipData.newPlainText(null, text))
+											}
 										
-										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()?.let { attachmentID ->
-											//Find the selected attachment
-											val attachment = viewModel.messages.asSequence()
-												.mapNotNull { it as? MessageInfo }
-												.flatMap { it.attachments }
-												.firstOrNull { it.localID == attachmentID }
-												?: return@IconButton
-											
-											val file = attachment.file ?: return@IconButton
-											val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
-											
-											//Copy the file to the clipboard
-											clipboardManager.setPrimaryClip(ClipData.newUri(
-												context.contentResolver,
-												null,
-												fileUri
-											))
-										}
+										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
+											?.let { getSelectedMessageAttachment(it) }
+											?.let { attachment ->
+												val file = attachment.file ?: return@IconButton
+												val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+												
+												//Copy the file to the clipboard
+												clipboardManager.setPrimaryClip(ClipData.newUri(
+													context.contentResolver,
+													null,
+													fileUri
+												))
+											}
 										
 										//Show a confirmation toast
 										if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
@@ -201,6 +209,44 @@ fun MessagingScreen(
 										Icon(
 											imageVector = Icons.Outlined.ContentCopy,
 											contentDescription = stringResource(id = R.string.action_copy)
+										)
+									}
+									
+									IconButton(onClick = {
+										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()
+											?.let { getSelectedMessageText(it) }
+											?.let { message ->
+												val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+												
+												Intent().apply {
+													action = Intent.ACTION_SEND
+													putExtra(Intent.EXTRA_TEXT, text)
+													type = "text/plain"
+												}
+													.let { Intent.createChooser(it, null) }
+													.let { context.startActivity(it) }
+											}
+										
+										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
+											?.let { getSelectedMessageAttachment(it) }
+											?.let { attachment ->
+												val file = attachment.file ?: return@IconButton
+												val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+												
+												Intent().apply {
+													action = Intent.ACTION_SEND
+													putExtra(Intent.EXTRA_STREAM, fileUri)
+													type = attachment.contentType
+												}
+													.let { Intent.createChooser(it, null) }
+													.let { context.startActivity(it) }
+											}
+										
+										stopActionMode()
+									}) {
+										Icon(
+											imageVector = Icons.Outlined.Share,
+											contentDescription = stringResource(id = R.string.action_sharemessage)
 										)
 									}
 								}
