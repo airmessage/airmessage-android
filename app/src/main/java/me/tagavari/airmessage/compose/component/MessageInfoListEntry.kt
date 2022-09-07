@@ -135,7 +135,8 @@ fun MessageInfoListEntry(
 				modifier = Modifier
 					.weight(1F)
 					.alpha(messageContentsAlpha),
-				horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start
+				horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start,
+				verticalArrangement = Arrangement.spacedBy(MessageFlowSpacing.RELATED.padding)
 			) {
 				messageInfo.messageTextComponent?.let { textComponent ->
 					//Maximum 70% width
