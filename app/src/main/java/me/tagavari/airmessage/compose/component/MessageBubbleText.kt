@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -77,7 +78,7 @@ fun MessageBubbleText(
 					},
 					update = { view ->
 						//Set view color
-						val color = colors.foreground.let { android.graphics.Color.rgb(it.red, it.green, it.blue) }
+						val color = colors.foreground.toArgb()
 						view.setTextColor(color)
 						view.setLinkTextColor(color)
 						
@@ -97,6 +98,7 @@ private fun PreviewMessageBubbleText() {
 		MessageBubbleText(
 			flow = MessagePartFlow(
 				isOutgoing = false,
+				isSelected = false,
 				anchorBottom = false,
 				anchorTop = false,
 				tintRatio = 0F
@@ -112,7 +114,8 @@ private fun PreviewMessageBubbleSubject() {
 	AirMessageAndroidTheme {
 		MessageBubbleText(
 			flow = MessagePartFlow(
-				isOutgoing = false,
+				isOutgoing = true,
+				isSelected = true,
 				anchorBottom = false,
 				anchorTop = false,
 				tintRatio = 0F

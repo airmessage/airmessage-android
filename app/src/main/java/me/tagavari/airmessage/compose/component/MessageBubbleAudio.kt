@@ -131,6 +131,7 @@ private fun PreviewMessageBubbleAudio() {
 		MessageBubbleAudio(
 			flow = MessagePartFlow(
 				isOutgoing = false,
+				isSelected = false,
 				anchorBottom = false,
 				anchorTop = false,
 				tintRatio = 0F

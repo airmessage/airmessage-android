@@ -63,6 +63,7 @@ private fun PreviewMessageBubbleFile() {
 		MessageBubbleFile(
 			flow = MessagePartFlow(
 				isOutgoing = false,
+				isSelected = false,
 				anchorBottom = false,
 				anchorTop = false,
 				tintRatio = 0F

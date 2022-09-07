@@ -116,6 +116,7 @@ private fun PreviewMessageBubbleDownload() {
 		MessageBubbleDownload(
 			flow = MessagePartFlow(
 				isOutgoing = false,
+				isSelected = false,
 				anchorBottom = false,
 				anchorTop = false,
 				tintRatio = 0F
@@ -134,6 +135,7 @@ private fun PreviewMessageBubbleDownloadProgress() {
 		MessageBubbleDownload(
 			flow = MessagePartFlow(
 				isOutgoing = false,
+				isSelected = false,
 				anchorBottom = false,
 				anchorTop = false,
 				tintRatio = 0F

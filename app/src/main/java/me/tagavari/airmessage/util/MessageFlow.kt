@@ -68,22 +68,30 @@ data class MessagePartFlow(
 		get() {
 			val colorScheme = MaterialTheme.colorScheme
 			
-			return if(isOutgoing) {
-				val background = ColorUtils.blendARGB(
-					colorScheme.secondary.toArgb(),
-					colorScheme.primary.toArgb(),
-					tintRatio
-				).let { Color(it) }
-				
-				val foreground = ColorUtils.blendARGB(
-					colorScheme.onSecondary.toArgb(),
-					colorScheme.onPrimary.toArgb(),
-					tintRatio
-				).let { Color(it) }
-				
-				MessageColors(background, foreground)
-			} else {
-				MessageColors(colorScheme.surfaceVariant, colorScheme.onSurfaceVariant)
+			return when {
+				isSelected ->
+					MessageColors(
+						background = colorScheme.primary,
+						foreground = colorScheme.onPrimary
+					)
+				isOutgoing ->
+					MessageColors(
+						background = ColorUtils.blendARGB(
+							colorScheme.tertiary.toArgb(),
+							colorScheme.secondary.toArgb(),
+							tintRatio
+						).let { Color(it) },
+						foreground = ColorUtils.blendARGB(
+							colorScheme.onTertiary.toArgb(),
+							colorScheme.onSecondary.toArgb(),
+							tintRatio
+						).let { Color(it) }
+					)
+				else ->
+					MessageColors(
+						background = colorScheme.surfaceVariant,
+						foreground = colorScheme.onSurfaceVariant
+					)
 			}
 		}
 }
