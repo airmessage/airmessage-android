@@ -73,7 +73,6 @@ fun MessagingScreen(
 			scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0
 		}
 	}
-	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
 	val haptic = LocalHapticFeedback.current
 	
@@ -94,165 +93,166 @@ fun MessagingScreen(
 		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
 		Column(
-			modifier = Modifier
-				.background(MaterialTheme.colorScheme.background)
-				.nestedScroll(scrollBehavior.nestedScrollConnection)
+			modifier = Modifier.background(MaterialTheme.colorScheme.background)
 		) {
-			Surface(tonalElevation = 2.dp) {
-				Crossfade(targetState = !viewModel.messageSelectionState.isEmpty()) { isActionMode ->
-					if(!isActionMode) {
-						CenterAlignedTopAppBar(
-							//scrollBehavior = scrollBehavior,
-							title = {
-								val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
-									if(location == null) return@rememberLauncherForActivityResult
-									
-									viewModel.sendLocation(connectionManager, location)
+			Crossfade(targetState = !viewModel.messageSelectionState.isEmpty()) { isActionMode ->
+				if(!isActionMode) {
+					CenterAlignedTopAppBar(
+						title = {
+							val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
+								if(location == null) return@rememberLauncherForActivityResult
+								
+								viewModel.sendLocation(connectionManager, location)
+							}
+							
+							Column(
+								modifier = Modifier
+									.clip(RoundedCornerShape(12.dp))
+									.clickable(onClick = {
+										conversationDetailsLauncher.launch(
+											conversationID
+										)
+									})
+									.padding(horizontal = 8.dp, vertical = 4.dp),
+								horizontalAlignment = Alignment.CenterHorizontally,
+								verticalArrangement = Arrangement.Top
+							) {
+								viewModel.conversation?.let { conversation ->
+									UserIconGroup(members = conversation.members)
 								}
 								
-								Column(
-									modifier = Modifier
-										.clip(RoundedCornerShape(12.dp))
-										.clickable(onClick = {
-											conversationDetailsLauncher.launch(
-												conversationID
-											)
-										})
-										.padding(horizontal = 8.dp, vertical = 4.dp),
-									horizontalAlignment = Alignment.CenterHorizontally,
-									verticalArrangement = Arrangement.Top
-								) {
-									viewModel.conversation?.let { conversation ->
-										UserIconGroup(members = conversation.members)
-									}
-									
-									Spacer(modifier = Modifier.height(1.dp))
-									
-									viewModel.conversationTitle?.let { title ->
-										Text(
-											text = title,
-											style = MaterialTheme.typography.bodySmall
-										)
-									}
-								}
-							},
-							navigationIcon = navigationIcon
-						)
-					} else {
-						val selectionCount = viewModel.messageSelectionState.size
-						fun stopActionMode() {
-							viewModel.messageSelectionState.clear()
-						}
-						
-						SmallTopAppBar(
-							title = {
-								Text(pluralStringResource(id = R.plurals.message_selectioncount, selectionCount, selectionCount))
-							},
-							navigationIcon = {
-								IconButton(onClick = { stopActionMode() }) {
-									Icon(
-										imageVector = Icons.Filled.Close,
-										contentDescription = stringResource(id = android.R.string.cancel)
+								Spacer(modifier = Modifier.height(1.dp))
+								
+								viewModel.conversationTitle?.let { title ->
+									Text(
+										text = title,
+										style = MaterialTheme.typography.bodySmall
 									)
 								}
-							},
-							actions = {
-								if(selectionCount == 1) {
-									val context = LocalContext.current
+							}
+						},
+						navigationIcon = navigationIcon,
+						colors = TopAppBarDefaults.smallTopAppBarColors(
+							containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+						)
+					)
+				} else {
+					val selectionCount = viewModel.messageSelectionState.size
+					fun stopActionMode() {
+						viewModel.messageSelectionState.clear()
+					}
+					
+					TopAppBar(
+						title = {
+							Text(pluralStringResource(id = R.plurals.message_selectioncount, selectionCount, selectionCount))
+						},
+						navigationIcon = {
+							IconButton(onClick = { stopActionMode() }) {
+								Icon(
+									imageVector = Icons.Filled.Close,
+									contentDescription = stringResource(id = android.R.string.cancel)
+								)
+							}
+						},
+						actions = {
+							if(selectionCount == 1) {
+								val context = LocalContext.current
+								
+								fun getSelectedMessageText(messageID: Long): MessageComponentText? {
+									return (viewModel.messages.firstOrNull { it.localID == messageID } as? MessageInfo)
+										?.messageTextComponent
+								}
+								
+								fun getSelectedMessageAttachment(attachmentID: Long): AttachmentInfo? {
+									return viewModel.messages.asSequence()
+										.mapNotNull { it as? MessageInfo }
+										.flatMap { it.attachments }
+										.firstOrNull { it.localID == attachmentID }
+								}
+								
+								IconButton(onClick = {
+									//Get the clipboard manager
+									val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@IconButton
 									
-									fun getSelectedMessageText(messageID: Long): MessageComponentText? {
-										return (viewModel.messages.firstOrNull { it.localID == messageID } as? MessageInfo)
-											?.messageTextComponent
-									}
-									
-									fun getSelectedMessageAttachment(attachmentID: Long): AttachmentInfo? {
-										return viewModel.messages.asSequence()
-											.mapNotNull { it as? MessageInfo }
-											.flatMap { it.attachments }
-											.firstOrNull { it.localID == attachmentID }
-									}
-									
-									IconButton(onClick = {
-										//Get the clipboard manager
-										val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@IconButton
-										
-										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()
-											?.let { getSelectedMessageText(it) }
-											?.let { message ->
-												val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
-												
-												//Copy the text to the clipboard
-												clipboardManager.setPrimaryClip(ClipData.newPlainText(null, text))
-											}
-										
-										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
-											?.let { getSelectedMessageAttachment(it) }
-											?.let { attachment ->
-												val file = attachment.file ?: return@IconButton
-												val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
-												
-												//Copy the file to the clipboard
-												clipboardManager.setPrimaryClip(ClipData.newUri(
-													context.contentResolver,
-													null,
-													fileUri
-												))
-											}
-										
-										//Show a confirmation toast
-										if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-											Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+									viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()
+										?.let { getSelectedMessageText(it) }
+										?.let { message ->
+											val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+											
+											//Copy the text to the clipboard
+											clipboardManager.setPrimaryClip(ClipData.newPlainText(null, text))
 										}
-										
-										stopActionMode()
-									}) {
-										Icon(
-											imageVector = Icons.Outlined.ContentCopy,
-											contentDescription = stringResource(id = R.string.action_copy)
-										)
+									
+									viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
+										?.let { getSelectedMessageAttachment(it) }
+										?.let { attachment ->
+											val file = attachment.file ?: return@IconButton
+											val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+											
+											//Copy the file to the clipboard
+											clipboardManager.setPrimaryClip(ClipData.newUri(
+												context.contentResolver,
+												null,
+												fileUri
+											))
+										}
+									
+									//Show a confirmation toast
+									if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+										Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
 									}
 									
-									IconButton(onClick = {
-										viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()
-											?.let { getSelectedMessageText(it) }
-											?.let { message ->
-												val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
-												
-												Intent().apply {
-													action = Intent.ACTION_SEND
-													putExtra(Intent.EXTRA_TEXT, text)
-													type = "text/plain"
-												}
-													.let { Intent.createChooser(it, null) }
-													.let { context.startActivity(it) }
+									stopActionMode()
+								}) {
+									Icon(
+										imageVector = Icons.Outlined.ContentCopy,
+										contentDescription = stringResource(id = R.string.action_copy)
+									)
+								}
+								
+								IconButton(onClick = {
+									viewModel.messageSelectionState.selectedMessageIDs.firstOrNull()
+										?.let { getSelectedMessageText(it) }
+										?.let { message ->
+											val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+											
+											Intent().apply {
+												action = Intent.ACTION_SEND
+												putExtra(Intent.EXTRA_TEXT, text)
+												type = "text/plain"
 											}
-										
-										viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
-											?.let { getSelectedMessageAttachment(it) }
-											?.let { attachment ->
-												val file = attachment.file ?: return@IconButton
-												val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
-												
-												Intent().apply {
-													action = Intent.ACTION_SEND
-													putExtra(Intent.EXTRA_STREAM, fileUri)
-													type = attachment.contentType
-												}
-													.let { Intent.createChooser(it, null) }
-													.let { context.startActivity(it) }
+												.let { Intent.createChooser(it, null) }
+												.let { context.startActivity(it) }
+										}
+									
+									viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
+										?.let { getSelectedMessageAttachment(it) }
+										?.let { attachment ->
+											val file = attachment.file ?: return@IconButton
+											val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+											
+											Intent().apply {
+												action = Intent.ACTION_SEND
+												putExtra(Intent.EXTRA_STREAM, fileUri)
+												type = attachment.contentType
 											}
-										
-										stopActionMode()
-									}) {
-										Icon(
-											imageVector = Icons.Outlined.Share,
-											contentDescription = stringResource(id = R.string.action_sharemessage)
-										)
-									}
+												.let { Intent.createChooser(it, null) }
+												.let { context.startActivity(it) }
+										}
+									
+									stopActionMode()
+								}) {
+									Icon(
+										imageVector = Icons.Outlined.Share,
+										contentDescription = stringResource(id = R.string.action_sharemessage)
+									)
 								}
 							}
+						},
+						colors = TopAppBarDefaults.smallTopAppBarColors(
+							containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
 						)
-					}
+					)
 				}
 			}
 			

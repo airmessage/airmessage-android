@@ -30,7 +30,7 @@ class Licenses : ComponentActivity() {
 				Scaffold(
 					modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 					topBar = {
-						SmallTopAppBar(
+						TopAppBar(
 							title = {
 								Text(text = stringResource(id = R.string.screen_licenses))
 							},
