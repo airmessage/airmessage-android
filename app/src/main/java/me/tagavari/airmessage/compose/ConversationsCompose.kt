@@ -71,7 +71,9 @@ class ConversationsCompose : ComponentActivity() {
 								)
 								else -> null
 							}
-						}
+						},
+						hasUnreadConversations = viewModel.hasUnreadConversations,
+						onMarkConversationsAsRead = { viewModel.markConversationsAsRead() }
 					)
 				}
 			}

@@ -45,7 +45,9 @@ fun ConversationPane(
 	onReloadConversations: () -> Unit = {},
 	onNavigateSettings: () -> Unit = {},
 	onNewConversation: () -> Unit = {},
-	syncState: ProgressState? = null
+	syncState: ProgressState? = null,
+	hasUnreadConversations: Boolean = false,
+	onMarkConversationsAsRead: () -> Unit = {}
 ) {
 	val snackbarHostState = remember { SnackbarHostState() }
 	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -85,6 +87,16 @@ fun ConversationPane(
 								expanded = menuOpen,
 								onDismissRequest = { menuOpen = false }
 							) {
+								if(hasUnreadConversations) {
+									DropdownMenuItem(
+										text = { Text(stringResource(id = R.string.action_markallread)) },
+										onClick = {
+											menuOpen = false
+											onMarkConversationsAsRead()
+										}
+									)
+								}
+								
 								DropdownMenuItem(
 									text = { Text(stringResource(id = R.string.screen_settings)) },
 									onClick = {

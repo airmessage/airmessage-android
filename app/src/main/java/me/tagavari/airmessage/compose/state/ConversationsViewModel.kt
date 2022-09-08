@@ -1,27 +1,25 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
-import android.content.Context
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.collect
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.*
 import kotlinx.coroutines.rx3.asFlow
-import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.task.ConversationActionTask
 
 class ConversationsViewModel(application: Application) : AndroidViewModel(application) {
 	var conversations by mutableStateOf<Result<List<ConversationInfo>>?>(null)
 		private set
+	
+	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
 	
 	init {
 		loadConversations()
@@ -70,6 +68,23 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				conversations = Result.success(conversationList.filter { it.localID != event.conversationInfo.localID })
 			}
 			else -> {}
+		}
+	}
+	
+	/**
+	 * Marks all conversations as read
+	 */
+	@OptIn(DelicateCoroutinesApi::class)
+	fun markConversationsAsRead() {
+		//Get the conversations list
+		val conversations = conversations?.getOrNull() ?: return
+		
+		//Search for unread conversations
+		val unreadConversations = conversations.filter { it.unreadMessageCount > 0 }
+		
+		//Mark the conversations as read
+		GlobalScope.launch {
+			ConversationActionTask.unreadConversations(unreadConversations, 0)
 		}
 	}
 }
