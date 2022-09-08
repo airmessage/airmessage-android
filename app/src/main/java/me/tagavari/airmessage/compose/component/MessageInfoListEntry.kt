@@ -159,11 +159,7 @@ fun MessageInfoListEntry(
 								subject = textComponent.subject,
 								text = textComponent.text,
 								onSetSelected = { selected ->
-									if(selected) {
-										selectionState.addMessageID(textComponent.localID)
-									} else {
-										selectionState.removeMessageID(textComponent.localID)
-									}
+									selectionState.setSelectionMessageID(textComponent.localID, selected)
 								}
 							)
 						}
@@ -193,6 +189,9 @@ fun MessageInfoListEntry(
 										attachmentFile,
 										attachment.computedContentType
 									)
+								},
+								onSetSelected = { selected ->
+									selectionState.setSelectionAttachmentID(attachment.localID, selected)
 								}
 							)
 						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio)) {

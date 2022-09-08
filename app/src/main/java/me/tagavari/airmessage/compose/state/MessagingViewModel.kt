@@ -567,35 +567,50 @@ class MessageSelectionState {
 	var selectedAttachmentIDs by mutableStateOf(setOf<Long>())
 		private set
 	
+	/**
+	 * Gets whether no items are selected
+	 */
 	fun isEmpty() = selectedMessageIDs.isEmpty() && selectedAttachmentIDs.isEmpty()
 	
+	/**
+	 * Gets the number of selected items
+	 */
 	val size: Int
 		get() = selectedMessageIDs.size + selectedAttachmentIDs.size
 	
-	fun addMessageID(id: Long) {
+	/**
+	 * Sets whether the provided message ID should be selected
+	 * @param id The ID of the message to apply the change to
+	 * @param selected True to add the selection, false to remove
+	 */
+	fun setSelectionMessageID(id: Long, selected: Boolean) {
 		selectedMessageIDs = selectedMessageIDs.toMutableSet().apply {
-			add(id)
+			if(selected) {
+				add(id)
+			} else {
+				remove(id)
+			}
 		}
 	}
 	
-	fun removeMessageID(id: Long) {
-		selectedMessageIDs = selectedMessageIDs.toMutableSet().apply {
-			remove(id)
-		}
-	}
-	
-	fun addAttachmentID(id: Long) {
+	/**
+	 * Sets whether the provided attachment ID should be selected
+	 * @param id The ID of the attachment to apply the change to
+	 * @param selected True to add the selection, false to remove
+	 */
+	fun setSelectionAttachmentID(id: Long, selected: Boolean) {
 		selectedAttachmentIDs = selectedAttachmentIDs.toMutableSet().apply {
-			add(id)
+			if(selected) {
+				add(id)
+			} else {
+				remove(id)
+			}
 		}
 	}
 	
-	fun removeAttachmentID(id: Long) {
-		selectedAttachmentIDs = selectedAttachmentIDs.toMutableSet().apply {
-			remove(id)
-		}
-	}
-	
+	/**
+	 * Clears all selected items
+	 */
 	fun clear() {
 		selectedMessageIDs = setOf()
 		selectedAttachmentIDs = setOf()

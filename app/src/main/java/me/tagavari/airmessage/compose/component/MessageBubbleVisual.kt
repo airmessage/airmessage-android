@@ -1,7 +1,8 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -11,7 +12,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
@@ -27,12 +30,14 @@ import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.util.MessagePartFlow
 import java.io.File
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleVisual(
 	flow: MessagePartFlow,
 	file: File,
 	type: String?,
-	onClick: () -> Unit
+	onClick: () -> Unit,
+	onSetSelected: (Boolean) -> Unit
 ) {
 	val isVideo = remember(type) {
 		FileHelper.compareMimeTypes(type, MIMEConstants.mimeTypeVideo)
@@ -63,8 +68,21 @@ fun MessageBubbleVisual(
 			modifier = Modifier
 				.width(200.dp)
 				.clip(flow.bubbleShape)
-				.clickable(onClick = onClick),
-			contentDescription = null
+				.combinedClickable(
+					onClick = {
+						if(flow.isSelected) {
+							onSetSelected(false)
+							
+						} else {
+							onClick()
+						}
+					},
+					onLongClick = {
+						onSetSelected(!flow.isSelected)
+					}
+				),
+			contentDescription = null,
+			colorFilter = if(flow.isSelected) ColorFilter.tint(flow.colors.background.copy(alpha = 0.8F), blendMode = BlendMode.Multiply) else null
 		)
 		
 		if(isVideo) {
