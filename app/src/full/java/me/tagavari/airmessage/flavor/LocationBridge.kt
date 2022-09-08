@@ -3,11 +3,14 @@ package me.tagavari.airmessage.flavor
 import android.annotation.SuppressLint
 import android.app.Activity
 import android.location.Location
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.location.*
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.tasks.await
 import me.tagavari.airmessage.exception.LocationUnavailableException
+import me.tagavari.airmessage.helper.AndroidLocationHelper
 import me.tagavari.airmessage.util.LatLngInfo
 
 typealias ResolvableApiException = com.google.android.gms.common.api.ResolvableApiException
@@ -21,9 +24,21 @@ object LocationBridge {
 	@SuppressLint("MissingPermission")
 	@Throws(ResolvableApiException::class)
 	suspend fun getLocation(activity: Activity): LatLngInfo {
+		//Check if Google Play Services is usable
+		if(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(activity)
+			!= ConnectionResult.SUCCESS) {
+			//If Google Play Services aren't available, fall back to
+			//a built-in Android method
+			return AndroidLocationHelper.getLocation(activity)
+		}
+		
 		//Check if the device is set up for location services
 		LocationServices.getSettingsClient(activity)
-			.checkLocationSettings(LocationSettingsRequest.Builder().addLocationRequest(LocationRequest.create()).build()).await()
+			.checkLocationSettings(
+				LocationSettingsRequest.Builder()
+					.addLocationRequest(LocationRequest.create())
+					.build()
+			).await()
 		
 		//Request the user's current location
 		val cancellationTokenSource = CancellationTokenSource()
