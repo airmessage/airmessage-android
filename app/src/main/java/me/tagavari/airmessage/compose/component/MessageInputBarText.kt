@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import android.util.Pair
 import android.util.TypedValue
 import android.widget.EditText
 import androidx.compose.animation.*
@@ -34,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.util.component1
 import androidx.core.util.component2
+import androidx.core.view.ContentInfoCompat
 import androidx.core.view.ViewCompat
 import androidx.core.widget.addTextChangedListener
 import me.tagavari.airmessage.R
@@ -257,9 +259,13 @@ fun MessageInputBarText(
 									this,
 									arrayOf("image/*")
 								) { _, contentInfo ->
-									val (uriPayloads, otherPayloads) = contentInfo.partition { it.uri != null }
-									val contentList = List(uriPayloads.clip.itemCount) { i -> ReadableBlobContentInfo(contentInfo, i) }
-									onInputContent(contentList)
+									val split: Pair<ContentInfoCompat?, ContentInfoCompat?> = contentInfo.partition { it.uri != null }
+									val (uriPayloads, otherPayloads) = split
+									
+									if(uriPayloads != null) {
+										val contentList = List(uriPayloads.clip.itemCount) { i -> ReadableBlobContentInfo(contentInfo, i) }
+										onInputContent(contentList)
+									}
 									
 									// Return anything that we didn't handle ourselves. This preserves the default platform
 									// behavior for text and anything else for which we are not implementing custom handling.
