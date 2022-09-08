@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -19,7 +21,7 @@ import me.tagavari.airmessage.util.MessagePartFlow
 /**
  * A message bubble that displays a downloadable attachment
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleDownload(
 	flow: MessagePartFlow,
@@ -28,17 +30,29 @@ fun MessageBubbleDownload(
 	bytesDownloaded: Long? = null,
 	isDownloading: Boolean = false,
 	onClick: () -> Unit,
-	enabled: Boolean = true
+	enabled: Boolean = true,
+	onSetSelected: (Boolean) -> Unit
 ) {
 	val colors = flow.colors
 	
 	Surface(
-		modifier = Modifier.widthIn(max = 256.dp),
+		modifier = Modifier
+			.widthIn(max = 256.dp)
+			.combinedClickable(
+				onClick = {
+					if(flow.isSelected) {
+						onSetSelected(false)
+					} else if(enabled) {
+						onClick()
+					}
+				},
+				onLongClick = {
+					onSetSelected(!flow.isSelected)
+				}
+			),
 		color = colors.background,
 		shape = flow.bubbleShape,
-		contentColor = colors.foreground,
-		onClick = onClick,
-		enabled = enabled
+		contentColor = colors.foreground
 	) {
 		Column(
 			modifier = Modifier.padding(all = 12.dp),
@@ -123,7 +137,8 @@ private fun PreviewMessageBubbleDownload() {
 			),
 			name = "image.png",
 			bytesTotal = 16 * 1024,
-			onClick = {}
+			onClick = {},
+			onSetSelected = {}
 		)
 	}
 }
@@ -144,7 +159,8 @@ private fun PreviewMessageBubbleDownloadProgress() {
 			bytesTotal = 16 * 1024,
 			bytesDownloaded = 12 * 1024,
 			isDownloading = true,
-			onClick = {}
+			onClick = {},
+			onSetSelected = {}
 		)
 	}
 }

@@ -229,6 +229,9 @@ fun MessageInfoListEntry(
 								date = Date(messageInfo.date),
 								onClick = { uri ->
 									IntentHelper.launchUri(context, uri)
+								},
+								onSetSelected = { selected ->
+									selectionState.setSelectionAttachmentID(attachment.localID, selected)
 								}
 							)
 						} else {
@@ -237,6 +240,9 @@ fun MessageInfoListEntry(
 								name = attachment.computedFileName ?: "",
 								onClick = {
 									IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+								},
+								onSetSelected = { selected ->
+									selectionState.setSelectionAttachmentID(attachment.localID, selected)
 								}
 							)
 						}
@@ -270,7 +276,10 @@ fun MessageInfoListEntry(
 								//Download the attachment
 								NetworkState.downloadAttachment(connectionManager, messageInfo, attachment)
 							},
-							enabled = downloadState == null
+							enabled = downloadState == null,
+							onSetSelected = { selected ->
+								selectionState.setSelectionAttachmentID(attachment.localID, selected)
+							}
 						)
 					}
 				}

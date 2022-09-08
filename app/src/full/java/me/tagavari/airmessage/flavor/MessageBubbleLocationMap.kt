@@ -1,9 +1,14 @@
 package me.tagavari.airmessage.flavor
 
 import android.os.Bundle
+import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
@@ -27,7 +32,8 @@ import me.tagavari.airmessage.util.LatLngInfo
 @Composable
 fun MessageBubbleLocationMap(
 	modifier: Modifier = Modifier,
-	coords: LatLngInfo
+	coords: LatLngInfo,
+	highlight: Color? = null
 ) {
 	val context = LocalContext.current
 	val latLng = LatLng(coords.latitude, coords.longitude)
@@ -46,17 +52,26 @@ fun MessageBubbleLocationMap(
 	}
 	
 	val scope = rememberCoroutineScope()
-	AndroidView(
-		factory = { mapView },
-		modifier = modifier,
-		update = { map ->
-			scope.launch {
-				val googleMap = map.awaitMap()
-				googleMap.addMarker { position(latLng) }
-				googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16F))
+	Box(modifier = modifier) {
+		AndroidView(
+			factory = { mapView },
+			update = { map ->
+				scope.launch {
+					val googleMap = map.awaitMap()
+					googleMap.addMarker { position(latLng) }
+					googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16F))
+				}
 			}
+		)
+		
+		highlight?.let { highlightColor ->
+			Box(
+				modifier = Modifier
+					.background(highlightColor)
+					.fillMaxSize()
+			)
 		}
-	)
+	}
 }
 
 @Composable

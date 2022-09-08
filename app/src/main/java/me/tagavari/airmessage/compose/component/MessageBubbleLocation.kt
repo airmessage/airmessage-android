@@ -2,8 +2,9 @@ package me.tagavari.airmessage.compose.component
 
 import android.net.Uri
 import android.text.format.DateFormat
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -22,13 +23,14 @@ import me.tagavari.airmessage.util.MessagePartFlow
 import java.io.File
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleLocation(
 	flow: MessagePartFlow,
 	file: File,
 	date: Date,
-	onClick: (Uri) -> Unit
+	onClick: (Uri) -> Unit,
+	onSetSelected: (Boolean) -> Unit
 ) {
 	val context = LocalContext.current
 	val dateFormatted = remember(date) {
@@ -42,14 +44,24 @@ fun MessageBubbleLocation(
 	val colors = flow.colors
 	
 	Surface(
+		modifier = Modifier
+			.combinedClickable(
+				onClick = {
+					if(flow.isSelected) {
+						onSetSelected(false)
+					} else {
+						locationData?.let {
+							onClick(it.uri)
+						}
+					}
+				},
+				onLongClick = {
+					onSetSelected(!flow.isSelected)
+				}
+			),
 		color = colors.background,
 		shape = flow.bubbleShape,
-		contentColor = colors.foreground,
-		onClick = {
-			locationData?.let {
-				onClick(it.uri)
-			}
-		}
+		contentColor = colors.foreground
 	) {
 		Column(
 			modifier = Modifier.width(256.dp),
@@ -57,7 +69,8 @@ fun MessageBubbleLocation(
 			Box(modifier = Modifier.height(200.dp)) {
 				locationData?.let { data ->
 					MessageBubbleLocationMap(
-						coords = data.coords
+						coords = data.coords,
+						highlight = if(flow.isSelected) flow.colors.background.copy(alpha = 0.5F) else null
 					)
 				}
 			}

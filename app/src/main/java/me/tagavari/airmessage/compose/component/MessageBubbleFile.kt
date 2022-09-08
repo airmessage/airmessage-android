@@ -1,9 +1,14 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material3.*
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -16,21 +21,34 @@ import me.tagavari.airmessage.util.MessagePartFlow
 /**
  * A message bubble that displays a generic attachment file
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleFile(
 	flow: MessagePartFlow,
 	name: String,
-	onClick: () -> Unit
+	onClick: () -> Unit,
+	onSetSelected: (Boolean) -> Unit
 ) {
 	val colors = flow.colors
 	
 	Surface(
-		modifier = Modifier.widthIn(max = 256.dp),
+		modifier = Modifier
+			.widthIn(max = 256.dp)
+			.combinedClickable(
+				onClick = {
+					if(flow.isSelected) {
+						onSetSelected(false)
+					} else {
+						onClick()
+					}
+				},
+				onLongClick = {
+					onSetSelected(!flow.isSelected)
+				}
+			),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground,
-		onClick = onClick
 	) {
 		Column(
 			modifier = Modifier.padding(all = 12.dp),
@@ -69,7 +87,8 @@ private fun PreviewMessageBubbleFile() {
 				tintRatio = 0F
 			),
 			name = "image.png",
-			onClick = {}
+			onClick = {},
+			onSetSelected = {}
 		)
 	}
 }
