@@ -217,6 +217,9 @@ fun MessageInfoListEntry(
 											playbackManager.play(key = attachmentFile, Uri.fromFile(attachmentFile))
 										}
 									}
+								},
+								onSetSelected = { selected ->
+									selectionState.setSelectionAttachmentID(attachment.localID, selected)
 								}
 							)
 						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation)) {

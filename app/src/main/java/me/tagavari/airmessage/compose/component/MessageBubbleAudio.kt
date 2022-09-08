@@ -2,6 +2,8 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.format.DateUtils
 import android.util.LruCache
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -29,13 +31,14 @@ private val audioPreviewCache = object : LruCache<File, AudioPreviewData>(1024 *
 			= Long.SIZE_BYTES + (value.amplitude.size * Int.SIZE_BYTES)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleAudio(
 	flow: MessagePartFlow,
 	file: File,
 	audioPlaybackState: AudioPlaybackState,
-	onTogglePlayback: () -> Unit
+	onTogglePlayback: () -> Unit,
+	onSetSelected: (Boolean) -> Unit
 ) {
 	val colors = flow.colors
 	
@@ -43,11 +46,24 @@ fun MessageBubbleAudio(
 		LocalMinimumTouchTargetEnforcement provides false
 	) {
 		Surface(
-			modifier = Modifier.width(200.dp),
+			modifier = Modifier
+				.width(200.dp)
+				.combinedClickable(
+					onClick = {
+						if(flow.isSelected) {
+							onSetSelected(false)
+							
+						} else {
+							onTogglePlayback()
+						}
+					},
+					onLongClick = {
+						onSetSelected(!flow.isSelected)
+					}
+				),
 			color = colors.background,
 			shape = flow.bubbleShape,
-			contentColor = colors.foreground,
-			onClick = onTogglePlayback
+			contentColor = colors.foreground
 		) {
 			Row(
 				modifier = Modifier
@@ -138,7 +154,8 @@ private fun PreviewMessageBubbleAudio() {
 			),
 			file = File(""),
 			audioPlaybackState = AudioPlaybackState.Stopped,
-			onTogglePlayback = {}
+			onTogglePlayback = {},
+			onSetSelected = {}
 		)
 	}
 }
