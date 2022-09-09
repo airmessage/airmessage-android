@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import com.google.android.gms.auth.api.signin.*
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
@@ -50,6 +51,10 @@ object FirebaseAuthBridge {
 	 */
 	@Composable
 	fun rememberGoogleSignIn(onResult: (Result<Unit>) -> Unit): () -> Unit {
+		if(LocalInspectionMode.current) {
+			return {}
+		}
+		
 		val activity = LocalContext.current.findActivity()
 		val scope = rememberCoroutineScope()
 		
