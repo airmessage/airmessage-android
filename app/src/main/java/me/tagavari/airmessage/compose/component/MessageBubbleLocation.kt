@@ -67,6 +67,7 @@ fun MessageBubbleLocation(
 			Box(modifier = Modifier.height(200.dp)) {
 				locationData?.let { data ->
 					MessageBubbleLocationMap(
+						modifier = Modifier.fillMaxSize(),
 						coords = data.coords,
 						highlight = if(flow.isSelected) flow.colors.background.copy(alpha = 0.5F) else null
 					)
