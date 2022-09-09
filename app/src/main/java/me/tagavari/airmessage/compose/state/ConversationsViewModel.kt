@@ -68,7 +68,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						list.remove(conversation)
 						val updatedConversation = conversation.copy(messagePreview = preview)
 						val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
-						list[insertionIndex] = updatedConversation
+						list.add(insertionIndex, updatedConversation)
 					}
 				})
 			}
@@ -89,7 +89,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						val updatedConversation = (conversation ?: transferredConversation.clientConversation)
 							.copy(messagePreview = preview)
 						val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
-						list[insertionIndex] = updatedConversation
+						list.add(insertionIndex, updatedConversation)
 					}
 					
 					//Handle new conversations
@@ -103,7 +103,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						)
 						
 						val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
-						list[insertionIndex] = updatedConversation
+						list.add(insertionIndex, updatedConversation)
 					}
 				})
 			}
@@ -169,7 +169,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						draftUpdateTime = event.updateTime
 					)
 					val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
-					list[insertionIndex] = updatedConversation
+					list.add(insertionIndex, updatedConversation)
 					
 				})
 			}
@@ -192,7 +192,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						draftUpdateTime = event.updateTime
 					)
 					val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
-					list[insertionIndex] = updatedConversation
+					list.add(insertionIndex, updatedConversation)
 					
 				})
 			}
@@ -209,7 +209,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						draftUpdateTime = System.currentTimeMillis()
 					)
 					val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
-					list[insertionIndex] = updatedConversation
+					list.add(insertionIndex, updatedConversation)
 					
 				})
 			}
