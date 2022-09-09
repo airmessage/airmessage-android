@@ -84,9 +84,15 @@ class OnboardingCompose : ComponentActivity() {
 					}
 				}
 				
+				//Navigates back to the welcome screen from a child screen
+				fun navigateWelcome() {
+					screen = OnboardingComposeScreen.WELCOME
+					connectionManager?.disconnect(ConnectionErrorCode.user)
+				}
+				
 				//Navigate backwards when back is pressed
 				BackHandler(enabled = screen != OnboardingComposeScreen.WELCOME) {
-					screen = OnboardingComposeScreen.WELCOME
+					navigateWelcome()
 				}
 				
 				MaterialSharedAxisX(
@@ -146,10 +152,7 @@ class OnboardingCompose : ComponentActivity() {
 								onReconnect = {
 									connectionManager?.connect()
 								},
-								onCancel = {
-									screen = OnboardingComposeScreen.WELCOME
-									connectionManager?.disconnect(ConnectionErrorCode.user)
-								}
+								onCancel = ::navigateWelcome
 							)
 						}
 						OnboardingComposeScreen.MANUAL -> {
@@ -193,9 +196,7 @@ class OnboardingCompose : ComponentActivity() {
 								onReset = {
 									connectionManager?.disconnect(ConnectionErrorCode.user)
 								},
-								onCancel = {
-									screen = OnboardingComposeScreen.WELCOME
-								},
+								onCancel = ::navigateWelcome,
 								onFinish = { connectionParams ->
 									//Save the connection data to shared preferences
 									SharedPreferencesManager.setProxyType(this@OnboardingCompose, ProxyType.direct)
