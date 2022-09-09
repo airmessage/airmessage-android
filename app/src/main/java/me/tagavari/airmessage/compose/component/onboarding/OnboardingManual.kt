@@ -37,8 +37,9 @@ import me.tagavari.airmessage.helper.ErrorDetailsAction
 import me.tagavari.airmessage.helper.ErrorDetailsHelper
 import me.tagavari.airmessage.helper.IntentHelper
 import me.tagavari.airmessage.util.ConnectionParams
+import soup.compose.material.motion.MaterialSharedAxisY
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun OnboardingManual(
 	modifier: Modifier = Modifier,
@@ -186,102 +187,113 @@ fun OnboardingManual(
 				}
 			)
 			
-			when(state) {
-				is OnboardingManualState.Idle, is OnboardingManualState.Error -> {
-					if(state is OnboardingManualState.Error) {
-						val errorDetails = remember(state.errorCode) {
-							ErrorDetailsHelper.getErrorDetails(state.errorCode, true)
-						}
-						
-						val context = LocalContext.current
-						fun recoverError() {
-							val button = errorDetails.button ?: return
-							when(button.action) {
-								ErrorDetailsAction.UPDATE_APP -> {
-									Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
-										.let { context.startActivity(it) }
+			MaterialSharedAxisY(
+				targetState = state,
+				forward = state is OnboardingManualState.Connecting || state is OnboardingManualState.Connected
+			) { state ->
+				Column(
+					modifier = Modifier
+						.fillMaxWidth(),
+					verticalArrangement = Arrangement.spacedBy(20.dp)
+				) {
+					when(state) {
+						is OnboardingManualState.Idle, is OnboardingManualState.Error -> {
+							if(state is OnboardingManualState.Error) {
+								val errorDetails = remember(state.errorCode) {
+									ErrorDetailsHelper.getErrorDetails(state.errorCode, true)
 								}
-								ErrorDetailsAction.UPDATE_SERVER -> {
-									IntentHelper.launchUri(context, ExternalLinkConstants.serverUpdateAddress)
+								
+								val context = LocalContext.current
+								fun recoverError() {
+									val button = errorDetails.button ?: return
+									when(button.action) {
+										ErrorDetailsAction.UPDATE_APP -> {
+											Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+												.let { context.startActivity(it) }
+										}
+										ErrorDetailsAction.UPDATE_SERVER -> {
+											IntentHelper.launchUri(context, ExternalLinkConstants.serverUpdateAddress)
+										}
+										else -> {}
+									}
 								}
-								else -> {}
+								
+								AlertCard(
+									icon = {
+										Icon(
+											imageVector = Icons.Outlined.CloudOff,
+											contentDescription = null
+										)
+									},
+									message = {
+										Text(stringResource(errorDetails.label))
+									},
+									button = errorDetails.button?.let { button -> {
+										TextButton(onClick = { recoverError() }) {
+											Text(stringResource(button.label))
+										}
+									} }
+								)
+							}
+							
+							Row(
+								modifier = Modifier.fillMaxWidth(),
+								horizontalArrangement = Arrangement.End
+							) {
+								Button(
+									onClick = ::submitInput,
+									enabled = connectionParams != null
+								) {
+									Text(stringResource(R.string.action_checkconnection))
+								}
 							}
 						}
-						
-						AlertCard(
-							icon = {
-								Icon(
-									imageVector = Icons.Outlined.CloudOff,
-									contentDescription = null
+						is OnboardingManualState.Connecting -> {
+							Column {
+								Text(
+									text = stringResource(R.string.progress_connectionverification),
+									color = MaterialTheme.colorScheme.onSurfaceVariant
 								)
-							},
-							message = {
-								Text(stringResource(errorDetails.label))
-							},
-							button = errorDetails.button?.let { button -> {
-								TextButton(onClick = { recoverError() }) {
-									Text(stringResource(button.label))
+								
+								Spacer(modifier = Modifier.height(8.dp))
+								
+								LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+							}
+						}
+						is OnboardingManualState.Connected -> {
+							Card(modifier = Modifier.fillMaxWidth()) {
+								Row(modifier = Modifier.padding(16.dp)) {
+									Icon(
+										imageVector = Icons.Outlined.CheckCircleOutline,
+										contentDescription = null
+									)
+									
+									Spacer(modifier = Modifier.width(8.dp))
+									
+									Text(
+										modifier = modifier.padding(top = 1.dp),
+										text = state.deviceName?.let { name -> stringResource(R.string.message_connection_connectedcomputer, name) }
+											?: stringResource(R.string.message_connection_connected)
+									)
 								}
-							} }
-						)
-					}
-					
-					Row(
-						modifier = Modifier.fillMaxWidth(),
-						horizontalArrangement = Arrangement.End
-					) {
-						Button(
-							onClick = ::submitInput,
-							enabled = connectionParams != null
-						) {
-							Text(stringResource(R.string.action_checkconnection))
-						}
-					}
-				}
-				is OnboardingManualState.Connecting -> {
-					Column {
-						Text(
-							text = stringResource(R.string.progress_connectionverification),
-							color = MaterialTheme.colorScheme.onSurfaceVariant
-						)
-						
-						Spacer(modifier = Modifier.height(8.dp))
-						
-						LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-					}
-				}
-				is OnboardingManualState.Connected -> {
-					Card(modifier = Modifier.fillMaxWidth()) {
-						Row(modifier = Modifier.padding(16.dp)) {
-							Icon(
-								imageVector = Icons.Outlined.CheckCircleOutline,
-								contentDescription = null
-							)
+							}
 							
-							Spacer(modifier = Modifier.width(8.dp))
-							
-							Text(
-								modifier = modifier.padding(top = 1.dp),
-								text = state.deviceName?.let { name -> stringResource(R.string.message_connection_connectedcomputer, name) }
-									?: stringResource(R.string.message_connection_connected)
-							)
-						}
-					}
-					
-					Row(
-						modifier = Modifier.fillMaxWidth(),
-						horizontalArrangement = Arrangement.End
-					) {
-						TextButton(onClick = onReset) {
-							Text(stringResource(R.string.action_back))
-						}
-						
-						Spacer(modifier = Modifier.width(20.dp))
-						
-						Button(onClick = {
-							connectionParams?.let(onFinish)
-						}) {
-							Text(stringResource(R.string.action_done))
+							Row(
+								modifier = Modifier.fillMaxWidth(),
+								horizontalArrangement = Arrangement.End
+							) {
+								TextButton(onClick = onReset) {
+									Text(stringResource(R.string.action_back))
+								}
+								
+								Spacer(modifier = Modifier.width(20.dp))
+								
+								Button(onClick = {
+									connectionParams?.let(onFinish)
+								}) {
+									Text(stringResource(R.string.action_done))
+								}
+							}
 						}
 					}
 				}
