@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import android.content.pm.PackageManager
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,18 +19,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
-import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
 
 @Composable
 fun StatusCardColumn() {
 	val context = LocalContext.current
-	
-	val scope = rememberCoroutineScope()
 	
 	Column(
 		modifier = Modifier.padding(16.dp),
@@ -53,7 +50,9 @@ fun StatusCardColumn() {
 					ContextCompat.checkSelfPermission(context, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 				)
 			}
-			val requestPermissionLauncher = rememberAsyncLauncherForActivityResult(ActivityResultContracts.RequestPermission())
+			val requestPermissionLauncher = rememberLauncherForActivityResult(
+				ActivityResultContracts.RequestPermission()
+			) { notificationPermissionGranted = it}
 			
 			if(!notificationPermissionGranted) {
 				AlertCard(
@@ -68,9 +67,7 @@ fun StatusCardColumn() {
 					},
 					button = {
 						TextButton(onClick = {
-							scope.launch {
-								notificationPermissionGranted = requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-							}
+							requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
 						}) {
 							Text(stringResource(R.string.action_enable))
 						}
