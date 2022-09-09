@@ -39,7 +39,7 @@ fun ConnectionInputSupportingText(
 					contentDescription = null
 				)
 				
-				Spacer(modifier = Modifier.width(4.dp))
+				Spacer(modifier = Modifier.width(2.dp))
 				
 				Text(
 					text = stringResource(R.string.message_endpoint_connected),
@@ -56,7 +56,7 @@ fun ConnectionInputSupportingText(
 					contentDescription = null
 				)
 				
-				Spacer(modifier = Modifier.width(4.dp))
+				Spacer(modifier = Modifier.width(2.dp))
 				
 				Text(
 					text = stringResource(R.string.message_endpoint_notreachable),
