@@ -107,6 +107,13 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 					}
 				})
 			}
+			is ReduxEventMessaging.ConversationUnread -> {
+				conversations = Result.success(conversationList.toMutableList().also { list ->
+					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
+					if(index == -1) return
+					list[index] = list[index].clone().apply { unreadMessageCount = event.unreadCount }
+				})
+			}
 			is ReduxEventMessaging.ConversationMember -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
