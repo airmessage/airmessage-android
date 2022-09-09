@@ -11,9 +11,12 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
+import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.Preferences
@@ -24,15 +27,16 @@ import me.tagavari.airmessage.compose.component.onboarding.OnboardingWelcome
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.connection.ConnectionOverride
-import me.tagavari.airmessage.connection.comm5.ProxyConnect
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.enums.ConnectionState
 import me.tagavari.airmessage.enums.ProxyType
+import me.tagavari.airmessage.flavor.FirebaseAuthBridge
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
 import me.tagavari.airmessage.service.ConnectionService
 import me.tagavari.airmessage.service.ConnectionService.ConnectionBinder
+import me.tagavari.airmessage.util.ConnectionParams
 import soup.compose.material.motion.MaterialSharedAxisX
 
 class OnboardingCompose : ComponentActivity() {
@@ -93,16 +97,59 @@ class OnboardingCompose : ComponentActivity() {
 						OnboardingComposeScreen.WELCOME -> {
 							OnboardingWelcome(
 								modifier = Modifier.fillMaxSize(),
-								showGoogle = ProxyConnect.isAvailable,
-								onClickGoogle = { screen = OnboardingComposeScreen.CONNECT },
-								onClickManual = { screen = OnboardingComposeScreen.MANUAL }
+								showGoogle = FirebaseAuthBridge.isSupported,
+								onClickGoogle = {
+									//Start connecting
+									connectionManager?.let { connectionManager ->
+										screen = OnboardingComposeScreen.CONNECT
+										connectionManager.connect()
+									}
+								},
+								onClickManual = {
+									screen = OnboardingComposeScreen.MANUAL
+								}
 							)
 						}
 						OnboardingComposeScreen.CONNECT -> {
+							val connectionState by ReduxEmitterNetwork.connectionStateSubject.subscribeAsState(initial = null)
+							var appliedPassword by remember { mutableStateOf<String?>(null) }
+							
+							LaunchedEffect(Unit) {
+								//Wait for when we become connected
+								ReduxEmitterNetwork.connectionStateSubject.asFlow()
+									.filterIsInstance<ReduxEventConnection.Connected>()
+									.first()
+								
+								//Save the connection data to shared preferences
+								SharedPreferencesManager.setProxyType(this@OnboardingCompose, ProxyType.direct)
+								SharedPreferencesManager.setDirectConnectionPassword(this@OnboardingCompose, appliedPassword)
+								SharedPreferencesManager.setConnectionConfigured(this@OnboardingCompose, true)
+								
+								//Disable the connection on boot
+								Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, false)
+								
+								//Start the conversations activity
+								startActivity(Intent(this@OnboardingCompose, Conversations::class.java))
+								finish()
+							}
+							
 							OnboardingConnect(
 								modifier = Modifier.fillMaxSize(),
-								onEnterPassword = {},
-								onReconnect = {}
+								errorCode = (connectionState as? ReduxEventConnection.Disconnected)?.code,
+								onEnterPassword = { password ->
+									connectionManager?.let { connectionManager ->
+										connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.connect, ConnectionParams.Security(password)))
+										connectionManager.connect()
+										appliedPassword = password
+									}
+								},
+								onReconnect = {
+									connectionManager?.connect()
+								},
+								onCancel = {
+									screen = OnboardingComposeScreen.WELCOME
+									connectionManager?.disconnect(ConnectionErrorCode.user)
+								}
 							)
 						}
 						OnboardingComposeScreen.MANUAL -> {
