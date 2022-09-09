@@ -5,6 +5,7 @@ import android.content.pm.PackageManager
 import android.media.MediaRecorder
 import android.os.Build
 import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
@@ -16,7 +17,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.BuildConfig
-import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import java.io.File
 import java.io.IOException
 import kotlin.time.Duration.Companion.seconds
@@ -27,7 +27,15 @@ private const val TAG = "rememberAudioCapture"
 fun rememberAudioCapture(): AudioCaptureState {
 	val context = LocalContext.current
 	
-	val requestAudioPermission = rememberAsyncLauncherForActivityResult(ActivityResultContracts.RequestPermission())
+	var audioPermissionGranted by remember {
+		mutableStateOf(
+			ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
+					== PackageManager.PERMISSION_GRANTED
+		)
+	}
+	val requestAudioPermission = rememberLauncherForActivityResult(
+		ActivityResultContracts.RequestPermission()
+	) { audioPermissionGranted = it }
 	
 	val mediaRecorder = remember {
 		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -94,8 +102,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 		
 		//Check if we have permission
-		if(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO)
-			!= PackageManager.PERMISSION_GRANTED) {
+		if(!audioPermissionGranted) {
 			requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
 			return false
 		}
