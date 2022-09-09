@@ -41,6 +41,7 @@ fun OnboardingWelcome(
 	Column(
 		modifier = modifier
 			.verticalScroll(rememberScrollState())
+			.systemBarsPadding()
 			.padding(24.dp)
 	) {
 		Spacer(modifier = Modifier.height(30.dp))
