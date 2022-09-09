@@ -281,7 +281,15 @@ fun MessagingScreen(
 					attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
 				}
 			}
-			val requestMedia = rememberMediaRequest()
+			val requestMedia = rememberMediaRequest { uriList ->
+				if(uriList.isNotEmpty()) {
+					viewModel.addQueuedFileBlobs(uriList.map { ReadableBlobUri(it) })
+					
+					scope.launch {
+						attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
+					}
+				}
+			}
 			
 			MessageInputBar(
 				modifier = Modifier
@@ -313,11 +321,7 @@ fun MessagingScreen(
 				},
 				onOpenContentPicker = {
 					scope.launch {
-						val uriList = requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
-						if(uriList.isNotEmpty()) {
-							viewModel.addQueuedFileBlobs(uriList.map { ReadableBlobUri(it) })
-							attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
-						}
+						requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
 					}
 				},
 				collapseButtons = viewModel.collapseInputButtons,
