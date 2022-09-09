@@ -111,6 +111,7 @@ class OnboardingCompose : ComponentActivity() {
 									//Start connecting
 									connectionManager?.let { connectionManager ->
 										screen = OnboardingComposeScreen.CONNECT
+										connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.connect, ConnectionParams.Security(null)))
 										connectionManager.connect()
 									}
 								},
@@ -130,7 +131,8 @@ class OnboardingCompose : ComponentActivity() {
 									.first()
 								
 								//Save the connection data to shared preferences
-								SharedPreferencesManager.setProxyType(this@OnboardingCompose, ProxyType.direct)
+								SharedPreferencesManager.setProxyType(this@OnboardingCompose, ProxyType.connect)
+								@Suppress("BlockingMethodInNonBlockingContext")
 								SharedPreferencesManager.setDirectConnectionPassword(this@OnboardingCompose, appliedPassword)
 								SharedPreferencesManager.setConnectionConfigured(this@OnboardingCompose, true)
 								
