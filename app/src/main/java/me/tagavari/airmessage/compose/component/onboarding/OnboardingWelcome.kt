@@ -45,7 +45,12 @@ fun OnboardingWelcome(
 	val snackbarHostState = remember { SnackbarHostState() }
 	
 	Scaffold(
-		snackbarHost = { SnackbarHost(snackbarHostState) },
+		snackbarHost = {
+			SnackbarHost(
+				hostState = snackbarHostState,
+				modifier = Modifier.systemBarsPadding()
+			)
+		},
 		content = { paddingValues ->
 			Column(
 				modifier = modifier
@@ -176,7 +181,9 @@ fun OnboardingWelcome(
 						val context = LocalContext.current
 						
 						val launchGoogleSignIn = FirebaseAuthBridge.rememberGoogleSignIn { result ->
-							result.onFailure {
+							result.onFailure { exception ->
+								exception.printStackTrace()
+								
 								scope.launch {
 									snackbarHostState.showSnackbar(context.resources.getString(R.string.message_signinerror))
 								}

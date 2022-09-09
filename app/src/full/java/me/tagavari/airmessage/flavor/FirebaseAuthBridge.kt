@@ -72,8 +72,8 @@ object FirebaseAuthBridge {
 			//Propagate failures upwards
 			result.onFailure { exception ->
 				//Ignore if the user cancels
-				if(exception is ApiException
-					&& exception.statusCode != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
+				if(exception !is ApiException
+					|| exception.statusCode != GoogleSignInStatusCodes.SIGN_IN_CANCELLED) {
 					onResult(Result.failure(exception))
 				}
 				
