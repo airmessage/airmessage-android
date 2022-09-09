@@ -15,6 +15,7 @@ interface AsyncActivityResultLauncher<I, O> {
  * function as a suspending function rather than a callback
  */
 @Composable
+@Deprecated("Doesn't work across configuration changes")
 fun <I, O> rememberAsyncLauncherForActivityResult(contract: ActivityResultContract<I, O>): AsyncActivityResultLauncher<I, O> {
 	var launcherDeferred by remember { mutableStateOf<CompletableDeferred<O>?>(null) }
 	val launcher = rememberLauncherForActivityResult(contract = contract) { result ->
