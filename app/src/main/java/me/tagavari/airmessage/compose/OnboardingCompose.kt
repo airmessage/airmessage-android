@@ -9,7 +9,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.runtime.rxjava3.subscribeAsState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -96,6 +98,7 @@ class OnboardingCompose : ComponentActivity() {
 				}
 				
 				MaterialSharedAxisX(
+					modifier = Modifier.background(MaterialTheme.colorScheme.background),
 					targetState = screen,
 					forward = screen != OnboardingComposeScreen.WELCOME,
 				) { animatedScreen ->
