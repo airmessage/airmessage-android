@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.component.onboarding
 
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
@@ -45,33 +46,36 @@ fun OnboardingManual(
 	onConnect: (ConnectionParams.Direct) -> Unit,
 	onReset: () -> Unit,
 	onCancel: () -> Unit,
-	onFinish: () -> Unit
+	onFinish: (ConnectionParams.Direct) -> Unit
 ) {
 	var inputAddress by remember { mutableStateOf("") }
 	var inputFallbackAddress by remember { mutableStateOf("") }
 	var inputPassword by remember { mutableStateOf("") }
 	
-	val inputOK by remember {
+	val connectionParams by remember {
 		derivedStateOf {
-			RegexConstants.internetAddress.matcher(inputAddress).find()
-					&& (inputFallbackAddress.isEmpty() || RegexConstants.internetAddress.matcher(inputFallbackAddress).find())
-					&& inputPassword.isNotEmpty()
+			//Return null if the user input isn't valid
+			if(!RegexConstants.internetAddress.matcher(inputAddress).find()
+				|| (inputFallbackAddress.isNotEmpty() && !RegexConstants.internetAddress.matcher(inputFallbackAddress).find())
+				|| inputPassword.isEmpty()) return@derivedStateOf null
+			
+			ConnectionParams.Direct(
+				address = inputAddress,
+				fallbackAddress = inputFallbackAddress.ifBlank { null },
+				password = inputPassword
+			)
 		}
 	}
 	
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
 	fun submitInput() {
-		//Ignore if the input is invalid
-		if(!inputOK) return
-		
-		//Submit the input
-		val params = ConnectionParams.Direct(
-			address = inputAddress,
-			fallbackAddress = inputFallbackAddress.ifBlank { null },
-			password = inputPassword
-		)
-		onConnect(params)
+		connectionParams?.let(onConnect)
+	}
+	
+	//Whether input fields can be modified
+	val isEditable = remember(state) {
+		state is OnboardingManualState.Idle || state is OnboardingManualState.Error
 	}
 	
 	Scaffold(
@@ -105,7 +109,7 @@ fun OnboardingManual(
 					value = inputAddress,
 					onValueChange = { inputAddress = it },
 					singleLine = true,
-					enabled = state == OnboardingManualState.Idle,
+					enabled = isEditable,
 					label = {
 						Text(stringResource(R.string.message_setup_connect_address))
 					},
@@ -130,7 +134,7 @@ fun OnboardingManual(
 					value = inputFallbackAddress,
 					onValueChange = { inputFallbackAddress = it },
 					singleLine = true,
-					enabled = state == OnboardingManualState.Idle,
+					enabled = isEditable,
 					label = {
 						Text(stringResource(R.string.message_setup_connect_fallbackaddress))
 					},
@@ -155,7 +159,7 @@ fun OnboardingManual(
 				value = inputPassword,
 				onValueChange = { inputPassword = it },
 				singleLine = true,
-				enabled = state == OnboardingManualState.Idle,
+				enabled = isEditable,
 				label = {
 					Text(stringResource(R.string.message_setup_connect_password))
 				},
@@ -228,7 +232,7 @@ fun OnboardingManual(
 					) {
 						Button(
 							onClick = ::submitInput,
-							enabled = inputOK
+							enabled = connectionParams != null
 						) {
 							Text(stringResource(R.string.action_checkconnection))
 						}
@@ -274,7 +278,9 @@ fun OnboardingManual(
 						
 						Spacer(modifier = Modifier.width(20.dp))
 						
-						Button(onClick = onFinish) {
+						Button(onClick = {
+							connectionParams?.let(onFinish)
+						}) {
 							Text(stringResource(R.string.action_done))
 						}
 					}
