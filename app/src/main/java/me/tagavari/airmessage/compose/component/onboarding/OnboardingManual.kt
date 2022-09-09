@@ -4,9 +4,11 @@ import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.outlined.CheckCircleOutline
@@ -15,8 +17,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -31,203 +35,248 @@ import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.helper.ErrorDetailsAction
 import me.tagavari.airmessage.helper.ErrorDetailsHelper
 import me.tagavari.airmessage.helper.IntentHelper
+import me.tagavari.airmessage.util.ConnectionParams
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OnboardingManual(
 	modifier: Modifier = Modifier,
 	state: OnboardingManualState,
-	onConnect: () -> Unit,
+	onConnect: (ConnectionParams.Direct) -> Unit,
 	onReset: () -> Unit,
-	onFinish: () -> Unit,
+	onCancel: () -> Unit,
+	onFinish: () -> Unit
 ) {
 	var inputAddress by remember { mutableStateOf("") }
 	var inputFallbackAddress by remember { mutableStateOf("") }
 	var inputPassword by remember { mutableStateOf("") }
 	
-	Column(
-		modifier = modifier
-			.verticalScroll(rememberScrollState())
-			.padding(24.dp),
-		verticalArrangement = Arrangement.spacedBy(20.dp)
-	) {
-		//Server address
-		Column(modifier = Modifier.fillMaxWidth()) {
-			TextField(
-				modifier = Modifier.fillMaxWidth(),
-				value = inputAddress,
-				onValueChange = { inputAddress = it },
-				singleLine = true,
-				enabled = state == OnboardingManualState.Idle,
-				label = {
-					Text(stringResource(R.string.message_setup_connect_address))
-				},
-				keyboardOptions = KeyboardOptions(
-					keyboardType = KeyboardType.Uri
-				)
-			)
-			
-			InputSupportingTextConnection(
-				modifier = Modifier.align(Alignment.End),
-				show = state is OnboardingManualState.Connected,
-				connected = state is OnboardingManualState.Connected && !state.fallback
-			)
+	val inputOK by remember {
+		derivedStateOf {
+			RegexConstants.internetAddress.matcher(inputAddress).find()
+					&& (inputFallbackAddress.isEmpty() || RegexConstants.internetAddress.matcher(inputFallbackAddress).find())
+					&& inputPassword.isNotEmpty()
 		}
+	}
+	
+	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
+	
+	fun submitInput() {
+		//Ignore if the input is invalid
+		if(!inputOK) return
 		
-		//Fallback address
-		Column(modifier = Modifier.fillMaxWidth()) {
-			TextField(
-				modifier = Modifier.fillMaxWidth(),
-				value = inputFallbackAddress,
-				onValueChange = { inputFallbackAddress = it },
-				singleLine = true,
-				enabled = state == OnboardingManualState.Idle,
-				label = {
-					Text(stringResource(R.string.message_setup_connect_fallbackaddress))
-				},
-				keyboardOptions = KeyboardOptions(
-					keyboardType = KeyboardType.Uri
-				)
-			)
-			
-			InputSupportingTextConnection(
-				modifier = Modifier.align(Alignment.End),
-				show = state is OnboardingManualState.Connected && state.fallback,
-				connected = true
-			)
-		}
-		
-		//Password
-		var passwordHidden by remember { mutableStateOf(true) }
-		TextField(
-			modifier = Modifier.fillMaxWidth(),
-			value = inputPassword,
-			onValueChange = { inputPassword = it },
-			singleLine = true,
-			enabled = state == OnboardingManualState.Idle,
-			label = {
-				Text(stringResource(R.string.message_setup_connect_password))
-			},
-			visualTransformation = if(passwordHidden) PasswordVisualTransformation() else VisualTransformation.None,
-			keyboardOptions = KeyboardOptions(
-				keyboardType = KeyboardType.Password
-			),
-			trailingIcon = {
-				IconButton(onClick = { passwordHidden = !passwordHidden }) {
-					Icon(
-						imageVector = if(passwordHidden) Icons.Filled.Visibility
-						else Icons.Filled.VisibilityOff,
-						contentDescription = stringResource(
-							if(passwordHidden) R.string.action_showpassword
-							else R.string.action_hidepassword
-						)
-					)
-				}
-			}
+		//Submit the input
+		val params = ConnectionParams.Direct(
+			address = inputAddress,
+			fallbackAddress = inputFallbackAddress.ifBlank { null },
+			password = inputPassword
 		)
-		
-		when(state) {
-			is OnboardingManualState.Idle, is OnboardingManualState.Error -> {
-				if(state is OnboardingManualState.Error) {
-					val errorDetails = remember(state.errorCode) {
-						ErrorDetailsHelper.getErrorDetails(state.errorCode, true)
+		onConnect(params)
+	}
+	
+	Scaffold(
+		modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+		topBar = {
+			TopAppBar(
+				title = { Text(stringResource(R.string.screen_manualconfiguration)) },
+				navigationIcon = {
+					IconButton(onClick = onCancel) {
+						Icon(
+							imageVector = Icons.Filled.Close,
+							contentDescription = stringResource(id = R.string.action_close)
+						)
+					}
+				},
+				scrollBehavior = scrollBehavior
+			)
+		}
+	) { paddingValues ->
+		Column(
+			modifier = Modifier
+				.verticalScroll(rememberScrollState())
+				.padding(paddingValues)
+				.padding(24.dp),
+			verticalArrangement = Arrangement.spacedBy(20.dp)
+		) {
+			//Server address
+			Column(modifier = Modifier.fillMaxWidth()) {
+				TextField(
+					modifier = Modifier.fillMaxWidth(),
+					value = inputAddress,
+					onValueChange = { inputAddress = it },
+					singleLine = true,
+					enabled = state == OnboardingManualState.Idle,
+					label = {
+						Text(stringResource(R.string.message_setup_connect_address))
+					},
+					keyboardOptions = KeyboardOptions(
+						keyboardType = KeyboardType.Uri,
+						imeAction = ImeAction.Next,
+						autoCorrect = false
+					)
+				)
+				
+				ConnectionInputSupportingText(
+					modifier = Modifier.align(Alignment.End),
+					show = state is OnboardingManualState.Connected,
+					connected = state is OnboardingManualState.Connected && !state.fallback
+				)
+			}
+			
+			//Fallback address
+			Column(modifier = Modifier.fillMaxWidth()) {
+				TextField(
+					modifier = Modifier.fillMaxWidth(),
+					value = inputFallbackAddress,
+					onValueChange = { inputFallbackAddress = it },
+					singleLine = true,
+					enabled = state == OnboardingManualState.Idle,
+					label = {
+						Text(stringResource(R.string.message_setup_connect_fallbackaddress))
+					},
+					keyboardOptions = KeyboardOptions(
+						keyboardType = KeyboardType.Uri,
+						imeAction = ImeAction.Next,
+						autoCorrect = false
+					)
+				)
+				
+				ConnectionInputSupportingText(
+					modifier = Modifier.align(Alignment.End),
+					show = state is OnboardingManualState.Connected && state.fallback,
+					connected = true
+				)
+			}
+			
+			//Password
+			var passwordHidden by remember { mutableStateOf(true) }
+			TextField(
+				modifier = Modifier.fillMaxWidth(),
+				value = inputPassword,
+				onValueChange = { inputPassword = it },
+				singleLine = true,
+				enabled = state == OnboardingManualState.Idle,
+				label = {
+					Text(stringResource(R.string.message_setup_connect_password))
+				},
+				visualTransformation = if(passwordHidden) PasswordVisualTransformation() else VisualTransformation.None,
+				keyboardOptions = KeyboardOptions(
+					keyboardType = KeyboardType.Password,
+					imeAction = ImeAction.Go,
+					autoCorrect = false
+				),
+				keyboardActions = KeyboardActions(
+					onGo = { submitInput() }
+				),
+				trailingIcon = {
+					IconButton(onClick = { passwordHidden = !passwordHidden }) {
+						Icon(
+							imageVector = if(passwordHidden) Icons.Filled.Visibility
+							else Icons.Filled.VisibilityOff,
+							contentDescription = stringResource(
+								if(passwordHidden) R.string.action_showpassword
+								else R.string.action_hidepassword
+							)
+						)
+					}
+				}
+			)
+			
+			when(state) {
+				is OnboardingManualState.Idle, is OnboardingManualState.Error -> {
+					if(state is OnboardingManualState.Error) {
+						val errorDetails = remember(state.errorCode) {
+							ErrorDetailsHelper.getErrorDetails(state.errorCode, true)
+						}
+						
+						val context = LocalContext.current
+						fun recoverError() {
+							val button = errorDetails.button ?: return
+							when(button.action) {
+								ErrorDetailsAction.UPDATE_APP -> {
+									Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
+										.let { context.startActivity(it) }
+								}
+								ErrorDetailsAction.UPDATE_SERVER -> {
+									IntentHelper.launchUri(context, ExternalLinkConstants.serverUpdateAddress)
+								}
+								else -> {}
+							}
+						}
+						
+						AlertCard(
+							icon = {
+								Icon(
+									imageVector = Icons.Outlined.CloudOff,
+									contentDescription = null
+								)
+							},
+							message = {
+								Text(stringResource(errorDetails.label))
+							},
+							button = errorDetails.button?.let { button -> {
+								TextButton(onClick = { recoverError() }) {
+									Text(stringResource(button.label))
+								}
+							} }
+						)
 					}
 					
-					val context = LocalContext.current
-					fun recoverError() {
-						val button = errorDetails.button ?: return
-						when(button.action) {
-							ErrorDetailsAction.UPDATE_APP -> {
-								Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
-									.let { context.startActivity(it) }
-							}
-							ErrorDetailsAction.UPDATE_SERVER -> {
-								IntentHelper.launchUri(context, ExternalLinkConstants.serverUpdateAddress)
-							}
-							else -> {}
+					Row(
+						modifier = Modifier.fillMaxWidth(),
+						horizontalArrangement = Arrangement.End
+					) {
+						Button(
+							onClick = ::submitInput,
+							enabled = inputOK
+						) {
+							Text(stringResource(R.string.action_checkconnection))
+						}
+					}
+				}
+				is OnboardingManualState.Connecting -> {
+					Column {
+						Text(
+							text = stringResource(R.string.progress_connectionverification),
+							color = MaterialTheme.colorScheme.onSurfaceVariant
+						)
+						
+						Spacer(modifier = Modifier.height(8.dp))
+						
+						LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+					}
+				}
+				is OnboardingManualState.Connected -> {
+					Card(modifier = Modifier.fillMaxWidth()) {
+						Row(modifier = Modifier.padding(16.dp)) {
+							Icon(
+								imageVector = Icons.Outlined.CheckCircleOutline,
+								contentDescription = null
+							)
+							
+							Spacer(modifier = Modifier.width(8.dp))
+							
+							Text(
+								modifier = modifier.padding(top = 1.dp),
+								text = state.deviceName?.let { name -> stringResource(R.string.message_connection_connectedcomputer, name) }
+									?: stringResource(R.string.message_connection_connected)
+							)
 						}
 					}
 					
-					AlertCard(
-						icon = {
-							Icon(
-								imageVector = Icons.Outlined.CloudOff,
-								contentDescription = null
-							)
-						},
-						message = {
-							Text(stringResource(errorDetails.label))
-						},
-						button = errorDetails.button?.let { button -> {
-							TextButton(onClick = { recoverError() }) {
-								Text(stringResource(button.label))
-							}
-						} }
-					)
-				}
-				
-				val inputOK by remember {
-					derivedStateOf {
-						RegexConstants.internetAddress.matcher(inputAddress).find()
-								&& (inputFallbackAddress.isEmpty() || RegexConstants.internetAddress.matcher(inputFallbackAddress).find())
-								&& inputPassword.isNotEmpty()
-					}
-				}
-				
-				Row(
-					modifier = Modifier.fillMaxWidth(),
-					horizontalArrangement = Arrangement.End
-				) {
-					Button(
-						onClick = onConnect,
-						enabled = inputOK
+					Row(
+						modifier = Modifier.fillMaxWidth(),
+						horizontalArrangement = Arrangement.End
 					) {
-						Text(stringResource(R.string.action_checkconnection))
-					}
-				}
-			}
-			is OnboardingManualState.Connecting -> {
-				Column {
-					Text(
-						text = stringResource(R.string.progress_connectionverification),
-						color = MaterialTheme.colorScheme.onSurfaceVariant
-					)
-					
-					Spacer(modifier = Modifier.height(8.dp))
-					
-					LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-				}
-			}
-			is OnboardingManualState.Connected -> {
-				Card(modifier = Modifier.fillMaxWidth()) {
-					Row(modifier = Modifier.padding(16.dp)) {
-						Icon(
-							imageVector = Icons.Outlined.CheckCircleOutline,
-							contentDescription = null
-						)
+						TextButton(onClick = onReset) {
+							Text(stringResource(R.string.action_back))
+						}
 						
-						Spacer(modifier = Modifier.width(8.dp))
+						Spacer(modifier = Modifier.width(20.dp))
 						
-						Text(
-							modifier = modifier.padding(top = 1.dp),
-							text = state.deviceName?.let { name -> stringResource(R.string.message_connection_connectedcomputer, name) }
-								?: stringResource(R.string.message_connection_connected)
-						)
-					}
-				}
-				
-				Row(
-					modifier = Modifier.fillMaxWidth(),
-					horizontalArrangement = Arrangement.End
-				) {
-					TextButton(onClick = onReset) {
-						Text(stringResource(R.string.action_back))
-					}
-					
-					Spacer(modifier = Modifier.width(20.dp))
-					
-					Button(onClick = onFinish) {
-						Text(stringResource(R.string.action_done))
+						Button(onClick = onFinish) {
+							Text(stringResource(R.string.action_done))
+						}
 					}
 				}
 			}
@@ -253,6 +302,7 @@ private fun PreviewOnboardingWelcomeInitial() {
 				state = OnboardingManualState.Idle,
 				onConnect = {},
 				onReset = {},
+				onCancel = {},
 				onFinish = {}
 			)
 		}
@@ -270,6 +320,7 @@ private fun PreviewOnboardingWelcomeConnecting() {
 				state = OnboardingManualState.Connecting,
 				onConnect = {},
 				onReset = {},
+				onCancel = {},
 				onFinish = {}
 			)
 		}
@@ -287,6 +338,7 @@ private fun PreviewOnboardingWelcomeConnected() {
 				state = OnboardingManualState.Connected(deviceName = "My Computer", fallback = true),
 				onConnect = {},
 				onReset = {},
+				onCancel = {},
 				onFinish = {}
 			)
 		}
@@ -304,6 +356,7 @@ private fun PreviewOnboardingWelcomeError() {
 				state = OnboardingManualState.Error(errorCode = ConnectionErrorCode.unauthorized),
 				onConnect = {},
 				onReset = {},
+				onCancel = {},
 				onFinish = {}
 			)
 		}

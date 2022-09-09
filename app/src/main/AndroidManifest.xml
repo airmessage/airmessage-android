@@ -251,6 +251,12 @@
 		<activity
 			android:name=".compose.ConversationDetailsCompose"
 			android:theme="@style/Theme.AirMessage.Compose" />
+		
+		<activity
+			android:exported="true"
+			android:name=".compose.OnboardingCompose"
+			android:theme="@style/Theme.AirMessage.Compose"
+			android:windowSoftInputMode="adjustResize" />
 
 		<!-- Notification response -->
 		<receiver

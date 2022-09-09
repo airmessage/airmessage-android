@@ -172,6 +172,9 @@ dependencies {
 	implementation "androidx.compose.runtime:runtime-rxjava3:1.2.1"
 	androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.2.1"
 	
+	//Material motion
+	implementation "io.github.fornewid:material-motion-compose-core:0.10.2-beta"
+	
 	//Coil
 	implementation "io.coil-kt:coil-bom:2.2.0"
 	implementation "io.coil-kt:coil"

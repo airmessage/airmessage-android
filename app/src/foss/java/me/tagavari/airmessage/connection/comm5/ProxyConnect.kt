@@ -14,4 +14,8 @@ class ProxyConnect: DataProxy<EncryptedPacket>() {
 	override fun isUsingFallback() = false
 	
 	fun sendTokenAdd(token: String) = Unit
+	
+	companion object {
+		const val isAvailable = true
+	}
 }

@@ -66,12 +66,14 @@ import me.tagavari.airmessage.util.ConnectionParams;
 /**
  * Handles connecting via WebSocket to AirMessage's Connect servers
  */
-class ProxyConnect extends DataProxy<EncryptedPacket> {
+public class ProxyConnect extends DataProxy<EncryptedPacket> {
 	//Creating the constants
 	private static final String TAG = ProxyConnect.class.getSimpleName();
 	
 	private static final URI connectHostname = URI.create(BuildConfig.CONNECT_ENDPOINT);
 	private static final long handshakeTimeout = 8 * 1000;
+	
+	public static final boolean isAvailable = true;
 	
 	//Creating the state values
 	private boolean isRunning = false;

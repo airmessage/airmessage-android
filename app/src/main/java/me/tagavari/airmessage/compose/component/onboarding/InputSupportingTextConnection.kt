@@ -17,7 +17,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 
 @Composable
-fun InputSupportingTextConnection(
+fun ConnectionInputSupportingText(
 	modifier: Modifier = Modifier,
 	show: Boolean,
 	connected: Boolean
@@ -72,7 +72,7 @@ fun InputSupportingTextConnection(
 private fun PreviewInputSupportingTextConnectionConnected() {
 	AirMessageAndroidTheme {
 		Surface {
-			InputSupportingTextConnection(
+			ConnectionInputSupportingText(
 				show = true,
 				connected = true
 			)
@@ -85,7 +85,7 @@ private fun PreviewInputSupportingTextConnectionConnected() {
 private fun PreviewInputSupportingTextConnectionDisconnected() {
 	AirMessageAndroidTheme {
 		Surface {
-			InputSupportingTextConnection(
+			ConnectionInputSupportingText(
 				show = true,
 				connected = false
 			)
