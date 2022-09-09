@@ -8,13 +8,17 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.MediaStore
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.compose.util.rememberAsyncLauncherForActivityResult
 import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import java.io.File
@@ -29,47 +33,63 @@ enum class MessagingMediaCaptureType {
  * Launches an intent to capture a picture or a video with the camera
  */
 fun interface RequestCameraCallback {
-	suspend fun requestCamera(type: MessagingMediaCaptureType): File?
+	fun requestCamera(type: MessagingMediaCaptureType)
 }
 
+/**
+ * Remembers logic for capturing media for a conversation
+ * @param onCapture A callback invoked when a media file is taken by the user
+ * @return A function that launches the camera
+ */
 @Composable
-fun rememberMediaCapture(): RequestCameraCallback {
+fun rememberMediaCapture(onCapture: (File) -> Unit): RequestCameraCallback {
 	val context = LocalContext.current
 	
-	val requestPermissionLauncher = rememberAsyncLauncherForActivityResult(contract = ActivityResultContracts.RequestPermission())
-	val takePictureLauncher = rememberAsyncLauncherForActivityResult(contract = ActivityResultContracts.TakePicture())
-	val captureVideoLauncher = rememberAsyncLauncherForActivityResult(contract = ActivityResultContracts.CaptureVideo())
-	val captureLowResVideoLauncher = rememberAsyncLauncherForActivityResult(contract = object : ActivityResultContracts.CaptureVideo() {
+	var activeRequestType by rememberSaveable { mutableStateOf<MessagingMediaCaptureType?>(null) }
+	var activeRequestFile by rememberSaveable { mutableStateOf<File?>(null) }
+	
+	fun handleCaptureResult(captureResult: Boolean) {
+		val file = activeRequestFile ?: return
+		
+		//Ignore if the user cancelled
+		if(!captureResult) {
+			AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, file)
+			return
+		}
+		
+		//Return the saved file
+		onCapture(file)
+	}
+	
+	val takePictureLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.TakePicture(), ::handleCaptureResult)
+	val captureVideoLauncher = rememberLauncherForActivityResult(contract = ActivityResultContracts.CaptureVideo(), ::handleCaptureResult)
+	val captureLowResVideoLauncher = rememberLauncherForActivityResult(contract = object : ActivityResultContracts.CaptureVideo() {
 		override fun createIntent(context: Context, input: Uri): Intent {
 			return super.createIntent(context, input)
 				.putExtra(MediaStore.EXTRA_VIDEO_QUALITY, 0)
 		}
-	})
+	}, ::handleCaptureResult)
 	
-	return RequestCameraCallback { type ->
-		//Ask for permission if required
-		if(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-			val permissionGranted = requestPermissionLauncher.launch(Manifest.permission.CAMERA)
-			if(!permissionGranted) {
-				return@RequestCameraCallback null
-			}
-		}
+	fun openCamera() {
+		val requestType = activeRequestType ?: return
 		
 		//Find a free file
 		val targetFile = AttachmentStorageHelper.prepareContentFile(
-			context,
-			AttachmentStorageHelper.dirNameDraftPrepare,
-			if(type == MessagingMediaCaptureType.PHOTO) FileNameConstants.pictureName else FileNameConstants.videoName
+			context = context,
+			directory = AttachmentStorageHelper.dirNameDraftPrepare,
+			fileName = if(requestType == MessagingMediaCaptureType.PHOTO) FileNameConstants.pictureName
+			else FileNameConstants.videoName
 		)
 		val targetURI = FileProvider.getUriForFile(
 			context,
 			AttachmentStorageHelper.getFileAuthority(context),
 			targetFile
 		)
+		activeRequestFile = targetFile
 		
 		//Take the picture
-		val captureResult = try {
-			when(type) {
+		try {
+			when(requestType) {
 				MessagingMediaCaptureType.PHOTO -> takePictureLauncher.launch(targetURI)
 				MessagingMediaCaptureType.VIDEO -> captureVideoLauncher.launch(targetURI)
 				MessagingMediaCaptureType.LOW_RES_VIDEO -> captureLowResVideoLauncher.launch(targetURI)
@@ -82,17 +102,28 @@ fun rememberMediaCapture(): RequestCameraCallback {
 			
 			//Clean up the unused file
 			AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, targetFile)
-			
-			return@RequestCameraCallback null
 		}
-		
-		//Ignore if the user cancelled
-		if(!captureResult) {
-			AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, targetFile)
-			return@RequestCameraCallback null
+	}
+	
+	val requestPermissionLauncher = rememberLauncherForActivityResult(
+		ActivityResultContracts.RequestPermission()
+	) { permissionGranted ->
+		//Continue the flow if the user granted access
+		if(permissionGranted) {
+			openCamera()
 		}
+	}
+	
+	return RequestCameraCallback { type ->
+		//Record the request type
+		activeRequestType = type
 		
-		//Return the saved file
-		return@RequestCameraCallback targetFile
+		//Ask for permission if required
+		if(ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
+			requestPermissionLauncher.launch(Manifest.permission.CAMERA)
+		} else {
+			//Proceed to open the camera
+			openCamera()
+		}
 	}
 }

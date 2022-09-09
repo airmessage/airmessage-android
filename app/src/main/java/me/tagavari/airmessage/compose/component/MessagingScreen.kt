@@ -265,9 +265,23 @@ fun MessagingScreen(
 			} ?: Box(modifier = Modifier.weight(1F))
 			
 			val scope = rememberCoroutineScope()
-			val captureMedia = rememberMediaCapture()
-			val requestMedia = rememberMediaRequest()
 			val attachmentsScrollState = rememberScrollState()
+			val captureMedia = rememberMediaCapture { file ->
+				viewModel.addQueuedFile(
+					LocalFile(
+						file = file,
+						fileName = file.name,
+						fileType = FileHelper.getMimeType(file),
+						fileSize = file.length(),
+						directoryID = AttachmentStorageHelper.dirNameDraftPrepare
+					)
+				)
+				
+				scope.launch {
+					attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
+				}
+			}
+			val requestMedia = rememberMediaRequest()
 			
 			MessageInputBar(
 				modifier = Modifier
@@ -295,22 +309,7 @@ fun MessagingScreen(
 				onTakePhoto = {
 					if(viewModel.conversation == null) return@MessageInputBar
 					
-					scope.launch {
-						captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
-							?.let { file ->
-								viewModel.addQueuedFile(
-									LocalFile(
-										file = file,
-										fileName = file.name,
-										fileType = FileHelper.getMimeType(file),
-										fileSize = file.length(),
-										directoryID = AttachmentStorageHelper.dirNameDraftPrepare
-									)
-								)
-								
-								attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
-							}
-					}
+					captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
 				},
 				onOpenContentPicker = {
 					scope.launch {
