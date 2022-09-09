@@ -29,7 +29,7 @@ fun MessageBubbleLocation(
 	flow: MessagePartFlow,
 	file: File,
 	date: Date,
-	onClick: (Uri) -> Unit,
+	onClick: (LocationAttachmentData) -> Unit,
 	onSetSelected: (Boolean) -> Unit
 ) {
 	val context = LocalContext.current
@@ -50,9 +50,7 @@ fun MessageBubbleLocation(
 					if(flow.isSelected) {
 						onSetSelected(false)
 					} else {
-						locationData?.let {
-							onClick(it.uri)
-						}
+						locationData?.let { onClick(it) }
 					}
 				},
 				onLongClick = {

@@ -227,8 +227,11 @@ fun MessageInfoListEntry(
 								flow = attachmentFlow,
 								file = attachmentFile,
 								date = Date(messageInfo.date),
-								onClick = { uri ->
-									IntentHelper.launchUri(context, uri)
+								onClick = { locationData ->
+									//Use Google Maps to open the Maps app on Android
+									Uri.parse(
+										"https://www.google.com/maps/search/?api=1&query=${locationData.coords.latitude},${locationData.coords.longitude}"
+									).let { IntentHelper.launchUri(context, it) }
 								},
 								onSetSelected = { selected ->
 									selectionState.setSelectionAttachmentID(attachment.localID, selected)
