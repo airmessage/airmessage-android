@@ -19,6 +19,7 @@ import androidx.compose.ui.Modifier
 import androidx.core.view.WindowCompat
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.Preferences
@@ -67,6 +68,8 @@ class OnboardingCompose : ComponentActivity() {
 		
 		setContent {
 			AirMessageAndroidTheme {
+				val scope = rememberCoroutineScope()
+				
 				LaunchedEffect(Unit) {
 					//Prevent the connection service from launching on boot
 					Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, false)
@@ -90,6 +93,9 @@ class OnboardingCompose : ComponentActivity() {
 				fun navigateWelcome() {
 					screen = OnboardingComposeScreen.WELCOME
 					connectionManager?.disconnect(ConnectionErrorCode.user)
+					scope.launch {
+						FirebaseAuthBridge.signOut(this@OnboardingCompose)
+					}
 				}
 				
 				//Navigate backwards when back is pressed
