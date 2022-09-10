@@ -118,6 +118,6 @@ private class ContractGoogleSignIn : ActivityResultContract<GoogleSignInClient, 
 	}
 	
 	override fun parseResult(resultCode: Int, intent: Intent?): Result<GoogleSignInAccount> {
-		return runCatching { GoogleSignIn.getSignedInAccountFromIntent(intent).result }
+		return runCatching { GoogleSignIn.getSignedInAccountFromIntent(intent).getResult(ApiException::class.java) }
 	}
 }
