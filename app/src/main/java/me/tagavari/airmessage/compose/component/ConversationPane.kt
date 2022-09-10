@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,12 +22,23 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.activity.Messaging
+import me.tagavari.airmessage.activity.NewMessage
+import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.compose.MessagingCompose
+import me.tagavari.airmessage.compose.provider.LocalConnectionManager
+import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
@@ -34,11 +46,101 @@ import me.tagavari.airmessage.helper.ProgressState
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationPreview
 import me.tagavari.airmessage.messaging.MemberInfo
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.redux.ReduxEventConnection
+import me.tagavari.airmessage.redux.ReduxEventMassRetrieval
+import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.task.ConversationActionTask
+
+@Composable
+fun ConversationPane(
+	onShowSyncDialog: (connectionManager: ConnectionManager, deleteMessages: Boolean) -> Unit
+) {
+	val context = LocalContext.current
+	val viewModel = viewModel<ConversationsViewModel>()
+	
+	val syncEvent by remember {
+		ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
+			.filter { it is ReduxEventMassRetrieval.Start
+					|| it is ReduxEventMassRetrieval.Progress
+					|| it is ReduxEventMassRetrieval.Complete
+					|| it is ReduxEventMassRetrieval.Error }
+	}.collectAsState(initial = null)
+	
+	LaunchedEffect(Unit) {
+		ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
+			.collect { event ->
+				if(event is ReduxEventMassRetrieval.Complete || event is ReduxEventMassRetrieval.Error) {
+					//Reload conversations
+					viewModel.loadConversations()
+				}
+			}
+	}
+	
+	val connectionManager = LocalConnectionManager.current
+	val currentOnShowSyncDialog by rememberUpdatedState(onShowSyncDialog)
+	
+	//Listen for sync events
+	LaunchedEffect(connectionManager) {
+		ReduxEmitterNetwork.messageUpdateSubject.asFlow()
+			.filterIsInstance<ReduxEventMessaging.Sync>()
+			.collect {
+				if(connectionManager == null) return@collect
+				
+				val deleteMessages = viewModel.conversations?.getOrNull()?.any { it.serviceHandler == ServiceHandler.appleBridge } ?: true
+				currentOnShowSyncDialog(connectionManager, deleteMessages)
+			}
+	}
+	
+	//Check sync status when connected
+	LaunchedEffect(connectionManager) {
+		ReduxEmitterNetwork.connectionStateSubject.asFlow()
+			.filterIsInstance<ReduxEventConnection.Connected>()
+			.collect {
+				if(connectionManager == null) return@collect
+				
+				println("Is connected, is pending sync: ${connectionManager.isPendingSync}")
+				if(connectionManager.isPendingSync) {
+					val deleteMessages = viewModel.conversations?.getOrNull()?.any { it.serviceHandler == ServiceHandler.appleBridge } ?: true
+					currentOnShowSyncDialog(connectionManager, deleteMessages)
+				}
+			}
+	}
+	
+	ConversationPaneLayout(
+		conversations = viewModel.conversations,
+		onSelectConversation = { conversation ->
+			//Launch the conversation activity
+			Intent(context, MessagingCompose::class.java).apply {
+				putExtra(Messaging.intentParamTargetID, conversation.localID)
+			}.let { context.startActivity(it) }
+		},
+		onReloadConversations = {
+			viewModel.loadConversations()
+		},
+		onNavigateSettings = {
+			context.startActivity(Intent(context, Preferences::class.java))
+		},
+		onNewConversation = {
+			context.startActivity(Intent(context, NewMessage::class.java))
+		},
+		syncState = syncEvent.let { event ->
+			when(event) {
+				is ReduxEventMassRetrieval.Start -> ProgressState.Indeterminate
+				is ReduxEventMassRetrieval.Progress -> ProgressState.Determinate(
+					event.receivedItems.toFloat() / event.totalItems.toFloat()
+				)
+				else -> null
+			}
+		},
+		hasUnreadConversations = viewModel.hasUnreadConversations,
+		onMarkConversationsAsRead = { viewModel.markConversationsAsRead() }
+	)
+}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun ConversationPane(
+private fun ConversationPaneLayout(
 	modifier: Modifier = Modifier,
 	conversations: Result<List<ConversationInfo>>? = null,
 	onSelectConversation: (ConversationInfo) -> Unit = {},
@@ -420,7 +522,7 @@ fun ConversationPane(
 @Composable
 fun PreviewConversationList() {
 	AirMessageAndroidTheme {
-		ConversationPane(
+		ConversationPaneLayout(
 			conversations = Result.success(listOf(
 				ConversationInfo(
 					localID = 0,
@@ -456,7 +558,7 @@ fun PreviewConversationList() {
 @Composable
 fun PreviewConversationListLoading() {
 	AirMessageAndroidTheme {
-		ConversationPane(
+		ConversationPaneLayout(
 			conversations = null
 		)
 	}
@@ -466,7 +568,7 @@ fun PreviewConversationListLoading() {
 @Composable
 fun PreviewConversationListError() {
 	AirMessageAndroidTheme {
-		ConversationPane(
+		ConversationPaneLayout(
 			conversations = Result.failure(Exception("Failed to load conversations"))
 		)
 	}
@@ -476,7 +578,7 @@ fun PreviewConversationListError() {
 @Composable
 fun PreviewConversationListSync() {
 	AirMessageAndroidTheme {
-		ConversationPane(
+		ConversationPaneLayout(
 			syncState = ProgressState.Determinate(progress = 0.5F)
 		)
 	}
