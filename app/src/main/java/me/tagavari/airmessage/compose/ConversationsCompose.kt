@@ -5,13 +5,15 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.rxjava3.subscribeAsState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.activity.Messaging
@@ -53,7 +55,14 @@ class ConversationsCompose : FragmentActivity() {
 					val context = LocalContext.current
 					val viewModel = viewModel<ConversationsViewModel>()
 					
-					val syncEvent by ReduxEmitterNetwork.massRetrievalUpdateSubject.subscribeAsState(initial = null)
+					val syncEvent by remember {
+						ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
+							.filter { it is ReduxEventMassRetrieval.Start
+									|| it is ReduxEventMassRetrieval.Progress
+									|| it is ReduxEventMassRetrieval.Complete
+									|| it is ReduxEventMassRetrieval.Error }
+					}.collectAsState(initial = null)
+					
 					LaunchedEffect(Unit) {
 						ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
 							.collect { event ->
