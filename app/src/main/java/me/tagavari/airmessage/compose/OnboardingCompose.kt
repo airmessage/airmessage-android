@@ -21,7 +21,6 @@ import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
-import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingConnect
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingManual
@@ -146,7 +145,7 @@ class OnboardingCompose : ComponentActivity() {
 								Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, false)
 								
 								//Start the conversations activity
-								startActivity(Intent(this@OnboardingCompose, Conversations::class.java))
+								startActivity(Intent(this@OnboardingCompose, ConversationsCompose::class.java))
 								finish()
 							}
 							
@@ -218,7 +217,7 @@ class OnboardingCompose : ComponentActivity() {
 									Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, Preferences.getPreferenceStartOnBoot(this@OnboardingCompose))
 									
 									//Start the conversations activity
-									startActivity(Intent(this@OnboardingCompose, Conversations::class.java))
+									startActivity(Intent(this@OnboardingCompose, ConversationsCompose::class.java))
 									finish()
 								}
 							)
