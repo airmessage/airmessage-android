@@ -40,7 +40,7 @@
 			android:textSize="18sp" />
 
 		<com.google.android.material.button.MaterialButton
-			style="@style/Widget.MaterialComponents.Button"
+			style="@style/Widget.Material3.Button"
 			android:id="@+id/button_sync"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
@@ -58,7 +58,7 @@
 			android:textSize="18sp" />
 
 		<com.google.android.material.button.MaterialButton
-			style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+			style="@style/Widget.Material3.Button.OutlinedButton"
 			android:id="@+id/button_secondary"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
