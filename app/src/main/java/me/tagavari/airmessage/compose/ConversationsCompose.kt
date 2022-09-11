@@ -57,7 +57,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 			ConnectionServiceLocalProvider(context = this) {
 				AirMessageAndroidTheme {
 					val windowSizeClass = calculateWindowSizeClass(this)
-					val isExpandedScreen = windowSizeClass.widthSizeClass == WindowWidthSizeClass.Expanded
+					val isExpandedScreen = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 					
 					var selectedConversationID by rememberSaveable { mutableStateOf<Long?>(null) }
 					
