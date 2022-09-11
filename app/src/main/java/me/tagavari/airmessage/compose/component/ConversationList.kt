@@ -16,8 +16,9 @@ import me.tagavari.airmessage.messaging.ConversationInfo
 fun ConversationList(
 	modifier: Modifier = Modifier,
 	conversations: List<ConversationInfo>,
+	activeConversationID: Long? = null,
 	contentPadding: PaddingValues = PaddingValues(0.dp),
-	onClickConversation: (ConversationInfo) -> Unit,
+	onClickConversation: (Long) -> Unit,
 	selectedConversations: Set<Long>,
 	setSelectedConversations: (Set<Long>) -> Unit
 ) {
@@ -51,13 +52,14 @@ fun ConversationList(
 				conversation = conversationInfo,
 				onClick = {
 					if(selectedConversations.isEmpty()) {
-						onClickConversation(conversationInfo)
+						onClickConversation(conversationInfo.localID)
 					} else {
 						toggleSelection()
 					}
 				},
 				onLongClick = { toggleSelection() },
-				selected = selectedConversations.contains(conversationInfo.localID)
+				selected = selectedConversations.contains(conversationInfo.localID),
+				active = activeConversationID == conversationInfo.localID
 			)
 		}
 	}

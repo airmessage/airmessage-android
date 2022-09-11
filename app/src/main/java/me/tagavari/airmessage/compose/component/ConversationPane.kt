@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.compose.component
 
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
@@ -31,10 +30,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.Messaging
-import me.tagavari.airmessage.activity.NewMessage
-import me.tagavari.airmessage.activity.Preferences
-import me.tagavari.airmessage.compose.MessagingCompose
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
@@ -54,9 +49,14 @@ import me.tagavari.airmessage.task.ConversationActionTask
 
 @Composable
 fun ConversationPane(
-	onShowSyncDialog: (connectionManager: ConnectionManager, deleteMessages: Boolean) -> Unit
+	modifier: Modifier = Modifier,
+	floatingPane: Boolean = false,
+	activeConversationID: Long?,
+	onShowSyncDialog: (connectionManager: ConnectionManager, deleteMessages: Boolean) -> Unit,
+	onSelectConversation: (Long) -> Unit,
+	onNavigateSettings: () -> Unit,
+	onNewConversation: () -> Unit
 ) {
-	val context = LocalContext.current
 	val viewModel = viewModel<ConversationsViewModel>()
 	
 	val syncEvent by remember {
@@ -108,22 +108,16 @@ fun ConversationPane(
 	}
 	
 	ConversationPaneLayout(
+		modifier = modifier,
+		floatingPane = floatingPane,
 		conversations = viewModel.conversations,
-		onSelectConversation = { conversation ->
-			//Launch the conversation activity
-			Intent(context, MessagingCompose::class.java).apply {
-				putExtra(Messaging.intentParamTargetID, conversation.localID)
-			}.let { context.startActivity(it) }
-		},
+		activeConversationID = activeConversationID,
+		onSelectConversation = onSelectConversation,
 		onReloadConversations = {
 			viewModel.loadConversations()
 		},
-		onNavigateSettings = {
-			context.startActivity(Intent(context, Preferences::class.java))
-		},
-		onNewConversation = {
-			context.startActivity(Intent(context, NewMessage::class.java))
-		},
+		onNavigateSettings = onNavigateSettings,
+		onNewConversation = onNewConversation,
 		syncState = syncEvent.let { event ->
 			when(event) {
 				is ReduxEventMassRetrieval.Start -> ProgressState.Indeterminate
@@ -142,17 +136,23 @@ fun ConversationPane(
 @Composable
 private fun ConversationPaneLayout(
 	modifier: Modifier = Modifier,
+	floatingPane: Boolean = false,
 	conversations: Result<List<ConversationInfo>>? = null,
-	onSelectConversation: (ConversationInfo) -> Unit = {},
+	activeConversationID: Long? = null,
+	onSelectConversation: (Long) -> Unit = {},
 	onReloadConversations: () -> Unit = {},
 	onNavigateSettings: () -> Unit = {},
 	onNewConversation: () -> Unit = {},
 	syncState: ProgressState? = null,
 	hasUnreadConversations: Boolean = false,
-	onMarkConversationsAsRead: () -> Unit = {}
+	onMarkConversationsAsRead: () -> Unit = {},
 ) {
 	val snackbarHostState = remember { SnackbarHostState() }
-	val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+	val scrollBehavior = if(floatingPane) {
+		TopAppBarDefaults.enterAlwaysScrollBehavior()
+	} else {
+		TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+	}
 	val scope = rememberCoroutineScope()
 	
 	//Action mode
@@ -168,200 +168,245 @@ private fun ConversationPaneLayout(
 		stopActionMode()
 	}
 	
+	val backgroundColor = if(floatingPane) {
+		MaterialTheme.colorScheme.inverseOnSurface
+	} else {
+		MaterialTheme.colorScheme.background
+	}
+	
 	Scaffold(
 		modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
 		topBar = {
 			Crossfade(targetState = isActionMode) { isActionMode ->
 				if(!isActionMode) {
-					LargeTopAppBar(
-						title = {
-							Text(stringResource(id = R.string.app_name), fontWeight = FontWeight.Medium)
-						},
-						scrollBehavior = scrollBehavior,
-						actions = {
-							var menuOpen by remember { mutableStateOf(false) }
-							
-							IconButton(onClick = { menuOpen = !menuOpen }) {
-								Icon(Icons.Default.MoreVert, contentDescription = "")
-							}
-							
-							DropdownMenu(
-								expanded = menuOpen,
-								onDismissRequest = { menuOpen = false }
-							) {
-								if(hasUnreadConversations) {
-									DropdownMenuItem(
-										text = { Text(stringResource(id = R.string.action_markallread)) },
-										onClick = {
-											menuOpen = false
-											onMarkConversationsAsRead()
-										}
-									)
-								}
-								
+					@Composable
+					fun actions() {
+						var menuOpen by remember { mutableStateOf(false) }
+						
+						IconButton(onClick = { menuOpen = !menuOpen }) {
+							Icon(Icons.Default.MoreVert, contentDescription = "")
+						}
+						
+						DropdownMenu(
+							expanded = menuOpen,
+							onDismissRequest = { menuOpen = false }
+						) {
+							if(hasUnreadConversations) {
 								DropdownMenuItem(
-									text = { Text(stringResource(id = R.string.screen_settings)) },
+									text = { Text(stringResource(id = R.string.action_markallread)) },
 									onClick = {
 										menuOpen = false
-										onNavigateSettings()
+										onMarkConversationsAsRead()
 									}
 								)
 							}
-						},
-						colors = TopAppBarDefaults.largeTopAppBarColors(
-							titleContentColor = MaterialTheme.colorScheme.primary
+							
+							DropdownMenuItem(
+								text = { Text(stringResource(id = R.string.screen_settings)) },
+								onClick = {
+									menuOpen = false
+									onNavigateSettings()
+								}
+							)
+						}
+					}
+					
+					if(floatingPane) {
+						TopAppBar(
+							title = {
+								Text(stringResource(id = R.string.app_name), fontWeight = FontWeight.Medium)
+							},
+							scrollBehavior = scrollBehavior,
+							actions = { actions() },
+							colors = TopAppBarDefaults.smallTopAppBarColors(
+								containerColor = backgroundColor,
+								scrolledContainerColor = backgroundColor,
+								titleContentColor = MaterialTheme.colorScheme.primary
+							)
 						)
-					)
+					} else {
+						LargeTopAppBar(
+							title = {
+								Text(stringResource(id = R.string.app_name), fontWeight = FontWeight.Medium)
+							},
+							scrollBehavior = scrollBehavior,
+							actions = { actions() },
+							colors = TopAppBarDefaults.largeTopAppBarColors(
+								titleContentColor = MaterialTheme.colorScheme.primary
+							)
+						)
+					}
 				} else {
 					//Associate a conversation's ID to itself
 					val conversationsMap = remember(conversations) {
 						conversations?.getOrNull()?.associateBy { it.localID } ?: mapOf()
 					}
 					
-					LargeTopAppBar(
-						title = {
-							Text(selectedConversations.size.let { size ->
-								pluralStringResource(id = R.plurals.message_selectioncount, size, size)
-							})
-						},
-						scrollBehavior = scrollBehavior,
-						navigationIcon = {
-							IconButton(onClick = { stopActionMode() }) {
-								Icon(
-									imageVector = Icons.Filled.Close,
-									contentDescription = stringResource(id = android.R.string.cancel)
-								)
-							}
-						},
-						actions = {
-							data class SelectionContents(
-								val hasMuted: Boolean,
-								val hasUnmuted: Boolean,
-								val hasArchived: Boolean,
-								val hasUnarchived: Boolean
+					@Composable
+					fun title() {
+						Text(selectedConversations.size.let { size ->
+							pluralStringResource(id = R.plurals.message_selectioncount, size, size)
+						})
+					}
+					
+					@Composable
+					fun navigationIcon() {
+						IconButton(onClick = { stopActionMode() }) {
+							Icon(
+								imageVector = Icons.Filled.Close,
+								contentDescription = stringResource(id = android.R.string.cancel)
 							)
+						}
+					}
+					
+					@Composable
+					fun actions() {
+						data class SelectionContents(
+							val hasMuted: Boolean,
+							val hasUnmuted: Boolean,
+							val hasArchived: Boolean,
+							val hasUnarchived: Boolean
+						)
+						
+						val context = LocalContext.current
+						
+						val conversationsSequence = selectedConversations
+							.asSequence()
+							.mapNotNull { conversationsMap[it] }
+						
+						val selectionContents = remember(selectedConversations) {
+							SelectionContents(
+								hasMuted = conversationsSequence.any { it.isMuted },
+								hasUnmuted = conversationsSequence.any { !it.isMuted },
+								hasArchived = conversationsSequence.any { it.isArchived },
+								hasUnarchived = conversationsSequence.any { !it.isArchived }
+							)
+						}
+						
+						@OptIn(DelicateCoroutinesApi::class)
+						fun setConversationsMuted(muted: Boolean) {
+							GlobalScope.launch {
+								ConversationActionTask.muteConversations(
+									conversationsSequence.toSet(),
+									muted
+								).await()
+							}
+						}
+						
+						@OptIn(DelicateCoroutinesApi::class)
+						fun setConversationsArchived(archived: Boolean) {
+							val targetConversations = conversationsSequence.toSet()
 							
-							val context = LocalContext.current
+							GlobalScope.launch {
+								ConversationActionTask.archiveConversations(
+									targetConversations,
+									archived
+								).await()
+							}
 							
-							val conversationsSequence = selectedConversations
-								.asSequence()
-								.mapNotNull { conversationsMap[it] }
-							
-							val selectionContents = remember(selectedConversations) {
-								SelectionContents(
-									hasMuted = conversationsSequence.any { it.isMuted },
-									hasUnmuted = conversationsSequence.any { !it.isMuted },
-									hasArchived = conversationsSequence.any { it.isArchived },
-									hasUnarchived = conversationsSequence.any { !it.isArchived }
+							scope.launch {
+								val result = snackbarHostState.showSnackbar(
+									message = context.resources.getQuantityString(
+										if(archived) R.plurals.message_conversationarchived
+										else R.plurals.message_conversationunarchived,
+										targetConversations.size,
+										targetConversations.size
+									),
+									actionLabel = context.resources.getString(R.string.action_undo),
+									duration = SnackbarDuration.Short
 								)
-							}
-							
-							@OptIn(DelicateCoroutinesApi::class)
-							fun setConversationsMuted(muted: Boolean) {
-								GlobalScope.launch {
-									ConversationActionTask.muteConversations(
-										conversationsSequence.toSet(),
-										muted
-									).await()
-								}
-							}
-							
-							@OptIn(DelicateCoroutinesApi::class)
-							fun setConversationsArchived(archived: Boolean) {
-								val targetConversations = conversationsSequence.toSet()
 								
-								GlobalScope.launch {
-									ConversationActionTask.archiveConversations(
-										targetConversations,
-										archived
-									).await()
-								}
-								
-								scope.launch {
-									val result = snackbarHostState.showSnackbar(
-										message = context.resources.getQuantityString(
-											if(archived) R.plurals.message_conversationarchived
-											else R.plurals.message_conversationunarchived,
-											targetConversations.size,
-											targetConversations.size
-										),
-										actionLabel = context.resources.getString(R.string.action_undo),
-										duration = SnackbarDuration.Short
-									)
-									
-									if(result == SnackbarResult.ActionPerformed) {
-										GlobalScope.launch {
-											//Reverse the action
-											ConversationActionTask.muteConversations(
-												targetConversations,
-												!archived
-											).await()
-										}
+								if(result == SnackbarResult.ActionPerformed) {
+									GlobalScope.launch {
+										//Reverse the action
+										ConversationActionTask.muteConversations(
+											targetConversations,
+											!archived
+										).await()
 									}
 								}
 							}
-							
-							if(selectionContents.hasMuted) {
-								IconButton(onClick = {
-									setConversationsMuted(false)
-									stopActionMode()
-								}) {
-									Icon(
-										imageVector = Icons.Outlined.NotificationsActive,
-										contentDescription = stringResource(id = R.string.action_unmute)
-									)
-								}
-							}
-							
-							if(selectionContents.hasUnmuted) {
-								IconButton(onClick = {
-									setConversationsMuted(true)
-									stopActionMode()
-								}) {
-									Icon(
-										imageVector = Icons.Outlined.NotificationsOff,
-										contentDescription = stringResource(id = R.string.action_mute)
-									)
-								}
-							}
-							
-							if(selectionContents.hasArchived) {
-								IconButton(onClick = {
-									setConversationsArchived(false)
-									stopActionMode()
-								}) {
-									Icon(
-										imageVector = Icons.Outlined.Unarchive,
-										contentDescription = stringResource(id = R.string.action_unarchive)
-									)
-								}
-							}
-							
-							if(selectionContents.hasUnarchived) {
-								IconButton(onClick = {
-									setConversationsArchived(true)
-									stopActionMode()
-								}) {
-									Icon(
-										imageVector = Icons.Outlined.Archive,
-										contentDescription = stringResource(id = R.string.action_archive)
-									)
-								}
-							}
-							
+						}
+						
+						if(selectionContents.hasMuted) {
 							IconButton(onClick = {
-								promptDeleteConversations = true
+								setConversationsMuted(false)
+								stopActionMode()
 							}) {
 								Icon(
-									imageVector = Icons.Outlined.Delete,
-									contentDescription = stringResource(id = R.string.action_delete)
+									imageVector = Icons.Outlined.NotificationsActive,
+									contentDescription = stringResource(id = R.string.action_unmute)
 								)
 							}
-						},
-						colors = TopAppBarDefaults.largeTopAppBarColors(
-							scrolledContainerColor = MaterialTheme.colorScheme.primaryContainer
+						}
+						
+						if(selectionContents.hasUnmuted) {
+							IconButton(onClick = {
+								setConversationsMuted(true)
+								stopActionMode()
+							}) {
+								Icon(
+									imageVector = Icons.Outlined.NotificationsOff,
+									contentDescription = stringResource(id = R.string.action_mute)
+								)
+							}
+						}
+						
+						if(selectionContents.hasArchived) {
+							IconButton(onClick = {
+								setConversationsArchived(false)
+								stopActionMode()
+							}) {
+								Icon(
+									imageVector = Icons.Outlined.Unarchive,
+									contentDescription = stringResource(id = R.string.action_unarchive)
+								)
+							}
+						}
+						
+						if(selectionContents.hasUnarchived) {
+							IconButton(onClick = {
+								setConversationsArchived(true)
+								stopActionMode()
+							}) {
+								Icon(
+									imageVector = Icons.Outlined.Archive,
+									contentDescription = stringResource(id = R.string.action_archive)
+								)
+							}
+						}
+						
+						IconButton(onClick = {
+							promptDeleteConversations = true
+						}) {
+							Icon(
+								imageVector = Icons.Outlined.Delete,
+								contentDescription = stringResource(id = R.string.action_delete)
+							)
+						}
+					}
+					
+					if(floatingPane) {
+						TopAppBar(
+							title = { title() },
+							scrollBehavior = scrollBehavior,
+							navigationIcon = { navigationIcon() },
+							actions = { actions() },
+							colors = TopAppBarDefaults.smallTopAppBarColors(
+								scrolledContainerColor = MaterialTheme.colorScheme.primaryContainer
+							)
 						)
-					)
+					} else {
+						LargeTopAppBar(
+							title = { title() },
+							scrollBehavior = scrollBehavior,
+							navigationIcon = { navigationIcon() },
+							actions = { actions() },
+							colors = TopAppBarDefaults.largeTopAppBarColors(
+								scrolledContainerColor = MaterialTheme.colorScheme.primaryContainer
+							)
+						)
+					}
 				}
 			}
 		},
@@ -440,6 +485,7 @@ private fun ConversationPaneLayout(
 					ConversationList(
 						conversations = conversations,
 						contentPadding = innerPadding,
+						activeConversationID = activeConversationID,
 						onClickConversation = onSelectConversation,
 						selectedConversations = selectedConversations,
 						setSelectedConversations = { selectedConversations = it }
@@ -459,7 +505,8 @@ private fun ConversationPaneLayout(
 					Icon(Icons.Outlined.Message, stringResource(id = R.string.action_newconversation))
 				}
 			}
-		}
+		},
+		containerColor = backgroundColor
 	)
 	
 	if(promptDeleteConversations) {

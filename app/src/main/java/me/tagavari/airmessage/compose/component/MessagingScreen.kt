@@ -56,12 +56,16 @@ import me.tagavari.airmessage.messaging.MessageInfo
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MessagingScreen(
+	modifier: Modifier = Modifier,
 	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {}
 ) {
 	val application = LocalContext.current.applicationContext as Application
 	val connectionManager = LocalConnectionManager.current
-	val viewModel = viewModel<MessagingViewModel>(factory = MessagingViewModelFactory(application, conversationID))
+	val viewModel = viewModel<MessagingViewModel>(
+		factory = MessagingViewModelFactory(application, conversationID),
+		key = conversationID.toString()
+	)
 	
 	val scrollState = rememberLazyListState()
 	val isScrolledToBottom by remember {
@@ -89,7 +93,7 @@ fun MessagingScreen(
 		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
 		Column(
-			modifier = Modifier.background(MaterialTheme.colorScheme.background)
+			modifier = modifier.background(MaterialTheme.colorScheme.background)
 		) {
 			Crossfade(targetState = !viewModel.messageSelectionState.isEmpty()) { isActionMode ->
 				if(!isActionMode) {

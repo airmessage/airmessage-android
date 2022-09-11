@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -54,7 +55,7 @@ fun ConversationListEntry(
 			when {
 				selected -> MaterialTheme.colorScheme.surfaceVariant
 				active -> MaterialTheme.colorScheme.primaryContainer
-				else -> MaterialTheme.colorScheme.surface
+				else -> Color.Unspecified
 			}
 		)
 		
