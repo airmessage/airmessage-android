@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
@@ -25,6 +26,10 @@ private const val TAG = "rememberAudioCapture"
 
 @Composable
 fun rememberAudioCapture(): AudioCaptureState {
+	if(LocalInspectionMode.current) {
+		return NoOpAudioCaptureState()
+	}
+	
 	val context = LocalContext.current
 	
 	var audioPermissionGranted by remember {
@@ -155,18 +160,20 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 	}
 	
-	return object : AudioCaptureState(mediaRecorder, isRecording, recordingDuration) {
-		override suspend fun startRecording(file: File) = startAudioRecording(file)
-		
-		override fun stopRecording(forceDiscard: Boolean) = stopAudioRecording(forceDiscard)
-	}
+	return AudioCaptureStateImpl(
+		mediaRecorder = mediaRecorder,
+		isRecording = isRecording,
+		duration = recordingDuration,
+		startRecordingCallback = ::startAudioRecording,
+		stopRecordingCallback = ::stopAudioRecording
+	)
 }
 
-abstract class AudioCaptureState(
-	val mediaRecorder: MediaRecorder,
-	val isRecording: State<Boolean>,
-	val duration: State<Int>
-) {
+abstract class AudioCaptureState {
+	abstract val mediaRecorder: MediaRecorder
+	abstract val isRecording: State<Boolean>
+	abstract val duration: State<Int>
+	
 	/**
 	 * Starts audio recording, and suspends until recording is complete
 	 * @param file The file to write to
@@ -181,4 +188,25 @@ abstract class AudioCaptureState(
 	 * @return Whether the recording succeeded or not
 	 */
 	abstract fun stopRecording(forceDiscard: Boolean = false): Boolean
+}
+
+private class AudioCaptureStateImpl(
+	override val mediaRecorder: MediaRecorder,
+	override val isRecording: State<Boolean>,
+	override val duration: State<Int>,
+	private val startRecordingCallback: suspend (file: File) -> Boolean,
+	private val stopRecordingCallback: (forceDiscard: Boolean) -> Boolean
+) : AudioCaptureState() {
+	override suspend fun startRecording(file: File): Boolean = startRecordingCallback(file)
+	override fun stopRecording(forceDiscard: Boolean): Boolean = stopRecordingCallback(forceDiscard)
+}
+
+private class NoOpAudioCaptureState : AudioCaptureState() {
+	override val mediaRecorder: MediaRecorder
+		get() = throw IllegalStateException()
+	override val isRecording: State<Boolean> = mutableStateOf(false)
+	override val duration: State<Int> = mutableStateOf(0)
+	
+	override suspend fun startRecording(file: File): Boolean = true
+	override fun stopRecording(forceDiscard: Boolean): Boolean = true
 }
