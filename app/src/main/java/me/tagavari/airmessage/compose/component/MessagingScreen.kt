@@ -57,6 +57,7 @@ import me.tagavari.airmessage.messaging.MessageInfo
 @Composable
 fun MessagingScreen(
 	modifier: Modifier = Modifier,
+	floatingPane: Boolean = false,
 	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {}
 ) {
@@ -93,7 +94,10 @@ fun MessagingScreen(
 		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
 		Column(
-			modifier = modifier.background(MaterialTheme.colorScheme.background)
+			modifier = modifier.then(
+				if(floatingPane) Modifier.background(MaterialTheme.colorScheme.surface)
+				else Modifier
+			)
 		) {
 			Crossfade(targetState = !viewModel.messageSelectionState.isEmpty()) { isActionMode ->
 				if(!isActionMode) {
@@ -332,7 +336,8 @@ fun MessagingScreen(
 				onChangeCollapseButtons = { viewModel.collapseInputButtons = it },
 				serviceHandler = viewModel.conversation?.serviceHandler,
 				serviceType = viewModel.conversation?.serviceType,
-				floating = !isScrolledToBottom
+				floating = !isScrolledToBottom,
+				rounded = floatingPane
 			)
 		}
 	}

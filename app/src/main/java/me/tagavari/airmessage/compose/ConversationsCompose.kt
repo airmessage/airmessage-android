@@ -84,12 +84,13 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 									Box(
 										modifier = Modifier
 											.statusBarsPadding()
-											.padding(horizontal = 16.dp)
+											.padding(end = 16.dp)
 											.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
 									) {
 										key(localSelectedConversationID) {
 											MessagingScreen(
-												conversationID = localSelectedConversationID
+												conversationID = localSelectedConversationID,
+												floatingPane = true
 											)
 										}
 									}

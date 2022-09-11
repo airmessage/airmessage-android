@@ -7,9 +7,11 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,6 +56,7 @@ fun MessageInputBar(
 	@ServiceHandler serviceHandler: Int?,
 	@ServiceType serviceType: String?,
 	floating: Boolean = false,
+	rounded: Boolean = false
 ) {
 	val surfaceElevation by animateDpAsState(
 		if(floating) 2.dp else 0.dp
@@ -64,130 +67,137 @@ fun MessageInputBar(
 		LocalAbsoluteTonalElevation provides surfaceElevation
 	) {
 		Box(
-			modifier = Modifier.background(MaterialTheme.colorScheme.surfaceColorAtElevation(surfaceElevation))
+			modifier = Modifier
+				.then(
+					if(rounded) Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
+					else Modifier
+				)
+				.background(MaterialTheme.colorScheme.surfaceColorAtElevation(surfaceElevation))
+				.padding(8.dp)
+				.then(modifier)
 		) {
-			Box(
-				modifier = modifier.padding(8.dp)
-			) {
-				var recordingData by remember { mutableStateOf<RecordingData?>(null) }
-				val audioCapture = rememberAudioCapture()
-				
-				val showRecording = audioCapture.isRecording.value || recordingData != null
-				
-				val playbackManager = LocalAudioPlayback.current
-				val playbackState by playbackManager.stateForKey(key = recordingData?.file)
-				
-				val context = LocalContext.current
-				val scope = rememberCoroutineScope()
-				
-				if(!showRecording) {
-					MessageInputBarText(
-						messageText = messageText,
-						onMessageTextChange = onMessageTextChange,
-						attachments = attachments,
-						onRemoveAttachment = onRemoveAttachment,
-						onInputContent = onAddAttachments,
-						attachmentsScrollState = attachmentsScrollState,
-						collapseButtons = collapseButtons,
-						onChangeCollapseButtons = onChangeCollapseButtons,
-						onTakePhoto = onTakePhoto,
-						onOpenContentPicker = onOpenContentPicker,
-						onStartAudioRecording = {
-							scope.launch {
-								//Find a target file
-								val targetFile = withContext(Dispatchers.IO) {
-									AttachmentStorageHelper.prepareContentFile(
-										context,
-										AttachmentStorageHelper.dirNameDraftPrepare,
-										FileNameConstants.recordingName
-									)
-								}
-								
-								val recordingOK = audioCapture.startRecording(targetFile)
-								
-								//If the recording failed, clean up the file
-								if(!recordingOK) {
-									AttachmentStorageHelper.deleteContentFile(
-										AttachmentStorageHelper.dirNameDraftPrepare,
-										targetFile
-									)
-									return@launch
-								}
-								
-								val recordingDuration = audioCapture.duration.value
-								
-								//Set the recording data
-								recordingData = RecordingData(
-									file = LocalFile(
-										file = targetFile,
-										fileName = targetFile.name,
-										fileType = ContentType.AUDIO_AMR,
-										fileSize = targetFile.length(),
-										directoryID = AttachmentStorageHelper.dirNameDraftPrepare
-									),
-									duration = recordingDuration
+			var recordingData by remember { mutableStateOf<RecordingData?>(null) }
+			val audioCapture = rememberAudioCapture()
+			
+			val showRecording = audioCapture.isRecording.value || recordingData != null
+			
+			val playbackManager = LocalAudioPlayback.current
+			val playbackState by playbackManager.stateForKey(key = recordingData?.file)
+			
+			val context = LocalContext.current
+			val scope = rememberCoroutineScope()
+			
+			if(!showRecording) {
+				MessageInputBarText(
+					messageText = messageText,
+					onMessageTextChange = onMessageTextChange,
+					attachments = attachments,
+					onRemoveAttachment = onRemoveAttachment,
+					onInputContent = onAddAttachments,
+					attachmentsScrollState = attachmentsScrollState,
+					collapseButtons = collapseButtons,
+					onChangeCollapseButtons = onChangeCollapseButtons,
+					onTakePhoto = onTakePhoto,
+					onOpenContentPicker = onOpenContentPicker,
+					onStartAudioRecording = {
+						scope.launch {
+							//Find a target file
+							val targetFile = withContext(Dispatchers.IO) {
+								AttachmentStorageHelper.prepareContentFile(
+									context,
+									AttachmentStorageHelper.dirNameDraftPrepare,
+									FileNameConstants.recordingName
 								)
 							}
-						},
-						serviceHandler = serviceHandler,
-						serviceType = serviceType,
-						onSend = onSend
-					)
-				}
-				
-				MessageInputBarAudio(
-					duration = audioCapture.duration.value,
-					isRecording = audioCapture.isRecording.value,
-					onStopRecording = {
-						if(audioCapture.isRecording.value) {
-							audioCapture.stopRecording()
-						}
-					},
-					onSend = {
-						//Send the file
-						recordingData?.file?.let { file ->
-							playbackManager.stop(key = file)
-							onSendFile(ReadableBlobLocalFile(file, deleteOnInvalidate = true))
-						}
-						recordingData = null
-					},
-					onDiscard = {
-						//Stop recording if we're recording
-						if(audioCapture.isRecording.value) {
-							audioCapture.stopRecording(true)
-						}
-						
-						//Delete the recording file
-						recordingData?.file?.also { file ->
-							playbackManager.stop(key = file)
-							file.deleteFile()
-						}
-						recordingData = null
-					},
-					onTogglePlay = {
-						val file = recordingData?.file ?: return@MessageInputBarAudio
-						val state: AudioPlaybackState = playbackState
-						
-						scope.launch {
-							if(state is AudioPlaybackState.Playing) {
-								if(state.playing) {
-									playbackManager.pause()
-								} else {
-									playbackManager.resume()
-								}
-							} else {
-								playbackManager.play(key = file, uri = Uri.fromFile(file.file))
+							
+							val recordingOK = audioCapture.startRecording(targetFile)
+							
+							//If the recording failed, clean up the file
+							if(!recordingOK) {
+								AttachmentStorageHelper.deleteContentFile(
+									AttachmentStorageHelper.dirNameDraftPrepare,
+									targetFile
+								)
+								return@launch
 							}
+							
+							val recordingDuration = audioCapture.duration.value
+							
+							//Set the recording data
+							recordingData = RecordingData(
+								file = LocalFile(
+									file = targetFile,
+									fileName = targetFile.name,
+									fileType = ContentType.AUDIO_AMR,
+									fileSize = targetFile.length(),
+									directoryID = AttachmentStorageHelper.dirNameDraftPrepare
+								),
+								duration = recordingDuration
+							)
 						}
 					},
-					playbackState = playbackState,
-					amplitudeList = deriveAmplitudeList(
-						mediaRecorder = audioCapture.mediaRecorder,
-						enable = audioCapture.isRecording.value
-					),
-					visible = showRecording
+					serviceHandler = serviceHandler,
+					serviceType = serviceType,
+					onSend = onSend
 				)
 			}
+			
+			MessageInputBarAudio(
+				duration = audioCapture.duration.value,
+				isRecording = audioCapture.isRecording.value,
+				onStopRecording = {
+					if(audioCapture.isRecording.value) {
+						audioCapture.stopRecording()
+					}
+				},
+				onSend = {
+					//Send the file
+					recordingData?.file?.let { file ->
+						playbackManager.stop(key = file)
+						onSendFile(ReadableBlobLocalFile(file, deleteOnInvalidate = true))
+					}
+					recordingData = null
+				},
+				onDiscard = {
+					//Stop recording if we're recording
+					if(audioCapture.isRecording.value) {
+						audioCapture.stopRecording(true)
+					}
+					
+					//Delete the recording file
+					recordingData?.file?.also { file ->
+						playbackManager.stop(key = file)
+						file.deleteFile()
+					}
+					recordingData = null
+				},
+				onTogglePlay = {
+					val file = recordingData?.file ?: return@MessageInputBarAudio
+					val state: AudioPlaybackState = playbackState
+					
+					scope.launch {
+						if(state is AudioPlaybackState.Playing) {
+							if(state.playing) {
+								playbackManager.pause()
+							} else {
+								playbackManager.resume()
+							}
+						} else {
+							playbackManager.play(key = file, uri = Uri.fromFile(file.file))
+						}
+					}
+				},
+				playbackState = playbackState,
+				amplitudeList = if(LocalInspectionMode.current) {
+					listOf()
+				} else {
+					deriveAmplitudeList(
+						mediaRecorder = audioCapture.mediaRecorder,
+						enable = audioCapture.isRecording.value
+					)
+				},
+				visible = showRecording
+			)
 		}
 	}
 }
