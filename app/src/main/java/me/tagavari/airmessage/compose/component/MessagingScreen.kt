@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import android.app.Application
+import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Intent
@@ -32,6 +33,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ConversationDetailsCompose
@@ -88,6 +90,15 @@ fun MessagingScreen(
 				haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 			}
 		}
+	}
+	
+	LaunchedEffect(viewModel.conversationSuggestions) {
+		//Scroll to the bottom when reply suggestions are generated
+		viewModel.conversationSuggestions
+			.filter { it.isNotEmpty() }
+			.collect {
+				scrollState.animateScrollToItem(0)
+			}
 	}
 	
 	CompositionLocalProvider(
@@ -284,7 +295,21 @@ fun MessagingScreen(
 					scrollState = scrollState,
 					messageSelectionState = viewModel.messageSelectionState,
 					onLoadPastMessages = { viewModel.loadPastMessages() },
-					lazyLoadState = viewModel.lazyLoadState
+					lazyLoadState = viewModel.lazyLoadState,
+					actionSuggestions = viewModel.conversationSuggestions.collectAsState(initial = listOf()).value,
+					onSelectActionSuggestion = { action ->
+						action.replyString?.let { message ->
+							viewModel.sendTextMessage(connectionManager, message)
+						}
+						
+						action.remoteAction?.let { remoteAction ->
+							try {
+								remoteAction.actionIntent.send()
+							} catch(exception: PendingIntent.CanceledException) {
+								exception.printStackTrace()
+							}
+						}
+					}
 				)
 			} ?: Box(modifier = Modifier.weight(1F))
 			

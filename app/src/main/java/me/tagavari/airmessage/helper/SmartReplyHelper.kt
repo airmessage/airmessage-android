@@ -8,6 +8,7 @@ import android.view.textclassifier.ConversationActions
 import android.view.textclassifier.TextClassificationManager
 import android.view.textclassifier.TextClassifier
 import androidx.annotation.RequiresApi
+import androidx.core.content.ContextCompat
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Single
@@ -47,7 +48,7 @@ object SmartReplyHelper {
 	 */
 	@JvmStatic
 	@CheckReturnValue
-	fun generateResponses(context: Context, messages: List<MessageInfo>): Single<List<AMConversationAction>> {
+	fun generateResponses(context: Context, messages: Collection<MessageInfo>): Single<List<AMConversationAction>> {
 		val sortedMessages = messages.sortedBy { it.date }
 		return if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
 			//Use TextClassifier
@@ -56,11 +57,11 @@ object SmartReplyHelper {
 						result.conversationActions.mapNotNull { action: ConversationAction ->
 							if(action.type == ConversationAction.TYPE_TEXT_REPLY) {
 								//Text replies
-								return@mapNotNull AMConversationAction.createReplyAction(action.textReply!!)
+								return@mapNotNull AMConversationAction.createReplyAction(action.textReply!!.toString())
 							} else {
 								//Action replies
 								return@mapNotNull action.action?.let {
-									AMConversationAction.createRemoteAction(AMConversationAction.RemoteAction(if(it.shouldShowIcon()) it.icon else null, it.title, it.actionIntent))
+									AMConversationAction.createRemoteAction(AMConversationAction.RemoteAction(if(it.shouldShowIcon()) it.icon else null, it.title.toString(), it.actionIntent))
 								}
 							}
 						}
@@ -84,7 +85,8 @@ object SmartReplyHelper {
 	@CheckReturnValue
 	fun generateResponsesTextClassifier(context: Context, messages: List<ConversationActions.Message>): Single<ConversationActions> {
 		return Single.fromCallable {
-			val textClassifier = context.getSystemService(TextClassificationManager::class.java).textClassifier
+			val textClassificationManager = ContextCompat.getSystemService(context, TextClassificationManager::class.java) ?: throw IllegalStateException()
+			val textClassifier = textClassificationManager.textClassifier
 			textClassifier.suggestConversationActions(
 					ConversationActions.Request.Builder(messages)
 							.setMaxSuggestions(3)

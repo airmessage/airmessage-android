@@ -11,13 +11,13 @@ import android.graphics.drawable.Icon
  */
 class AMConversationAction private constructor(
 	val isReplyAction: Boolean,
-	val replyString: CharSequence?,
+	val replyString: String?,
 	val remoteAction: RemoteAction?
 ) {
-	data class RemoteAction(val icon: Icon?, val title: CharSequence, val actionIntent: PendingIntent)
+	data class RemoteAction(val icon: Icon?, val title: String, val actionIntent: PendingIntent)
 	
 	companion object {
-		fun createReplyAction(replyString: CharSequence): AMConversationAction {
+		fun createReplyAction(replyString: String): AMConversationAction {
 			return AMConversationAction(true, replyString, null)
 		}
 		

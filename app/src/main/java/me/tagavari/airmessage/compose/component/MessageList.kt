@@ -1,13 +1,12 @@
 package me.tagavari.airmessage.compose.component
 
 import android.os.SystemClock
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -16,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.compose.state.MessageLazyLoadState
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.constants.TimingConstants
+import me.tagavari.airmessage.messaging.AMConversationAction
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
 import me.tagavari.airmessage.messaging.MessageInfo
@@ -32,7 +32,9 @@ fun MessageList(
 	messageSelectionState: MessageSelectionState,
 	scrollState: LazyListState = rememberLazyListState(),
 	onLoadPastMessages: () -> Unit,
-	lazyLoadState: MessageLazyLoadState
+	lazyLoadState: MessageLazyLoadState,
+	actionSuggestions: List<AMConversationAction>,
+	onSelectActionSuggestion: (AMConversationAction) -> Unit
 ) {
 	val reversedMessages = messages.asReversed()
 	
@@ -76,6 +78,26 @@ fun MessageList(
 		state = scrollState,
 		contentPadding = PaddingValues(8.dp)
 	) {
+		if(actionSuggestions.isNotEmpty()) {
+			item {
+				Row(
+					modifier = Modifier
+						.fillMaxWidth()
+						.padding(top = 16.dp)
+						.horizontalScroll(rememberScrollState()),
+					horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.End)
+				) {
+					actionSuggestions.map { action ->
+						MessageSuggestionChip(
+							action = action,
+							onClick = { onSelectActionSuggestion(action) }
+						)
+					}
+				}
+			}
+		}
+		
+		//Message items
 		items(
 			key = { reversedMessages[it].localID },
 			count = reversedMessages.size
@@ -115,9 +137,14 @@ fun MessageList(
 			}
 		}
 		
+		//Loading indicator
 		if(lazyLoadState == MessageLazyLoadState.LOADING) {
 			item {
-				Box(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+				Box(
+					modifier = Modifier
+						.fillMaxWidth()
+						.padding(16.dp)
+				) {
 					CircularProgressIndicator(
 						modifier = Modifier.align(Alignment.Center)
 					)

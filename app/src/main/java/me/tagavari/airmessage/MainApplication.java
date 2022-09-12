@@ -3,15 +3,16 @@ package me.tagavari.airmessage;
 import android.app.Application;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.ApplicationInfo;
 import android.content.pm.PackageManager;
 import android.database.ContentObserver;
+import android.graphics.drawable.Icon;
 import android.os.Build;
 import android.os.Handler;
 import android.os.Process;
 import android.provider.ContactsContract;
 import android.webkit.WebView;
 
+import androidx.annotation.NonNull;
 import androidx.localbroadcastmanager.content.LocalBroadcastManager;
 import androidx.preference.PreferenceManager;
 import androidx.work.ExistingWorkPolicy;
@@ -28,8 +29,12 @@ import java.io.StringWriter;
 import java.lang.ref.WeakReference;
 import java.security.Security;
 
+import coil.ComponentRegistry;
+import coil.ImageLoader;
+import coil.ImageLoaderFactory;
 import me.tagavari.airmessage.activity.CrashReport;
 import me.tagavari.airmessage.activity.Preferences;
+import me.tagavari.airmessage.coil.IconFetcher;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.data.UserCacheHelper;
@@ -43,7 +48,7 @@ import me.tagavari.airmessage.redux.ReduxReceiverNotification;
 import me.tagavari.airmessage.redux.ReduxReceiverShortcut;
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
 
-public class MainApplication extends Application {
+public class MainApplication extends Application implements ImageLoaderFactory {
 	//Creating the reference values
 	public static final String localBCContactUpdate = "LocalMSG-Main-ContactUpdate";
 	
@@ -201,5 +206,17 @@ public class MainApplication extends Application {
 			//Clearing the caches
 			userCacheHelper.clearCache();
 		}
+	}
+	
+	@NonNull
+	@Override
+	public ImageLoader newImageLoader() {
+		return new ImageLoader.Builder(this)
+				.components(
+						new ComponentRegistry.Builder()
+								.add(new IconFetcher.Factory(), Icon.class)
+								.build()
+				)
+				.build();
 	}
 }

@@ -2,10 +2,7 @@ package me.tagavari.airmessage.compose.state
 
 import android.app.Application
 import android.util.Log
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -13,9 +10,11 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.constants.MIMEConstants
@@ -62,6 +61,33 @@ class MessagingViewModel(
 	val messages = mutableStateListOf<ConversationItem>()
 	val queuedFiles = mutableStateListOf<QueuedFile>()
 	val messageSelectionState = MessageSelectionState()
+	val conversationSuggestions = snapshotFlow { messages.toList() }
+		.map { list ->
+			//Make sure that we have reply suggestions enabled
+			if(!Preferences.getPreferenceReplySuggestions(application)) {
+				return@map listOf()
+			}
+			
+			//Make sure that the last message is valid
+			val lastMessage = list.lastOrNull() ?: return@map listOf()
+			if(lastMessage !is MessageInfo
+				|| lastMessage.isOutgoing
+				|| lastMessage.sendStyle == SendStyleHelper.appleSendStyleBubbleInvisibleInk) {
+				return@map listOf()
+			}
+			
+			//Filter for messages
+			val filteredMessages = list.takeLast(SmartReplyHelper.smartReplyHistoryLength)
+				.filterIsInstance<MessageInfo>()
+				.filter { it.messageText != null }
+			
+			if(filteredMessages.isEmpty()) {
+				return@map listOf()
+			}
+			
+			//Generate smart reply suggestions
+			return@map SmartReplyHelper.generateResponses(application, filteredMessages).await()
+		}
 	
 	private val _messageAdditionFlow = MutableSharedFlow<MessageAdditionEvent>()
 	val messageAdditionFlow = _messageAdditionFlow.asSharedFlow()
@@ -323,53 +349,6 @@ class MessagingViewModel(
 	fun addQueuedFile(file: LocalFile) = addQueuedFileBlobs(listOf(ReadableBlobLocalFile(file, deleteOnInvalidate = true)))
 	
 	/**
-	 * Sends location data
-	 */
-	@OptIn(DelicateCoroutinesApi::class)
-	fun sendLocation(connectionManager: ConnectionManager?, location: LatLngInfo) {
-		val conversation = conversation ?: return
-		
-		if(conversation.serviceHandler == ServiceHandler.appleBridge
-			&& conversation.serviceType == ServiceType.appleMessage) {
-			//If we're using iMessage, send a specialized location attachment
-			GlobalScope.launch {
-				val file = AttachmentStorageHelper.prepareContentFile(getApplication(), AttachmentStorageHelper.dirNameDraftPrepare, FileNameConstants.locationName)
-				
-				try {
-					//Write the file
-					MapLocationHelper.writeLocationVCard(location, file)
-				} catch(exception: IOException) {
-					exception.printStackTrace()
-					
-					//Clean up
-					AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, file)
-				}
-				
-				//Send the file
-				val localFile = LocalFile(file, file.name, MIMEConstants.mimeTypeVLocation, file.length(), AttachmentStorageHelper.dirNameDraftPrepare)
-				submitFileDirect(connectionManager, ReadableBlobLocalFile(localFile))
-			}
-		} else {
-			//Send a text message
-			GlobalScope.launch {
-				MessageSendHelperCoroutine.prepareMessage(
-					getApplication(),
-					conversation,
-					MapLocationHelper.getMapUri(location).toString(),
-					listOf()
-				).forEach { message ->
-					MessageSendHelperCoroutine.sendMessage(
-						getApplication(),
-						connectionManager,
-						conversation,
-						message
-					)
-				}
-			}
-		}
-	}
-	
-	/**
 	 * Removes a queued file from the queue
 	 */
 	fun removeQueuedFile(queuedFile: QueuedFile) {
@@ -530,6 +509,63 @@ class MessagingViewModel(
 		}
 		
 		return true
+	}
+	
+	/**
+	 * Sends a text message directly
+	 */
+	@OptIn(DelicateCoroutinesApi::class)
+	fun sendTextMessage(connectionManager: ConnectionManager?, message: String) {
+		val conversation = conversation ?: return
+		
+		GlobalScope.launch {
+			MessageSendHelperCoroutine.prepareMessage(
+				getApplication(),
+				conversation,
+				message,
+				listOf()
+			).forEach { message ->
+				MessageSendHelperCoroutine.sendMessage(
+					getApplication(),
+					connectionManager,
+					conversation,
+					message
+				)
+			}
+		}
+	}
+	
+	/**
+	 * Sends location data
+	 */
+	@OptIn(DelicateCoroutinesApi::class)
+	fun sendLocation(connectionManager: ConnectionManager?, location: LatLngInfo) {
+		val conversation = conversation ?: return
+		
+		if(conversation.serviceHandler == ServiceHandler.appleBridge
+			&& conversation.serviceType == ServiceType.appleMessage) {
+			//If we're using iMessage, send a specialized location attachment
+			GlobalScope.launch {
+				val file = AttachmentStorageHelper.prepareContentFile(getApplication(), AttachmentStorageHelper.dirNameDraftPrepare, FileNameConstants.locationName)
+				
+				try {
+					//Write the file
+					MapLocationHelper.writeLocationVCard(location, file)
+				} catch(exception: IOException) {
+					exception.printStackTrace()
+					
+					//Clean up
+					AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, file)
+				}
+				
+				//Send the file
+				val localFile = LocalFile(file, file.name, MIMEConstants.mimeTypeVLocation, file.length(), AttachmentStorageHelper.dirNameDraftPrepare)
+				submitFileDirect(connectionManager, ReadableBlobLocalFile(localFile))
+			}
+		} else {
+			//Send a text message
+			sendTextMessage(connectionManager, MapLocationHelper.getMapUri(location).toString())
+		}
 	}
 	
 	enum class MessageAdditionEvent {

@@ -11,8 +11,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.ColorUtils
 
-private val radiusLarge = 20.dp
-private val radiusSmall = 5.dp
+object MessageFlowRadius {
+	val small = 5.dp
+	val large = 20.dp
+}
 
 /**
  * A message's position in the thread in accordance with other nearby messages
@@ -48,17 +50,17 @@ data class MessagePartFlow(
 	val bubbleShape: Shape
 		get() = if(isOutgoing) {
 			RoundedCornerShape(
-				topStart = radiusLarge,
-				topEnd = radiusLarge,
-				bottomEnd = if(anchorBottom) radiusLarge else radiusSmall,
-				bottomStart = radiusLarge
+				topStart = MessageFlowRadius.large,
+				topEnd = MessageFlowRadius.large,
+				bottomEnd = if(anchorBottom) MessageFlowRadius.large else MessageFlowRadius.small,
+				bottomStart = MessageFlowRadius.large
 			)
 		} else {
 			RoundedCornerShape(
-				topStart = radiusLarge,
-				topEnd = radiusLarge,
-				bottomEnd = radiusLarge,
-				bottomStart = if(anchorBottom) radiusLarge else radiusSmall
+				topStart = MessageFlowRadius.large,
+				topEnd = MessageFlowRadius.large,
+				bottomEnd = MessageFlowRadius.large,
+				bottomStart = if(anchorBottom) MessageFlowRadius.large else MessageFlowRadius.small
 			)
 		}
 	
