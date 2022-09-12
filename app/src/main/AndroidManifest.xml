@@ -241,7 +241,8 @@
 			android:name=".compose.ConversationsCompose"
 			android:exported="true"
 			android:label="@string/app_name"
-			android:theme="@style/Theme.AirMessage.Compose" />
+			android:theme="@style/Theme.AirMessage.Compose"
+			android:windowSoftInputMode="adjustResize" />
 		
 		<activity
 			android:name=".compose.MessagingCompose"
