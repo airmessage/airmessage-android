@@ -78,7 +78,7 @@ fun MessageBubbleVisual(
 				.crossfade(true)
 				.build(),
 			contentDescription = null,
-			colorFilter = if(flow.isSelected) ColorFilter.tint(flow.colors.background.copy(alpha = 0.8F), blendMode = BlendMode.Multiply) else null,
+			colorFilter = if(flow.isSelected) ColorFilter.tint(flow.colors.background.copy(alpha = 0.8F), blendMode = BlendMode.Screen) else null,
 			contentScale = ContentScale.FillWidth
 		)
 		
