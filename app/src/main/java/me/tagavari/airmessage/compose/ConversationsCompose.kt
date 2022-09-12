@@ -118,13 +118,13 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 							selectedConversationID?.let { selectedConversationID ->
 								Spacer(modifier = Modifier.width(hingeWidth))
 								
+								val useFloatingPane = devicePosture?.isSeparating != true
+								
 								MaterialFadeThrough(
 									targetState = selectedConversationID,
 								) { localSelectedConversationID ->
 									Box(
-										modifier = if(devicePosture?.isSeparating == true) {
-											Modifier
-										} else {
+										modifier = if(useFloatingPane) {
 											Modifier.statusBarsPadding()
 												.padding(end = 16.dp)
 												.clip(
@@ -133,12 +133,14 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 														topEnd = 20.dp
 													)
 												)
+										} else {
+											Modifier
 										}
 									) {
 										key(localSelectedConversationID) {
 											MessagingScreen(
 												conversationID = localSelectedConversationID,
-												floatingPane = true
+												floatingPane = useFloatingPane
 											)
 										}
 									}
