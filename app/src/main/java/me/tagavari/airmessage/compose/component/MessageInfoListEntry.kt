@@ -145,6 +145,7 @@ fun MessageInfoListEntry(
 						contentAlignment = if(isOutgoing) Alignment.TopEnd else Alignment.TopStart
 					) {
 						MessageBubbleWrapper(
+							isOutgoing = isOutgoing,
 							stickers = textComponent.stickers,
 							tapbacks = textComponent.tapbacks
 						) {
@@ -169,6 +170,7 @@ fun MessageInfoListEntry(
 				val attachmentsCount = messageInfo.attachments.size
 				messageInfo.attachments.forEachIndexed { index, attachment ->
 					MessageBubbleWrapper(
+						isOutgoing = isOutgoing,
 						stickers = attachment.stickers,
 						tapbacks = attachment.tapbacks
 					) {
