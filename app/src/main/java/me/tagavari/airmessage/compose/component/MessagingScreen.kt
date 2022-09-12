@@ -109,29 +109,45 @@ fun MessagingScreen(
 								viewModel.sendLocation(connectionManager, location)
 							}
 							
-							Column(
-								modifier = Modifier
-									.clip(RoundedCornerShape(12.dp))
-									.clickable(onClick = {
-										conversationDetailsLauncher.launch(
-											conversationID
-										)
-									})
-									.padding(horizontal = 8.dp, vertical = 4.dp),
-								horizontalAlignment = Alignment.CenterHorizontally,
-								verticalArrangement = Arrangement.Top
-							) {
-								viewModel.conversation?.let { conversation ->
-									UserIconGroup(members = conversation.members)
-								}
-								
-								Spacer(modifier = Modifier.height(1.dp))
-								
+							if(floatingPane) {
 								viewModel.conversationTitle?.let { title ->
 									Text(
-										text = title,
-										style = MaterialTheme.typography.bodySmall
+										modifier = Modifier
+											.clip(RoundedCornerShape(12.dp))
+											.clickable(onClick = {
+												conversationDetailsLauncher.launch(
+													conversationID
+												)
+											})
+											.padding(horizontal = 8.dp, vertical = 4.dp),
+										text = title
 									)
+								}
+							} else {
+								Column(
+									modifier = Modifier
+										.clip(RoundedCornerShape(12.dp))
+										.clickable(onClick = {
+											conversationDetailsLauncher.launch(
+												conversationID
+											)
+										})
+										.padding(horizontal = 8.dp, vertical = 4.dp),
+									horizontalAlignment = Alignment.CenterHorizontally,
+									verticalArrangement = Arrangement.Top
+								) {
+									viewModel.conversation?.let { conversation ->
+										UserIconGroup(members = conversation.members)
+									}
+									
+									Spacer(modifier = Modifier.height(1.dp))
+									
+									viewModel.conversationTitle?.let { title ->
+										Text(
+											text = title,
+											style = MaterialTheme.typography.bodySmall
+										)
+									}
 								}
 							}
 						},
