@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.tooling.preview.Preview
@@ -68,11 +68,10 @@ fun MessageInputBar(
 	) {
 		Box(
 			modifier = Modifier
-				.then(
-					if(rounded) Modifier.clip(RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp))
-					else Modifier
+				.background(
+					color = MaterialTheme.colorScheme.surfaceColorAtElevation(surfaceElevation),
+					shape = if(rounded) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else RectangleShape
 				)
-				.background(MaterialTheme.colorScheme.surfaceColorAtElevation(surfaceElevation))
 				.padding(8.dp)
 				.then(modifier)
 		) {
