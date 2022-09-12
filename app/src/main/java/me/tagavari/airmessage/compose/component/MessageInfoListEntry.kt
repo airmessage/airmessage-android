@@ -144,15 +144,18 @@ fun MessageInfoListEntry(
 						modifier = Modifier.fillMaxWidth(0.7F),
 						contentAlignment = if(isOutgoing) Alignment.TopEnd else Alignment.TopStart
 					) {
+						val isSelected = selectionState.selectedMessageIDs.contains(textComponent.localID)
+						
 						MessageBubbleWrapper(
 							isOutgoing = isOutgoing,
 							stickers = textComponent.stickers,
-							tapbacks = textComponent.tapbacks
+							tapbacks = textComponent.tapbacks,
+							hideStickers = isSelected
 						) {
 							MessageBubbleText(
 								flow = MessagePartFlow(
 									isOutgoing = isOutgoing,
-									isSelected = selectionState.selectedMessageIDs.contains(textComponent.localID),
+									isSelected = isSelected,
 									anchorTop = flow.anchorTop,
 									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
 									tintRatio = scrollProgress
@@ -169,14 +172,17 @@ fun MessageInfoListEntry(
 				
 				val attachmentsCount = messageInfo.attachments.size
 				messageInfo.attachments.forEachIndexed { index, attachment ->
+					val isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID)
+					
 					MessageBubbleWrapper(
 						isOutgoing = isOutgoing,
 						stickers = attachment.stickers,
-						tapbacks = attachment.tapbacks
+						tapbacks = attachment.tapbacks,
+						hideStickers = isSelected
 					) {
 						val attachmentFlow = MessagePartFlow(
 							isOutgoing = isOutgoing,
-							isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID),
+							isSelected = isSelected,
 							anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
 							anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
 							tintRatio = scrollProgress

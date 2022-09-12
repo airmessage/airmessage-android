@@ -1,5 +1,8 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -28,6 +31,7 @@ fun MessageBubbleWrapper(
 	isOutgoing: Boolean,
 	stickers: List<StickerInfo>,
 	tapbacks: List<TapbackInfo>,
+	hideStickers: Boolean,
 	content: @Composable () -> Unit
 ) {
 	Box(
@@ -35,27 +39,33 @@ fun MessageBubbleWrapper(
 	) {
 		content()
 		
-		for(sticker in stickers) {
-			//Create a box with a size of 0
-			Box(
-				modifier = Modifier
-					.align(Alignment.Center)
-					.layout { measurable, constraints ->
-						val placeable = measurable.measure(constraints)
-						layout(0, 0) {
-							placeable.place(-placeable.width / 2, -placeable.height / 2)
-						}
-					}
-			) {
-				AsyncImage(
+		AnimatedVisibility(
+			visible = !hideStickers,
+			enter = fadeIn(),
+			exit = fadeOut()
+		) {
+			for(sticker in stickers) {
+				//Create a box with a size of 0
+				Box(
 					modifier = Modifier
-						.sizeIn(
-							maxWidth = 128.dp,
-							maxHeight = 128.dp
-						),
-					model = sticker.file,
-					contentDescription = null
-				)
+						.align(Alignment.Center)
+						.layout { measurable, constraints ->
+							val placeable = measurable.measure(constraints)
+							layout(0, 0) {
+								placeable.place(-placeable.width / 2, -placeable.height / 2)
+							}
+						}
+				) {
+					AsyncImage(
+						modifier = Modifier
+							.sizeIn(
+								maxWidth = 128.dp,
+								maxHeight = 128.dp
+							),
+						model = sticker.file,
+						contentDescription = null
+					)
+				}
 			}
 		}
 		
