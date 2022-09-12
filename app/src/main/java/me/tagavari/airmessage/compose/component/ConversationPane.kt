@@ -5,6 +5,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.outlined.*
@@ -149,7 +150,7 @@ private fun ConversationPaneLayout(
 ) {
 	val snackbarHostState = remember { SnackbarHostState() }
 	val scrollBehavior = if(floatingPane) {
-		TopAppBarDefaults.enterAlwaysScrollBehavior()
+		TopAppBarDefaults.pinnedScrollBehavior()
 	} else {
 		TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 	}
@@ -168,11 +169,15 @@ private fun ConversationPaneLayout(
 		stopActionMode()
 	}
 	
+	//Use a tinted background color in floating mode
 	val backgroundColor = if(floatingPane) {
 		MaterialTheme.colorScheme.inverseOnSurface
 	} else {
 		MaterialTheme.colorScheme.background
 	}
+	
+	//Don't allow the user to create a new conversation while syncing
+	val allowNewConversation = syncState == null
 	
 	Scaffold(
 		modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -181,8 +186,15 @@ private fun ConversationPaneLayout(
 				if(!isActionMode) {
 					@Composable
 					fun actions() {
-						var menuOpen by remember { mutableStateOf(false) }
+						//New conversation button
+						if(floatingPane && allowNewConversation) {
+							IconButton(onClick = onNewConversation) {
+								Icon(Icons.Default.Add, contentDescription = stringResource(id = R.string.action_newconversation))
+							}
+						}
 						
+						//Overflow menu
+						var menuOpen by remember { mutableStateOf(false) }
 						IconButton(onClick = { menuOpen = !menuOpen }) {
 							Icon(Icons.Default.MoreVert, contentDescription = "")
 						}
@@ -495,9 +507,7 @@ private fun ConversationPaneLayout(
 		},
 		snackbarHost = { SnackbarHost(snackbarHostState) },
 		floatingActionButton = {
-			//Don't allow users to create a new conversation while
-			//syncing messages
-			if(syncState == null) {
+			if(!floatingPane && allowNewConversation) {
 				FloatingActionButton(
 					modifier = Modifier.navigationBarsPadding(),
 					onClick = onNewConversation
