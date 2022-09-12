@@ -168,122 +168,133 @@ fun MessageInfoListEntry(
 				
 				val attachmentsCount = messageInfo.attachments.size
 				messageInfo.attachments.forEachIndexed { index, attachment ->
-					val attachmentFlow = MessagePartFlow(
-						isOutgoing = isOutgoing,
-						isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID),
-						anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
-						anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
-						tintRatio = scrollProgress
-					)
-					
-					attachment.file?.also { attachmentFile ->
-						if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
-									|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo)) {
-							MessageBubbleVisual(
-								flow = attachmentFlow,
-								file = attachmentFile,
-								type = attachment.contentType,
-								onClick = {
-									IntentHelper.openAttachmentFile(
-										context,
-										attachmentFile,
-										attachment.computedContentType
-									)
-								},
-								onSetSelected = { selected ->
-									selectionState.setSelectionAttachmentID(attachment.localID, selected)
-								}
-							)
-						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio)) {
-							val playbackManager = LocalAudioPlayback.current
-							val playbackState by playbackManager.stateForKey(key = attachmentFile)
-							val scope = rememberCoroutineScope()
+					MessageBubbleWrapper(
+						stickers = attachment.stickers,
+						tapbacks = attachment.tapbacks
+					) {
+						val attachmentFlow = MessagePartFlow(
+							isOutgoing = isOutgoing,
+							isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID),
+							anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
+							anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
+							tintRatio = scrollProgress
+						)
+						
+						val attachmentFile = attachment.file
+						if(attachmentFile == null) {
+							//Get the current download state
+							val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()
 							
-							MessageBubbleAudio(
-								flow = attachmentFlow,
-								file = attachmentFile,
-								audioPlaybackState = playbackState,
-								onTogglePlayback = {
-									scope.launch {
-										val state: AudioPlaybackState = playbackState
-										
-										if(state is AudioPlaybackState.Playing) {
-											if(state.playing) {
-												playbackManager.pause()
-											} else {
-												playbackManager.resume()
-											}
-										} else {
-											playbackManager.play(key = attachmentFile, Uri.fromFile(attachmentFile))
-										}
-									}
-								},
-								onSetSelected = { selected ->
-									selectionState.setSelectionAttachmentID(attachment.localID, selected)
+							val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let<ReduxEventAttachmentDownload?, Pair<Long, Long?>> { event ->
+								when(event) {
+									null -> Pair(attachment.fileSize, null)
+									is ReduxEventAttachmentDownload.Start -> Pair(event.fileLength, 0)
+									is ReduxEventAttachmentDownload.Progress -> Pair(event.bytesTotal, event.bytesProgress)
+									is ReduxEventAttachmentDownload.Complete -> Pair(attachment.fileSize, attachment.fileSize)
 								}
-							)
-						} else if(compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation)) {
-							MessageBubbleLocation(
+							}
+							
+							val connectionManager = LocalConnectionManager.current
+							MessageBubbleDownload(
 								flow = attachmentFlow,
-								file = attachmentFile,
-								date = Date(messageInfo.date),
-								onClick = { locationData ->
-									//Use Google Maps to open the Maps app on Android
-									Uri.parse(
-										"https://www.google.com/maps/search/?api=1&query=${locationData.coords.latitude},${locationData.coords.longitude}"
-									).let { IntentHelper.launchUri(context, it) }
+								name = attachment.fileName,
+								bytesTotal = bytesTotal,
+								bytesDownloaded = bytesDownloaded,
+								isDownloading = downloadState != null,
+								onClick = {
+									//Make sure we have a connection manager
+									if(connectionManager == null) {
+										Toast.makeText(context, R.string.message_connectionerror, Toast.LENGTH_SHORT).show()
+										return@MessageBubbleDownload
+									}
+									
+									//Download the attachment
+									NetworkState.downloadAttachment(connectionManager, messageInfo, attachment)
 								},
+								enabled = downloadState == null,
 								onSetSelected = { selected ->
 									selectionState.setSelectionAttachmentID(attachment.localID, selected)
 								}
 							)
 						} else {
-							MessageBubbleFile(
-								flow = attachmentFlow,
-								name = attachment.computedFileName ?: "",
-								onClick = {
-									IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
-								},
-								onSetSelected = { selected ->
-									selectionState.setSelectionAttachmentID(attachment.localID, selected)
+							when {
+								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
+										|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo) -> {
+									MessageBubbleVisual(
+										flow = attachmentFlow,
+										file = attachmentFile,
+										type = attachment.contentType,
+										onClick = {
+											IntentHelper.openAttachmentFile(
+												context,
+												attachmentFile,
+												attachment.computedContentType
+											)
+										},
+										onSetSelected = { selected ->
+											selectionState.setSelectionAttachmentID(attachment.localID, selected)
+										}
+									)
 								}
-							)
-						}
-					} ?: run {
-						//Get the current download state
-						val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()
-						
-						val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let<ReduxEventAttachmentDownload?, Pair<Long, Long?>> { event ->
-							when(event) {
-								null -> Pair(attachment.fileSize, null)
-								is ReduxEventAttachmentDownload.Start -> Pair(event.fileLength, 0)
-								is ReduxEventAttachmentDownload.Progress -> Pair(event.bytesTotal, event.bytesProgress)
-								is ReduxEventAttachmentDownload.Complete -> Pair(attachment.fileSize, attachment.fileSize)
+								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio) -> {
+									val playbackManager = LocalAudioPlayback.current
+									val playbackState by playbackManager.stateForKey(key = attachmentFile)
+									val scope = rememberCoroutineScope()
+									
+									MessageBubbleAudio(
+										flow = attachmentFlow,
+										file = attachmentFile,
+										audioPlaybackState = playbackState,
+										onTogglePlayback = {
+											scope.launch {
+												val state: AudioPlaybackState = playbackState
+												
+												if(state is AudioPlaybackState.Playing) {
+													if(state.playing) {
+														playbackManager.pause()
+													} else {
+														playbackManager.resume()
+													}
+												} else {
+													playbackManager.play(key = attachmentFile, Uri.fromFile(attachmentFile))
+												}
+											}
+										},
+										onSetSelected = { selected ->
+											selectionState.setSelectionAttachmentID(attachment.localID, selected)
+										}
+									)
+								}
+								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation) -> {
+									MessageBubbleLocation(
+										flow = attachmentFlow,
+										file = attachmentFile,
+										date = Date(messageInfo.date),
+										onClick = { locationData ->
+											//Use Google Maps to open the Maps app on Android
+											Uri.parse(
+												"https://www.google.com/maps/search/?api=1&query=${locationData.coords.latitude},${locationData.coords.longitude}"
+											).let { IntentHelper.launchUri(context, it) }
+										},
+										onSetSelected = { selected ->
+											selectionState.setSelectionAttachmentID(attachment.localID, selected)
+										}
+									)
+								}
+								else -> {
+									MessageBubbleFile(
+										flow = attachmentFlow,
+										name = attachment.computedFileName ?: "",
+										onClick = {
+											IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+										},
+										onSetSelected = { selected ->
+											selectionState.setSelectionAttachmentID(attachment.localID, selected)
+										}
+									)
+								}
 							}
 						}
-						
-						val connectionManager = LocalConnectionManager.current
-						MessageBubbleDownload(
-							flow = attachmentFlow,
-							name = attachment.fileName,
-							bytesTotal = bytesTotal,
-							bytesDownloaded = bytesDownloaded,
-							isDownloading = downloadState != null,
-							onClick = {
-								//Make sure we have a connection manager
-								if(connectionManager == null) {
-									Toast.makeText(context, R.string.message_connectionerror, Toast.LENGTH_SHORT).show()
-									return@MessageBubbleDownload
-								}
-								
-								//Download the attachment
-								NetworkState.downloadAttachment(connectionManager, messageInfo, attachment)
-							},
-							enabled = downloadState == null,
-							onSetSelected = { selected ->
-								selectionState.setSelectionAttachmentID(attachment.localID, selected)
-							}
-						)
 					}
 				}
 			}
