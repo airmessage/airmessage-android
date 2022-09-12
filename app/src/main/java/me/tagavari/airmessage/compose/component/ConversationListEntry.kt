@@ -59,6 +59,14 @@ fun ConversationListEntry(
 			}
 		)
 		
+		val contentColor by animateColorAsState(
+			when {
+				selected -> MaterialTheme.colorScheme.onSurfaceVariant
+				active -> MaterialTheme.colorScheme.onPrimaryContainer
+				else -> MaterialTheme.colorScheme.onBackground
+			}
+		)
+		
 		val haptic = LocalHapticFeedback.current
 		Surface(
 			modifier = Modifier
@@ -72,7 +80,8 @@ fun ConversationListEntry(
 						callback()
 					} }
 				),
-			color = backgroundColor
+			color = backgroundColor,
+			contentColor = contentColor
 		) {
 			Row(
 				modifier = Modifier.fillMaxSize(),

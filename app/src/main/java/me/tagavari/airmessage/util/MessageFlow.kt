@@ -71,18 +71,18 @@ data class MessagePartFlow(
 			return when {
 				isSelected ->
 					MessageColors(
-						background = colorScheme.primary,
-						foreground = colorScheme.onPrimary
+						background = colorScheme.tertiaryContainer,
+						foreground = colorScheme.onTertiaryContainer
 					)
 				isOutgoing ->
 					MessageColors(
 						background = ColorUtils.blendARGB(
-							colorScheme.tertiary.toArgb(),
+							colorScheme.primary.toArgb(),
 							colorScheme.secondary.toArgb(),
 							tintRatio
 						).let { Color(it) },
 						foreground = ColorUtils.blendARGB(
-							colorScheme.onTertiary.toArgb(),
+							colorScheme.onPrimary.toArgb(),
 							colorScheme.onSecondary.toArgb(),
 							tintRatio
 						).let { Color(it) }
