@@ -46,6 +46,7 @@ import me.tagavari.airmessage.compose.interop.GestureTracker
 import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
 import soup.compose.material.motion.MaterialFadeThrough
@@ -56,6 +57,13 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	@OptIn(ExperimentalAnimationApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		
+		//Redirect if the user needs to configure the app
+		if(!SharedPreferencesManager.isConnectionConfigured(this)) {
+			startActivity(Intent(this, OnboardingCompose::class.java))
+			finish()
+			return
+		}
 		
 		//Render edge-to-edge
 		WindowCompat.setDecorFitsSystemWindows(window, false)
