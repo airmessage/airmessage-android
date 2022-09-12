@@ -37,23 +37,23 @@ fun MessageBubbleWrapper(
 	) {
 		content()
 		
-		AnimatedVisibility(
-			visible = !hideStickers,
-			enter = fadeIn(),
-			exit = fadeOut()
+		//Create a box with a size of 0
+		Box(
+			modifier = Modifier
+				.align(Alignment.Center)
+				.layout { measurable, constraints ->
+					val placeable = measurable.measure(constraints)
+					layout(0, 0) {
+						placeable.place(-placeable.width / 2, -placeable.height / 2)
+					}
+				}
 		) {
-			for(sticker in stickers) {
-				//Create a box with a size of 0
-				Box(
-					modifier = Modifier
-						.align(Alignment.Center)
-						.layout { measurable, constraints ->
-							val placeable = measurable.measure(constraints)
-							layout(0, 0) {
-								placeable.place(-placeable.width / 2, -placeable.height / 2)
-							}
-						}
-				) {
+			AnimatedVisibility(
+				visible = !hideStickers,
+				enter = fadeIn(),
+				exit = fadeOut()
+			) {
+				for(sticker in stickers) {
 					AsyncImage(
 						modifier = Modifier
 							.sizeIn(
