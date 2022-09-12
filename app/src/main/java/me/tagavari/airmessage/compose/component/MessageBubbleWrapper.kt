@@ -3,15 +3,13 @@ package me.tagavari.airmessage.compose.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -70,29 +68,31 @@ fun MessageBubbleWrapper(
 		}
 		
 		tapbacks.firstOrNull()?.let { tapback ->
-			Box(
+			Surface(
 				modifier = Modifier
 					.size(tapbackSize)
 					.align(if(isOutgoing) Alignment.TopStart else Alignment.TopEnd)
 					.offset(
 						x = tapbackOffset * ((if(isOutgoing) -1 else 1)),
 						y = -tapbackOffset
-					)
-					.shadow(2.dp, shape = CircleShape)
-					.background(MaterialTheme.colorScheme.surface, shape = CircleShape),
-				contentAlignment = Alignment.Center
+					),
+				shape = CircleShape,
+				tonalElevation = 2.dp,
+				shadowElevation = 2.dp
 			) {
-				Text(
-					text = when(tapback.code) {
-						TapbackType.heart -> "\u2764"
-						TapbackType.like -> "\uD83D\uDC4D"
-						TapbackType.dislike -> "\uD83D\uDC4E"
-						TapbackType.laugh -> "\uD83D\uDE02"
-						TapbackType.exclamation -> "\u203C\uFE0F"
-						TapbackType.question -> "\u2753"
-						else -> ""
-					}
-				)
+				Box(contentAlignment = Alignment.Center) {
+					Text(
+						text = when(tapback.code) {
+							TapbackType.heart -> "\u2764"
+							TapbackType.like -> "\uD83D\uDC4D"
+							TapbackType.dislike -> "\uD83D\uDC4E"
+							TapbackType.laugh -> "\uD83D\uDE02"
+							TapbackType.exclamation -> "\u203C\uFE0F"
+							TapbackType.question -> "\u2753"
+							else -> ""
+						}
+					)
+				}
 			}
 		}
 	}
