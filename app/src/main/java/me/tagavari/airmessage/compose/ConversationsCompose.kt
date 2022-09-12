@@ -18,18 +18,24 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.flowWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.window.layout.FoldingFeature
+import androidx.window.layout.WindowInfoTracker
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.NewMessage
 import me.tagavari.airmessage.activity.Preferences
@@ -51,7 +57,23 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		
+		//Render edge-to-edge
 		WindowCompat.setDecorFitsSystemWindows(window, false)
+		
+		//Subscribe to window information updates
+		val devicePostureFlow = WindowInfoTracker.getOrCreate(this)
+			.windowLayoutInfo(this)
+			.flowWithLifecycle(lifecycle)
+			.map {
+				it.displayFeatures
+					.filterIsInstance<FoldingFeature>()
+					.firstOrNull()
+			}
+			.stateIn(
+				scope = lifecycleScope,
+				started = SharingStarted.Eagerly,
+				initialValue = null
+			)
 		
 		setContent {
 			ConnectionServiceLocalProvider(context = this) {
@@ -62,13 +84,29 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					var selectedConversationID by rememberSaveable { mutableStateOf<Long?>(null) }
 					
 					if(isExpandedScreen) {
+						val devicePosture by devicePostureFlow.collectAsState(initial = null)
+						val hingeBounds = devicePosture?.bounds
+						
+						val hingeOffset: Dp
+						val hingeWidth: Dp
+						if(hingeBounds != null) {
+							with(LocalDensity.current) {
+								hingeOffset = hingeBounds.left.toDp()
+								hingeWidth = hingeBounds.width().toDp()
+							}
+						} else {
+							//Hardcode for non-foldables
+							hingeOffset = 384.dp
+							hingeWidth = 0.dp
+						}
+						
 						Row(
 							modifier = Modifier
 								.background(MaterialTheme.colorScheme.inverseOnSurface)
 								.fillMaxSize()
 						) {
 							ConversationPane(
-								modifier = Modifier.width(384.dp),
+								modifier = Modifier.width(hingeOffset),
 								floatingPane = true,
 								activeConversationID = selectedConversationID,
 								onShowSyncDialog = ::showSyncFragment,
@@ -78,14 +116,24 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 							)
 							
 							selectedConversationID?.let { selectedConversationID ->
+								Spacer(modifier = Modifier.width(hingeWidth))
+								
 								MaterialFadeThrough(
 									targetState = selectedConversationID,
 								) { localSelectedConversationID ->
 									Box(
-										modifier = Modifier
-											.statusBarsPadding()
-											.padding(end = 16.dp)
-											.clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+										modifier = if(devicePosture?.isSeparating == true) {
+											Modifier
+										} else {
+											Modifier.statusBarsPadding()
+												.padding(end = 16.dp)
+												.clip(
+													RoundedCornerShape(
+														topStart = 20.dp,
+														topEnd = 20.dp
+													)
+												)
+										}
 									) {
 										key(localSelectedConversationID) {
 											MessagingScreen(
