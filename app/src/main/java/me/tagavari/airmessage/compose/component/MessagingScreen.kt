@@ -122,6 +122,13 @@ fun MessagingScreen(
 		}
 	}
 	
+	//Save the draft when this view goes out of scope
+	DisposableEffect(Unit) {
+		onDispose {
+			viewModel.saveInputDraft()
+		}
+	}
+	
 	CompositionLocalProvider(
 		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
