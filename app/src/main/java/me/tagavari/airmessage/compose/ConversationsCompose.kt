@@ -133,7 +133,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								) { localSelectedConversationID ->
 									Box(
 										modifier = if(useFloatingPane) {
-											Modifier.statusBarsPadding()
+											Modifier
+												.statusBarsPadding()
 												.padding(end = 16.dp)
 												.clip(
 													RoundedCornerShape(
