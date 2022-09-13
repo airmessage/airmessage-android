@@ -234,6 +234,7 @@ fun MessageInputBarText(
 					
 					val context = LocalContext.current
 					MaterialTheme.typography.labelMedium.letterSpacing
+					val textColor = MaterialTheme.colorScheme.onSurface
 					val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
 					AndroidView(
 						modifier = Modifier
@@ -274,7 +275,8 @@ fun MessageInputBarText(
 							}
 						},
 						update = { editText ->
-							//Update the placer holder
+							//Update the text color
+							editText.setTextColor(textColor.toArgb())
 							editText.setHintTextColor(placeholderColor.toArgb())
 							
 							//Update the text
