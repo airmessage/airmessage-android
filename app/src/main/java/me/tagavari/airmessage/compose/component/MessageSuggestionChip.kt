@@ -8,6 +8,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,7 +34,7 @@ fun MessageSuggestionChip(
 		RoundedCornerShape(MessageFlowRadius.large)
 	}
 	
-	Box(
+	Row(
 		modifier = Modifier
 			.clip(shape)
 			.clickable(onClick = onClick)
@@ -43,7 +44,8 @@ fun MessageSuggestionChip(
 				shape = shape
 			)
 			.heightIn(min = 40.dp)
-			.padding(horizontal = 12.dp, vertical = 8.dp)
+			.padding(horizontal = 12.dp, vertical = 8.dp),
+		verticalAlignment = Alignment.CenterVertically
 	) {
 		action.replyString?.let { text ->
 			Text(
@@ -55,6 +57,7 @@ fun MessageSuggestionChip(
 		action.remoteAction?.let { action ->
 			action.icon?.let { icon ->
 				AsyncImage(
+					modifier = Modifier.size(24.dp),
 					model = icon,
 					contentDescription = null
 				)
