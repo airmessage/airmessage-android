@@ -28,12 +28,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
+import androidx.lifecycle.DefaultLifecycleObserver
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ConversationDetailsCompose
@@ -99,6 +104,22 @@ fun MessagingScreen(
 			.collect {
 				scrollState.animateScrollToItem(0)
 			}
+	}
+	
+	//Save the draft input when the activity goes to the background
+	val lifecycle = LocalLifecycleOwner.current
+	DisposableEffect(Unit) {
+		val observer = object : DefaultLifecycleObserver {
+			override fun onPause(owner: LifecycleOwner) {
+				viewModel.saveInputDraft()
+			}
+		}
+		
+		lifecycle.lifecycle.addObserver(observer)
+		
+		onDispose {
+			lifecycle.lifecycle.removeObserver(observer)
+		}
 	}
 	
 	CompositionLocalProvider(

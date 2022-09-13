@@ -121,6 +121,7 @@ class MessagingViewModel(
 				DatabaseManager.getInstance().fetchConversationInfo(getApplication(), conversationID)
 			}
 			conversation = loadedConversation ?: return@launch
+			loadedConversation.draftMessage?.let { inputText = it }
 			queuedFiles.addAll(loadedConversation.draftFiles.map { QueuedFile(it) })
 			
 			//Load the conversation title
@@ -565,6 +566,23 @@ class MessagingViewModel(
 		} else {
 			//Send a text message
 			sendTextMessage(connectionManager, MapLocationHelper.getMapUri(location).toString())
+		}
+	}
+	
+	/**
+	 * Saves the current input text as a draft to disk
+	 */
+	@OptIn(DelicateCoroutinesApi::class)
+	fun saveInputDraft() {
+		GlobalScope.launch {
+			val text = inputText.ifBlank { null }
+			withContext(Dispatchers.IO) {
+				DatabaseManager.getInstance().updateConversationDraftMessage(
+					conversationID,
+					text,
+					System.currentTimeMillis()
+				)
+			}
 		}
 	}
 	
