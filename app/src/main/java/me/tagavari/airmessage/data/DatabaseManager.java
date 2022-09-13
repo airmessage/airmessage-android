@@ -2021,6 +2021,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		return null;
 	}
 	
+	@Nullable
 	public ConversationInfo findConversationByExternalID(Context context, long externalID, int serviceHandler, String service) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();

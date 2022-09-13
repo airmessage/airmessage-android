@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose
 
+import android.app.Notification
 import android.app.NotificationManager
 import android.content.Intent
 import android.net.Uri
@@ -8,6 +9,7 @@ import android.os.Bundle
 import android.view.MotionEvent
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.viewModels
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
@@ -20,7 +22,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
-import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
@@ -45,12 +49,13 @@ import me.tagavari.airmessage.compose.component.MessagingScreen
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
 import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
+import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
-import me.tagavari.airmessage.helper.ShortcutHelper
 import me.tagavari.airmessage.helper.ShortcutHelper.shortcutIDToConversationID
 import me.tagavari.airmessage.helper.getParcelableArrayListExtraCompat
 import me.tagavari.airmessage.helper.getParcelableExtraCompat
@@ -59,16 +64,11 @@ import soup.compose.material.motion.MaterialSharedAxisX
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class ConversationsCompose : FragmentActivity(), GestureTrackable {
-	private var selectedConversationID by mutableStateOf<Long?>(null)
+	private val viewModel: ConversationsViewModel by viewModels()
 	
 	@OptIn(ExperimentalAnimationApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
-		
-		//Load the selected conversation ID
-		selectedConversationID = savedInstanceState
-			?.getLong(saveStateKeySelectedConversationID, -1L)
-			?.let { if(it == -1L) null else it }
 		
 		//Apply intent values
 		applyIntent(intent)
@@ -129,21 +129,21 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 							ConversationPane(
 								modifier = Modifier.width(hingeOffset),
 								floatingPane = true,
-								activeConversationID = selectedConversationID,
+								viewModel = viewModel,
 								onShowSyncDialog = ::showSyncFragment,
-								onSelectConversation = { selectConversation(it) },
+								onSelectConversation = { viewModel.selectConversation(it) },
 								onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
 								onNewConversation = { startActivity(Intent(this@ConversationsCompose, NewMessage::class.java)) }
 							)
 							
-							selectedConversationID?.let { selectedConversationID ->
+							viewModel.activeConversationID?.let { activeConversationID ->
 								Spacer(modifier = Modifier.width(hingeWidth))
 								
 								val useFloatingPane = devicePosture?.isSeparating != true
 								
 								MaterialFadeThrough(
-									targetState = selectedConversationID,
-								) { localSelectedConversationID ->
+									targetState = activeConversationID,
+								) { localActiveConversationID ->
 									Box(
 										modifier = if(useFloatingPane) {
 											Modifier
@@ -159,9 +159,9 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 											Modifier
 										}
 									) {
-										key(localSelectedConversationID) {
+										key(localActiveConversationID) {
 											MessagingScreen(
-												conversationID = localSelectedConversationID,
+												conversationID = localActiveConversationID,
 												floatingPane = useFloatingPane
 											)
 										}
@@ -171,29 +171,29 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 						}
 					} else {
 						//Handle back presses
-						BackHandler(enabled = selectedConversationID != null) {
-							selectedConversationID = null
+						BackHandler(enabled = viewModel.activeConversationID != null) {
+							viewModel.selectConversation(null)
 						}
 						
 						MaterialSharedAxisX(
 							modifier = Modifier.background(MaterialTheme.colorScheme.background),
-							targetState = selectedConversationID,
-							forward = selectedConversationID != null,
-						) { localSelectedConversationID ->
-							if(localSelectedConversationID == null) {
+							targetState = viewModel.activeConversationID,
+							forward = viewModel.activeConversationID != null,
+						) { localActiveConversationID ->
+							if(localActiveConversationID == null) {
 								ConversationPane(
-									activeConversationID = null,
+									viewModel = viewModel,
 									onShowSyncDialog = ::showSyncFragment,
-									onSelectConversation = { selectConversation(it) },
+									onSelectConversation = { viewModel.selectConversation(it) },
 									onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
 									onNewConversation = { startActivity(Intent(this@ConversationsCompose, NewMessage::class.java)) }
 								)
 							} else {
-								key(localSelectedConversationID) {
+								key(localActiveConversationID) {
 									MessagingScreen(
-										conversationID = localSelectedConversationID,
+										conversationID = localActiveConversationID,
 										navigationIcon = {
-											IconButton(onClick = { selectedConversationID = null }) {
+											IconButton(onClick = { viewModel.selectConversation(null) }) {
 												Icon(
 													imageVector = Icons.Filled.ArrowBack,
 													contentDescription = stringResource(id = R.string.action_back)
@@ -233,17 +233,6 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 		applyIntent(intent)
 	}
 	
-	/**
-	 * Handles setting the selected conversation, or NULL to deselect
-	 */
-	private fun selectConversation(conversationID: Long?) {
-		selectedConversationID = conversationID
-		
-		if(conversationID != null) {
-			ShortcutHelper.reportShortcutUsed(this, conversationID)
-		}
-	}
-	
 	private fun showSyncFragment(connectionManager: ConnectionManager, deleteMessages: Boolean) {
 		//Ignore if we're already showing the fragment
 		if(supportFragmentManager.findFragmentByTag(keyFragmentSync) != null) return
@@ -259,56 +248,72 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	}
 	
 	private fun applyIntent(intent: Intent) {
-		//Update the selected conversation
-		if(intent.hasExtra(INTENT_TARGET_ID)) {
-			val conversationID = intent.getLongExtra(INTENT_TARGET_ID, -1)
-			if(conversationID != -1L) {
-				selectedConversationID = conversationID
-			}
-		}
-		
-		var targetConversationID: Long? = null
-		var targetSMSParticipants: Collection<String>? = null
-		
-		var messageText: String? = null
-		var messageAttachments: Collection<Uri>? = null
-		
-		if(intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
-			//Check if the request came from direct share
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-				intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)?.let { shortcutID ->
-					targetConversationID = shortcutIDToConversationID(shortcutID)
+		when(intent.action) {
+			Intent.ACTION_DEFAULT -> {
+				//Update the selected conversation
+				val conversationID = intent.getLongExtra(INTENT_TARGET_ID, -1)
+				if(conversationID != -1L) {
+					var receivedContent: ConversationReceivedContent? = null
+					var messageText: String? = null
 					
-					if(intent.action == Intent.ACTION_SEND) {
-						messageText = intent.getStringExtra(Intent.EXTRA_TEXT)
-						messageAttachments = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
-							?.let { listOf(it) }
-					} else {
-						messageText = intent.getStringArrayListExtra(Intent.EXTRA_TEXT)?.joinToString(separator = " ")
-						messageAttachments = intent.getParcelableArrayListExtraCompat(Intent.EXTRA_STREAM)
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+						//Set the draft content from the notification
+						messageText = intent.getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)
+					}
+					
+					viewModel.selectConversation(conversationID, messageText)
+				}
+			}
+			Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_SENDTO -> {
+				var targetConversationID: Long? = null
+				var targetSMSParticipants: List<String>? = null
+				
+				var messageText: String? = null
+				var messageAttachments: List<Uri> = listOf()
+				
+				if(intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
+					//Check if the request came from direct share
+					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+						intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)?.let { shortcutID ->
+							targetConversationID = shortcutIDToConversationID(shortcutID)
+							
+							if(intent.action == Intent.ACTION_SEND) {
+								messageText = intent.getStringExtra(Intent.EXTRA_TEXT)
+								intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
+									messageAttachments = listOf(it)
+								}
+							} else {
+								messageText = intent.getStringArrayListExtra(Intent.EXTRA_TEXT)?.joinToString(separator = " ")
+								intent.getParcelableArrayListExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
+									messageAttachments = it
+								}
+							}
+						}
+					}
+				} else if(intent.action == Intent.ACTION_SENDTO) {
+					//Check if the request came from an SMS link
+					intent.data?.let { uri ->
+						if(setOf("sms", "smsto", "mms", "mmsto").contains(uri.scheme)) {
+							targetSMSParticipants = uri.authority?.split(",")
+							
+							messageText = intent.getStringExtra("sms_body")
+							intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
+								messageAttachments = listOf(it)
+							}
+						}
 					}
 				}
-			}
-		} else if(intent.action == Intent.ACTION_SENDTO) {
-			//Check if the request came from an SMS link
-			intent.data?.let { uri ->
-				if(setOf("sms", "smsto", "mms", "mmsto").contains(uri.scheme)) {
-					targetSMSParticipants = uri.authority?.split(",")
-					
-					messageText = intent.getStringExtra("sms_body")
-					messageAttachments = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
-						?.let { listOf(it) }
+				
+				//Resolve the SMS conversation
+				targetSMSParticipants?.let { participants ->
+					viewModel.selectTextMessageConversation(participants, messageText, messageAttachments)
+				}
+				
+				targetConversationID?.let { conversationID ->
+					viewModel.selectConversation(conversationID, messageText, messageAttachments)
 				}
 			}
 		}
-	}
-	
-	//STATE PERSISTENCE
-	
-	override fun onSaveInstanceState(outState: Bundle) {
-		super.onSaveInstanceState(outState)
-		
-		outState.putLong(saveStateKeySelectedConversationID, selectedConversationID ?: -1)
 	}
 	
 	//GESTURE HANDLING
@@ -337,11 +342,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	companion object {
 		private const val keyFragmentSync = "fragment_sync"
 		
-		private const val saveStateKeySelectedConversationID = "selectedConversationID"
-		
 		const val INTENT_TARGET_ID = "targetID"
-		const val INTENT_DATA_TEXT = "dataText"
-		const val INTENT_DATA_FILE = "dataFile"
 		const val INTENT_BUBBLE = "bubble"
 	}
 }

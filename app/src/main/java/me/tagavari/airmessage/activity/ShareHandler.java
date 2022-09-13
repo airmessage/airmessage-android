@@ -27,6 +27,7 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.compose.ConversationsCompose;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
@@ -90,7 +91,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 				if(dataValid = uri != null) targetUris = new Uri[]{uri};
 			}
 			
-			//Checking if the request came from direct share
+			/* //Checking if the request came from direct share
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
 				long conversationID = ShortcutHelper.INSTANCE.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 				if(conversationID != -1) {
@@ -100,7 +101,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 				//Finishing the activity
 				finish();
 				return;
-			}
+			} */
 		} else if(Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
 			//Getting the target URI array
 			ArrayList<Parcelable> uriList = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM);
@@ -217,21 +218,16 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	 * @param conversationID The ID of the conversation to launch
 	 */
 	private void launchMessaging(long conversationID) {
-		//Creating the intent
-		Intent intent = new Intent(ShareHandler.this, Messaging.class);
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+		//Copy the intent
+		Intent intent = new Intent(getIntent());
+		intent.setClass(ShareHandler.this, Messaging.class);
 		
-		//Setting the target conversation
-		intent.putExtra(Messaging.intentParamTargetID, conversationID);
+		//Launch a single activity, and copy URI permissions
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 		
-		//Setting the fill data
-		if(targetText != null) intent.putExtra(Messaging.intentParamDataText, targetText);
-		if(targetUris != null) {
-			intent.putExtra(Messaging.intentParamDataFile, true);
-			intent.setClipData(uriArrayToClipData(targetUris));
-		}
+		//Set the target conversation
+		intent.putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationID);
 		
-		//Starting the activity
 		startActivity(intent);
 	}
 	

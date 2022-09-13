@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
+import android.net.Uri
+import android.provider.Telephony
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -8,10 +10,18 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.rx3.asFlow
+import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.enums.ConversationState
+import me.tagavari.airmessage.enums.ServiceHandler
+import me.tagavari.airmessage.enums.ServiceType
+import me.tagavari.airmessage.helper.ConversationColorHelper
 import me.tagavari.airmessage.helper.ConversationHelper
 import me.tagavari.airmessage.helper.ConversationPreviewHelper
+import me.tagavari.airmessage.helper.ShortcutHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
@@ -20,8 +30,11 @@ import me.tagavari.airmessage.task.ConversationActionTask
 class ConversationsViewModel(application: Application) : AndroidViewModel(application) {
 	var conversations by mutableStateOf<Result<List<ConversationInfo>>?>(null)
 		private set
-	
 	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
+	var activeConversationID by mutableStateOf<Long?>(null)
+	
+	private val _receivedContentFlow = MutableStateFlow<ConversationReceivedContent?>(null)
+	val receivedContentFlow = _receivedContentFlow.asStateFlow()
 	
 	init {
 		loadConversations()
@@ -231,6 +244,99 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		//Mark the conversations as read
 		GlobalScope.launch {
 			ConversationActionTask.unreadConversations(unreadConversations, 0)
+		}
+	}
+	
+	/**
+	 * Sets the active conversation and its received content
+	 */
+	fun selectConversation(conversationID: Long?, receivedText: String? = null, receivedAttachments: List<Uri> = listOf()) {
+		//Update the state
+		viewModelScope.launch {
+			activeConversationID = conversationID
+			
+			_receivedContentFlow.emit(
+				conversationID?.let { conversationID ->
+					ConversationReceivedContent(
+						conversationID = conversationID,
+						text = receivedText,
+						attachments = receivedAttachments
+					)
+				}
+			)
+		}
+		
+		//Record conversation shortcut usages
+		if(conversationID != null) {
+			ShortcutHelper.reportShortcutUsed(getApplication(), conversationID)
+		}
+	}
+	
+	/**
+	 * Sets the active conversation for a text message conversation, resolving the conversation
+	 * and creating it if necessary
+	 */
+	fun selectTextMessageConversation(participants: List<String>, receivedText: String?, receivedAttachments: List<Uri>) {
+		viewModelScope.launch {
+			val conversationID = withContext(Dispatchers.IO) {
+				//Look up the conversation in the messages database
+				val threadID = Telephony.Threads.getOrCreateThreadId(getApplication(), participants.toSet())
+				
+				//Find the conversation in the database
+				val matchingConversationInfo = DatabaseManager.getInstance()
+					.findConversationByExternalID(
+						getApplication(),
+						threadID,
+						ServiceHandler.systemMessaging,
+						ServiceType.systemSMS
+					)
+				
+				matchingConversationInfo?.let {
+					return@withContext it.localID
+				}
+				
+				//Create a new conversation
+				val conversationColor = ConversationColorHelper.getDefaultConversationColor(threadID)
+				val coloredMembers = ConversationColorHelper.getColoredMembers(
+					participants,
+					conversationColor,
+					threadID
+				)
+				val newConversationInfo = ConversationInfo(
+					-1,
+					null,
+					threadID,
+					ConversationState.ready,
+					ServiceHandler.systemMessaging,
+					ServiceType.systemSMS,
+					conversationColor,
+					coloredMembers,
+					null
+				)
+				
+				//Write the conversation to disk
+				val result = DatabaseManager.getInstance().addConversationInfo(newConversationInfo)
+				if(!result) return@withContext null
+				
+				//Add the conversation created message
+				val firstMessage = DatabaseManager.getInstance().addConversationCreatedMessage(newConversationInfo.localID)
+				
+				//Emit an update
+				withContext(Dispatchers.Main) {
+					ReduxEmitterNetwork.messageUpdateSubject.onNext(
+						ReduxEventMessaging.ConversationUpdate(
+							newConversations = mapOf(newConversationInfo to listOf(firstMessage)),
+							transferredConversations = listOf()
+						)
+					)
+				}
+				
+				return@withContext newConversationInfo.localID
+			}
+			
+			if(conversationID != null) {
+				selectConversation(conversationID, receivedText, receivedAttachments)
+			}
 		}
 	}
 }

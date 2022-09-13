@@ -52,14 +52,12 @@ import me.tagavari.airmessage.task.ConversationActionTask
 fun ConversationPane(
 	modifier: Modifier = Modifier,
 	floatingPane: Boolean = false,
-	activeConversationID: Long?,
+	viewModel: ConversationsViewModel,
 	onShowSyncDialog: (connectionManager: ConnectionManager, deleteMessages: Boolean) -> Unit,
 	onSelectConversation: (Long) -> Unit,
 	onNavigateSettings: () -> Unit,
 	onNewConversation: () -> Unit
 ) {
-	val viewModel = viewModel<ConversationsViewModel>()
-	
 	val syncEvent by remember {
 		ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
 			.filter { it is ReduxEventMassRetrieval.Start
@@ -112,7 +110,7 @@ fun ConversationPane(
 		modifier = modifier,
 		floatingPane = floatingPane,
 		conversations = viewModel.conversations,
-		activeConversationID = activeConversationID,
+		activeConversationID = viewModel.activeConversationID,
 		onSelectConversation = onSelectConversation,
 		onReloadConversations = {
 			viewModel.loadConversations()
