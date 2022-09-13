@@ -9,37 +9,34 @@ import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.helper.ConversationHelper
 import me.tagavari.airmessage.helper.ShortcutHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.redux.ReduxEventMessaging.*
 
 //A receiver that handles creating and updating shortcuts
 @RequiresApi(api = Build.VERSION_CODES.N_MR1)
 class ReduxReceiverShortcut(private val context: Context) {
 	@OptIn(DelicateCoroutinesApi::class)
 	fun initialize() {
-		GlobalScope.launch {
-			launch { ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(::handleMessaging) }
-			launch { ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow().collect(::handleMassRetrieval) }
-			launch { ReduxEmitterNetwork.textImportUpdateSubject.asFlow().collect(::handleTextImport) }
-		}
+		GlobalScope.launch { ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(::handleMessaging) }
+		GlobalScope.launch { ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow().collect(::handleMassRetrieval) }
+		GlobalScope.launch { ReduxEmitterNetwork.textImportUpdateSubject.asFlow().collect(::handleTextImport) }
 	}
 	
 	private suspend fun handleMessaging(event: ReduxEventMessaging) {
 		when(event) {
-			is Message -> {
+			is ReduxEventMessaging.Message -> {
 				pushConversations(event.conversationItems.map { it.first })
 			}
-			is ConversationUpdate -> {
+			is ReduxEventMessaging.ConversationUpdate -> {
 				pushConversations(
 					event.newConversations.keys.sortedWith(ConversationHelper.conversationComparator)
 				)
 			}
-			is ReduxConversationAction -> {
+			is ReduxEventMessaging.ReduxConversationAction -> {
 				ShortcutHelper.updateShortcut(context, event.conversationInfo)
 			}
-			is ConversationDelete -> {
+			is ReduxEventMessaging.ConversationDelete -> {
 				ShortcutHelper.disableShortcuts(context, listOf(event.conversationInfo.localID))
 			}
-			is ConversationServiceHandlerDelete -> {
+			is ReduxEventMessaging.ConversationServiceHandlerDelete -> {
 				ShortcutHelper.disableShortcuts(context, event.deletedIDs)
 			}
 			else -> {}

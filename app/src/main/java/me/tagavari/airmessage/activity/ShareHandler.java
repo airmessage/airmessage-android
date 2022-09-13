@@ -1,19 +1,17 @@
 package me.tagavari.airmessage.activity;
 
 import android.app.Application;
-import android.content.ClipData;
 import android.content.Intent;
 import android.content.res.Resources;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Parcelable;
 import android.util.DisplayMetrics;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.Button;
+
 import androidx.annotation.IntDef;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -22,6 +20,11 @@ import androidx.lifecycle.MutableLiveData;
 import androidx.lifecycle.ViewModelProvider;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.util.List;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
@@ -38,18 +41,9 @@ import me.tagavari.airmessage.messaging.viewbinder.VBConversation;
 import me.tagavari.airmessage.messaging.viewholder.VHConversationBase;
 import me.tagavari.airmessage.util.DisposableViewHolder;
 
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.util.ArrayList;
-import java.util.List;
-
 public class ShareHandler extends AppCompatCompositeActivity {
 	//Creating the view model value
 	private ActivityViewModel viewModel;
-	
-	//Creating the target values
-	private String targetText = null;
-	private Uri[] targetUris = null;
 	
 	//Creating the view values
 	private RecyclerView listConversations;
@@ -65,50 +59,14 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		//Getting the view model
 		viewModel = new ViewModelProvider(this).get(ActivityViewModel.class);
 		
-		//Getting the intent data
-		String intentAction = getIntent().getAction();
-		String intentType = getIntent().getType();
-		
-		//Checking if the intent type is invalid
-		if(intentType == null) {
-			//Finishing the activity
-			finish();
-			return;
-		}
-		
-		boolean dataValid = false;
-		
-		//Checking if the intent is a single object
-		if(Intent.ACTION_SEND.equals(intentAction)) {
-			//Checking if the content type is text
-			if("text/plain".equals(intentType) && getIntent().hasExtra(Intent.EXTRA_TEXT)) {
-				//Setting the target text
-				targetText = getIntent().getStringExtra(Intent.EXTRA_TEXT);
-				dataValid = targetText != null;
-			} else {
-				//Getting the target URI
-				Uri uri = getIntent().getParcelableExtra(Intent.EXTRA_STREAM);
-				if(dataValid = uri != null) targetUris = new Uri[]{uri};
+		//Checking if the request came from direct share
+		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+			long conversationID = ShortcutHelper.INSTANCE.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
+			if(conversationID != -1) {
+				//Launching the activity
+				launchMessaging(conversationID);
 			}
 			
-			/* //Checking if the request came from direct share
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
-				long conversationID = ShortcutHelper.INSTANCE.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
-				if(conversationID != -1) {
-					//Launching the activity
-					launchMessaging(conversationID);
-				}
-				//Finishing the activity
-				finish();
-				return;
-			} */
-		} else if(Intent.ACTION_SEND_MULTIPLE.equals(intentAction)) {
-			//Getting the target URI array
-			ArrayList<Parcelable> uriList = getIntent().getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-			if(dataValid = uriList != null && !uriList.isEmpty()) targetUris = uriList.toArray(new Uri[0]);
-		}
-		
-		if(!dataValid) {
 			//Finishing the activity
 			finish();
 			return;
@@ -198,18 +156,13 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	 * Launches the 'create new conversation' activity with the share data
 	 */
 	public void createNewConversation(View view) {
-		//Creating the intent
-		Intent intent = new Intent(this, NewMessage.class);
-		intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
+		//Copy the intent
+		Intent intent = new Intent(getIntent());
+		intent.setClass(ShareHandler.this, ConversationsCompose.class);
 		
-		//Setting the fill data
-		if(targetText != null) intent.putExtra(Messaging.intentParamDataText, targetText);
-		if(targetUris != null) {
-			intent.putExtra(Messaging.intentParamDataFile, true);
-			intent.setClipData(uriArrayToClipData(targetUris));
-		}
+		//Launch a single activity, and copy URI permissions
+		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 		
-		//Starting the activity
 		startActivity(intent);
 	}
 	
@@ -229,15 +182,6 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		intent.putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationID);
 		
 		startActivity(intent);
-	}
-	
-	/**
-	 * Converts an array of URIs to {@link ClipData} for use with intents
-	 */
-	private static ClipData uriArrayToClipData(Uri[] uriArray) {
-		ClipData clipData = ClipData.newRawUri(null, uriArray[0]);
-		for(int i = 1; i < uriArray.length; i++) clipData.addItem(new ClipData.Item(uriArray[i]));
-		return clipData;
 	}
 	
 	private class RecyclerAdapter extends RecyclerView.Adapter<VHConversationBase> {
