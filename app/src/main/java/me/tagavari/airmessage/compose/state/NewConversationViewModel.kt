@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.component.ContactChip
+import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.task.ContactsTask
 import me.tagavari.airmessage.util.ContactInfo
 
@@ -67,6 +68,24 @@ class NewConversationViewModel(application: Application) : AndroidViewModel(appl
 			
 			contactsState = NewConversationContactsState.Loaded(contacts)
 		}
+	}
+	
+	/**
+	 * Adds a selected recipient to the list
+	 */
+	fun addSelectedRecipient(address: String) {
+		val chip = ContactChip(
+			AddressHelper.formatAddress(address),
+			AddressHelper.normalizeAddress(address)
+		)
+		selectedRecipients.add(chip)
+	}
+	
+	/**
+	 * Removes a selected recipient from the list
+	 */
+	fun removeSelectedRecipient(address: String) {
+		selectedRecipients.removeAll { it.address == address }
 	}
 }
 
