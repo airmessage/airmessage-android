@@ -85,8 +85,8 @@ object SmartReplyHelper {
 	@CheckReturnValue
 	fun generateResponsesTextClassifier(context: Context, messages: List<ConversationActions.Message>): Single<ConversationActions> {
 		return Single.fromCallable {
-			val textClassificationManager = ContextCompat.getSystemService(context, TextClassificationManager::class.java) ?: throw IllegalStateException()
-			val textClassifier = textClassificationManager.textClassifier
+			val textClassifier = ContextCompat.getSystemService(context, TextClassificationManager::class.java)?.textClassifier ?: TextClassifier.NO_OP
+			
 			textClassifier.suggestConversationActions(
 					ConversationActions.Request.Builder(messages)
 							.setMaxSuggestions(3)
