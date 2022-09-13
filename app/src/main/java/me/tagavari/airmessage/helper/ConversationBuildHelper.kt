@@ -7,11 +7,13 @@ import android.graphics.drawable.Icon
 import android.os.Build
 import android.view.View
 import androidx.annotation.RequiresApi
+import androidx.core.graphics.drawable.IconCompat
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.schedulers.Schedulers
+import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -222,16 +224,43 @@ object ConversationBuildHelper {
 		//Getting member info for each member
 		return if(MainApplication.canUseContacts(context)) {
 			Maybe.concat(conversationInfo.members.map { memberInfo -> MainApplication.getInstance().userCacheHelper.getUserInfo(context, memberInfo.address).onErrorComplete() })
-					.observeOn(Schedulers.io())
-					.map { userInfo: UserCacheHelper.UserInfo ->
-						Person.Builder()
-								.setName(userInfo.contactName)
-								.setKey(userInfo.lookupKey)
-								.setIcon(Icon.createWithContentUri(getContactImageURI(userInfo.contactID)))
-								.build()
-					}.toList()
+				.observeOn(Schedulers.io())
+				.map { userInfo: UserCacheHelper.UserInfo ->
+					Person.Builder()
+						.setName(userInfo.contactName)
+						.setKey(userInfo.lookupKey)
+						.setIcon(Icon.createWithContentUri(getContactImageURI(userInfo.contactID)))
+						.build()
+				}.toList()
 		} else {
 			Single.just(conversationInfo.members.map { member: MemberInfo -> Person.Builder().setKey(member.address).build() })
+		}
+	}
+	
+	/**
+	 * Generates a list of [Person] from a conversation's members
+	 */
+	suspend fun generatePersonListCompat(context: Context, conversationInfo: ConversationInfo): List<androidx.core.app.Person> {
+		//Return if the conversation has no members
+		if(conversationInfo.members.isEmpty()) {
+			return listOf()
+		}
+		
+		//Getting member info for each member
+		return if(MainApplication.canUseContacts(context)) {
+			return conversationInfo.members.map { member ->
+				val userInfo = MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
+				
+				androidx.core.app.Person.Builder()
+					.setName(userInfo.contactName)
+					.setKey(userInfo.lookupKey)
+					.setIcon(IconCompat.createWithContentUri(getContactImageURI(userInfo.contactID)))
+					.build()
+			}
+		} else {
+			conversationInfo.members.map { member ->
+				androidx.core.app.Person.Builder().setKey(member.address).build()
+			}
 		}
 	}
 	

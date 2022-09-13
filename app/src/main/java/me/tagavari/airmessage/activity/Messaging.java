@@ -556,7 +556,7 @@ public class Messaging extends AppCompatCompositeActivity {
 			
 			//Checking if the request came from direct share
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
-				conversationID = ShortcutHelper.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
+				conversationID = ShortcutHelper.INSTANCE.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 			}
 			//Checking if the request came from an SMS link
 			else if(getIntent().getDataString() != null) {

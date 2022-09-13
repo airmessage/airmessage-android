@@ -1493,9 +1493,7 @@ public class Conversations extends AppCompatCompositeActivity {
 				}
 				
 				//Updating the conversation's shortcut usage
-				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-					ShortcutHelper.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
-				}
+				ShortcutHelper.INSTANCE.reportShortcutUsed(getApplication(), conversationInfo.getLocalID());
 				
 				//Launching the conversation activity
 				startActivity(new Intent(Conversations.this, Messaging.class).putExtra(Messaging.intentParamTargetID, conversationInfo.getLocalID()));
@@ -1734,9 +1732,7 @@ public class Conversations extends AppCompatCompositeActivity {
 					//Setting the view's click listener
 					holder.itemView.setOnClickListener(view -> {
 						//Updating the conversation's shortcut usage
-						if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-							ShortcutHelper.reportShortcutUsed(getApplication(), conversation.getLocalID());
-						}
+						ShortcutHelper.INSTANCE.reportShortcutUsed(getApplication(), conversation.getLocalID());
 						
 						//Opening the conversation
 						startActivity(new Intent(Conversations.this, Messaging.class).putExtra(Messaging.intentParamTargetID, conversation.getLocalID()));

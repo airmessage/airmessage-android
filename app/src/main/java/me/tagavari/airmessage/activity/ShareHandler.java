@@ -92,7 +92,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 			
 			//Checking if the request came from direct share
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && getIntent().hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
-				long conversationID = ShortcutHelper.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
+				long conversationID = ShortcutHelper.INSTANCE.shortcutIDToConversationID(getIntent().getStringExtra(Intent.EXTRA_SHORTCUT_ID));
 				if(conversationID != -1) {
 					//Launching the activity
 					launchMessaging(conversationID);

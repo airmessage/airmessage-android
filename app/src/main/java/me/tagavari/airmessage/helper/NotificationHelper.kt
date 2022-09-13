@@ -23,9 +23,7 @@ import androidx.core.app.Person
 import androidx.core.app.RemoteInput
 import androidx.core.graphics.drawable.IconCompat
 import androidx.preference.PreferenceManager
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
@@ -33,7 +31,6 @@ import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.FaceTimeCall
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
-import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.flavor.MLKitBridge
 import me.tagavari.airmessage.helper.AddressHelper.formatAddress
@@ -457,9 +454,7 @@ object NotificationHelper {
 			}.build()})
 		
 		//Adding the shortcut
-		if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.N_MR1) {
-			notificationBuilder.setShortcutId(ShortcutHelper.conversationToShortcutID(conversationInfo))
-		}
+		notificationBuilder.setShortcutId(ShortcutHelper.conversationToShortcutID(conversationInfo))
 		
 		//Checking if the Android version is below Oreo (on API 26 and above, notification alert details are handled by the system's notification channels)
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O) {

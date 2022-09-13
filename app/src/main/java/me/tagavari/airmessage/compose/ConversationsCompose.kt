@@ -2,6 +2,8 @@ package me.tagavari.airmessage.compose
 
 import android.app.NotificationManager
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.view.MotionEvent
 import androidx.activity.compose.BackHandler
@@ -19,7 +21,6 @@ import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSiz
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
@@ -49,14 +50,28 @@ import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
+import me.tagavari.airmessage.helper.ShortcutHelper
+import me.tagavari.airmessage.helper.ShortcutHelper.shortcutIDToConversationID
+import me.tagavari.airmessage.helper.getParcelableArrayListExtraCompat
+import me.tagavari.airmessage.helper.getParcelableExtraCompat
 import soup.compose.material.motion.MaterialFadeThrough
 import soup.compose.material.motion.MaterialSharedAxisX
 
 @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class ConversationsCompose : FragmentActivity(), GestureTrackable {
+	private var selectedConversationID by mutableStateOf<Long?>(null)
+	
 	@OptIn(ExperimentalAnimationApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
+		
+		//Load the selected conversation ID
+		selectedConversationID = savedInstanceState
+			?.getLong(saveStateKeySelectedConversationID, -1L)
+			?.let { if(it == -1L) null else it }
+		
+		//Apply intent values
+		applyIntent(intent)
 		
 		//Redirect if the user needs to configure the app
 		if(!SharedPreferencesManager.isConnectionConfigured(this)) {
@@ -89,8 +104,6 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					val windowSizeClass = calculateWindowSizeClass(this)
 					val isExpandedScreen = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 					
-					var selectedConversationID by rememberSaveable { mutableStateOf<Long?>(null) }
-					
 					if(isExpandedScreen) {
 						val devicePosture by devicePostureFlow.collectAsState(initial = null)
 						val hingeBounds = devicePosture?.bounds
@@ -118,7 +131,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								floatingPane = true,
 								activeConversationID = selectedConversationID,
 								onShowSyncDialog = ::showSyncFragment,
-								onSelectConversation = { selectedConversationID = it },
+								onSelectConversation = { selectConversation(it) },
 								onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
 								onNewConversation = { startActivity(Intent(this@ConversationsCompose, NewMessage::class.java)) }
 							)
@@ -171,7 +184,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								ConversationPane(
 									activeConversationID = null,
 									onShowSyncDialog = ::showSyncFragment,
-									onSelectConversation = { selectedConversationID = it },
+									onSelectConversation = { selectConversation(it) },
 									onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
 									onNewConversation = { startActivity(Intent(this@ConversationsCompose, NewMessage::class.java)) }
 								)
@@ -211,6 +224,26 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 		}
 	}
 	
+	override fun onNewIntent(intent: Intent?) {
+		super.onNewIntent(intent)
+		
+		//Ignore null intents
+		if(intent == null) return
+		
+		applyIntent(intent)
+	}
+	
+	/**
+	 * Handles setting the selected conversation, or NULL to deselect
+	 */
+	private fun selectConversation(conversationID: Long?) {
+		selectedConversationID = conversationID
+		
+		if(conversationID != null) {
+			ShortcutHelper.reportShortcutUsed(this, conversationID)
+		}
+	}
+	
 	private fun showSyncFragment(connectionManager: ConnectionManager, deleteMessages: Boolean) {
 		//Ignore if we're already showing the fragment
 		if(supportFragmentManager.findFragmentByTag(keyFragmentSync) != null) return
@@ -223,6 +256,59 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 		)
 		fragmentSync.isCancelable = false
 		fragmentSync.show(supportFragmentManager, keyFragmentSync)
+	}
+	
+	private fun applyIntent(intent: Intent) {
+		//Update the selected conversation
+		if(intent.hasExtra(INTENT_TARGET_ID)) {
+			val conversationID = intent.getLongExtra(INTENT_TARGET_ID, -1)
+			if(conversationID != -1L) {
+				selectedConversationID = conversationID
+			}
+		}
+		
+		var targetConversationID: Long? = null
+		var targetSMSParticipants: Collection<String>? = null
+		
+		var messageText: String? = null
+		var messageAttachments: Collection<Uri>? = null
+		
+		if(intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
+			//Check if the request came from direct share
+			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+				intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)?.let { shortcutID ->
+					targetConversationID = shortcutIDToConversationID(shortcutID)
+					
+					if(intent.action == Intent.ACTION_SEND) {
+						messageText = intent.getStringExtra(Intent.EXTRA_TEXT)
+						messageAttachments = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
+							?.let { listOf(it) }
+					} else {
+						messageText = intent.getStringArrayListExtra(Intent.EXTRA_TEXT)?.joinToString(separator = " ")
+						messageAttachments = intent.getParcelableArrayListExtraCompat(Intent.EXTRA_STREAM)
+					}
+				}
+			}
+		} else if(intent.action == Intent.ACTION_SENDTO) {
+			//Check if the request came from an SMS link
+			intent.data?.let { uri ->
+				if(setOf("sms", "smsto", "mms", "mmsto").contains(uri.scheme)) {
+					targetSMSParticipants = uri.authority?.split(",")
+					
+					messageText = intent.getStringExtra("sms_body")
+					messageAttachments = intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)
+						?.let { listOf(it) }
+				}
+			}
+		}
+	}
+	
+	//STATE PERSISTENCE
+	
+	override fun onSaveInstanceState(outState: Bundle) {
+		super.onSaveInstanceState(outState)
+		
+		outState.putLong(saveStateKeySelectedConversationID, selectedConversationID ?: -1)
 	}
 	
 	//GESTURE HANDLING
@@ -250,5 +336,12 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	
 	companion object {
 		private const val keyFragmentSync = "fragment_sync"
+		
+		private const val saveStateKeySelectedConversationID = "selectedConversationID"
+		
+		const val INTENT_TARGET_ID = "targetID"
+		const val INTENT_DATA_TEXT = "dataText"
+		const val INTENT_DATA_FILE = "dataFile"
+		const val INTENT_BUBBLE = "bubble"
 	}
 }
