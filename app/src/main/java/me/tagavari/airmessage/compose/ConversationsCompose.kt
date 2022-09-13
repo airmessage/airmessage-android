@@ -52,7 +52,6 @@ import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
 import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
-import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
@@ -160,9 +159,13 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 										}
 									) {
 										key(localActiveConversationID) {
+											val receivedContent = viewModel.receivedContentFlow.collectAsState()
+												.value.let { if(it?.conversationID == localActiveConversationID) it else null }
+											
 											MessagingScreen(
 												conversationID = localActiveConversationID,
-												floatingPane = useFloatingPane
+												floatingPane = useFloatingPane,
+												receivedContent = receivedContent
 											)
 										}
 									}
@@ -190,6 +193,9 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								)
 							} else {
 								key(localActiveConversationID) {
+									val receivedContent = viewModel.receivedContentFlow.collectAsState()
+										.value.let { if(it?.conversationID == localActiveConversationID) it else null }
+									
 									MessagingScreen(
 										conversationID = localActiveConversationID,
 										navigationIcon = {
@@ -199,7 +205,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 													contentDescription = stringResource(id = R.string.action_back)
 												)
 											}
-										}
+										},
+										receivedContent = receivedContent
 									)
 								}
 							}
@@ -253,7 +260,6 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 				//Update the selected conversation
 				val conversationID = intent.getLongExtra(INTENT_TARGET_ID, -1)
 				if(conversationID != -1L) {
-					var receivedContent: ConversationReceivedContent? = null
 					var messageText: String? = null
 					
 					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
@@ -272,22 +278,25 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 				var messageAttachments: List<Uri> = listOf()
 				
 				if(intent.action == Intent.ACTION_SEND || intent.action == Intent.ACTION_SEND_MULTIPLE) {
-					//Check if the request came from direct share
-					if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-						intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)?.let { shortcutID ->
-							targetConversationID = shortcutIDToConversationID(shortcutID)
-							
-							if(intent.action == Intent.ACTION_SEND) {
-								messageText = intent.getStringExtra(Intent.EXTRA_TEXT)
-								intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
-									messageAttachments = listOf(it)
-								}
-							} else {
-								messageText = intent.getStringArrayListExtra(Intent.EXTRA_TEXT)?.joinToString(separator = " ")
-								intent.getParcelableArrayListExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
-									messageAttachments = it
-								}
-							}
+					//Handle intents towards a specific conversation
+					if(intent.hasExtra(INTENT_TARGET_ID)) {
+						targetConversationID = intent.getLongExtra(INTENT_TARGET_ID, -1L)
+					}
+					//Handle intents from direct share
+					else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && intent.hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
+						val shortcutID = intent.getStringExtra(Intent.EXTRA_SHORTCUT_ID)!!
+						targetConversationID = shortcutIDToConversationID(shortcutID)
+					}
+					
+					if(intent.action == Intent.ACTION_SEND) {
+						messageText = intent.getStringExtra(Intent.EXTRA_TEXT)
+						intent.getParcelableExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
+							messageAttachments = listOf(it)
+						}
+					} else {
+						messageText = intent.getStringArrayListExtra(Intent.EXTRA_TEXT)?.joinToString(separator = " ")
+						intent.getParcelableArrayListExtraCompat<Uri>(Intent.EXTRA_STREAM)?.let {
+							messageAttachments = it
 						}
 					}
 				} else if(intent.action == Intent.ACTION_SENDTO) {

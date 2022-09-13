@@ -297,6 +297,8 @@ class MessagingViewModel(
 	}
 	
 	private fun addQueuedFiles(newQueuedFiles: List<QueuedFile>) {
+		if(newQueuedFiles.isEmpty()) return
+		
 		val conversation = conversation ?: return
 		
 		//Add the queued file to the list

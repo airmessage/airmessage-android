@@ -36,6 +36,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
@@ -50,6 +51,7 @@ import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
+import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlobUri
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
@@ -66,7 +68,8 @@ fun MessagingScreen(
 	modifier: Modifier = Modifier,
 	floatingPane: Boolean = false,
 	conversationID: Long,
-	navigationIcon: @Composable () -> Unit = {}
+	navigationIcon: @Composable () -> Unit = {},
+	receivedContent: ConversationReceivedContent? = null
 ) {
 	val application = LocalContext.current.applicationContext as Application
 	val connectionManager = LocalConnectionManager.current
@@ -103,6 +106,20 @@ fun MessagingScreen(
 			.filter { it.isNotEmpty() }
 			.collect {
 				scrollState.animateScrollToItem(0)
+			}
+	}
+	
+	val currentReceivedContent by rememberUpdatedState(receivedContent)
+	LaunchedEffect(receivedContent) {
+		snapshotFlow { viewModel.conversation != null }
+			.filter { it }
+			.combine(snapshotFlow { currentReceivedContent }) { _, content -> content}
+			.filterNotNull()
+			.collect { content ->
+				content.text?.let {
+					viewModel.inputText = it
+				}
+				viewModel.addQueuedFileBlobs(content.attachments.map { ReadableBlobUri(it) })
 			}
 	}
 	

@@ -220,7 +220,7 @@ public class ShareHandler extends AppCompatCompositeActivity {
 	private void launchMessaging(long conversationID) {
 		//Copy the intent
 		Intent intent = new Intent(getIntent());
-		intent.setClass(ShareHandler.this, Messaging.class);
+		intent.setClass(ShareHandler.this, ConversationsCompose.class);
 		
 		//Launch a single activity, and copy URI permissions
 		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
