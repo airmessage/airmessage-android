@@ -9,7 +9,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -85,15 +84,18 @@ fun NewConversationBody(
 						item(
 							key = nameHeader
 						) {
-							Text(
+							Box(
 								modifier = Modifier
 									.padding(horizontal = 16.dp)
 									.size(40.dp),
-								text = nameHeader.toString(),
-								color = MaterialTheme.colorScheme.onSurfaceVariant,
-								fontSize = 32.sp,
-								textAlign = TextAlign.Center
-							)
+								contentAlignment = Alignment.Center
+							) {
+								Text(
+									text = nameHeader.toString(),
+									color = MaterialTheme.colorScheme.onSurfaceVariant,
+									fontSize = 20.sp
+								)
+							}
 						}
 					}
 					
@@ -199,7 +201,7 @@ private fun PreviewNewConversationBodyLoaded() {
 		NewConversationBody(
 			contactsState = NewConversationContactsState.Loaded(listOf(
 				ContactInfo(0, "Some Guy", mutableListOf(AddressInfo("some@guy.com", "Home"))),
-				ContactInfo(0, null, mutableListOf(AddressInfo("(604) 739-7997", null))),
+				ContactInfo(1, null, mutableListOf(AddressInfo("(604) 739-7997", null))),
 			)),
 			directAddText = "hello@airmessage.org",
 			onRequestPermission = {},
