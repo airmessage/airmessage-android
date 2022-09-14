@@ -4,7 +4,6 @@ import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
@@ -13,7 +12,6 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
-import me.tagavari.airmessage.component.ContactChip
 import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.task.ContactsTask
 import me.tagavari.airmessage.util.ContactInfo
@@ -24,7 +22,8 @@ class NewConversationViewModel(application: Application) : AndroidViewModel(appl
 		private set
 	
 	//Selected recipients
-	val selectedRecipients = mutableStateListOf<ContactChip>()
+	var selectedRecipients by mutableStateOf(LinkedHashSet<SelectedRecipient>())
+		private set
 	
 	init {
 		loadContacts()
@@ -73,20 +72,36 @@ class NewConversationViewModel(application: Application) : AndroidViewModel(appl
 	/**
 	 * Adds a selected recipient to the list
 	 */
-	fun addSelectedRecipient(address: String) {
-		val chip = ContactChip(
-			AddressHelper.formatAddress(address),
-			AddressHelper.normalizeAddress(address)
-		)
-		selectedRecipients.add(chip)
+	fun addSelectedRecipient(recipient: SelectedRecipient) {
+		selectedRecipients = LinkedHashSet(selectedRecipients).also { collection ->
+			collection.add(recipient)
+		}
 	}
 	
 	/**
 	 * Removes a selected recipient from the list
 	 */
-	fun removeSelectedRecipient(address: String) {
-		selectedRecipients.removeAll { it.address == address }
+	fun removeSelectedRecipient(recipient: SelectedRecipient) {
+		selectedRecipients = LinkedHashSet(selectedRecipients).also { collection ->
+			collection.remove(recipient)
+		}
 	}
+}
+
+data class SelectedRecipient(
+	val address: String,
+	val name: String? = null
+) {
+	val formattedAddress: String by lazy { AddressHelper.formatAddress(address) }
+	val displayLabel: String
+		get() = name ?: formattedAddress
+	
+	override fun equals(other: Any?): Boolean {
+		if(other !is SelectedRecipient) return false
+		return address == other.address
+	}
+	
+	override fun hashCode() = address.hashCode()
 }
 
 sealed class NewConversationContactsState {

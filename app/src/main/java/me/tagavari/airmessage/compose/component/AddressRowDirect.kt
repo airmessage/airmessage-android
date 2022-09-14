@@ -25,6 +25,7 @@ import me.tagavari.airmessage.helper.AddressHelper
 
 @Composable
 fun AddressRowDirect(
+	modifier: Modifier = Modifier,
 	address: String,
 	onClick: () -> Unit
 ) {
@@ -33,7 +34,8 @@ fun AddressRowDirect(
 	}
 	
 	Row(
-		modifier = Modifier
+		modifier = modifier
+			.fillMaxWidth()
 			.padding(horizontal = 16.dp)
 			.height(56.dp)
 			.clickable(onClick = onClick),

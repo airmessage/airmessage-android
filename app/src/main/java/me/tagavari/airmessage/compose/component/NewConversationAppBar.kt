@@ -4,6 +4,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -21,7 +22,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.google.accompanist.flowlayout.FlowRow
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.component.ContactChip
+import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationRecipientInputType
 import me.tagavari.airmessage.enums.MessageServiceDescription
@@ -36,7 +37,8 @@ fun NewConversationAppBar(
 	onChangeTextInput: (String) -> Unit,
 	inputType: ConversationRecipientInputType,
 	onChangeInputType: (ConversationRecipientInputType) -> Unit,
-	recipients: List<ContactChip>
+	recipients: Collection<SelectedRecipient>,
+	onAddRecipient: () -> Unit
 ) {
 	fun toggleInputRecipientType() {
 		onChangeInputType(
@@ -126,7 +128,7 @@ fun NewConversationAppBar(
 							selected = false,
 							onClick = {},
 							label = {
-								Text(recipient.display)
+								Text(recipient.displayLabel)
 							}
 						)
 					}
@@ -147,6 +149,9 @@ fun NewConversationAppBar(
 						},
 						keyboardOptions = KeyboardOptions(
 							keyboardType = inputType.keyboardType
+						),
+						keyboardActions = KeyboardActions(
+							onDone = { onAddRecipient() }
 						),
 						singleLine = true
 					)
@@ -179,7 +184,8 @@ private fun PreviewNewConversationAppBar() {
 			onChangeTextInput = {},
 			inputType = ConversationRecipientInputType.EMAIL,
 			onChangeInputType = {},
-			recipients = listOf(ContactChip("Cool Guy", "cool@guy.com"))
+			recipients = setOf(SelectedRecipient("cool@guy.com", "Cool Guy")),
+			onAddRecipient = {}
 		)
 	}
 }

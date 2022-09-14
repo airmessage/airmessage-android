@@ -1,14 +1,16 @@
 package me.tagavari.airmessage.compose.component
 
-import androidx.compose.foundation.lazy.LazyColumn
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
-import me.tagavari.airmessage.compose.state.NewConversationContactsState
 import me.tagavari.airmessage.compose.state.NewConversationViewModel
+import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.enums.ConversationRecipientInputType
 import me.tagavari.airmessage.enums.MessageServiceDescription
 import me.tagavari.airmessage.helper.AddressHelper
@@ -24,13 +26,13 @@ fun NewConversationPane(
 	var inputRecipient by rememberSaveable { mutableStateOf("") }
 	var inputRecipientType by rememberSaveable { mutableStateOf(ConversationRecipientInputType.EMAIL) }
 	
-	var selectedService by rememberSaveable { mutableStateOf(MessageServiceDescription.IMESSAGE) }
-	
 	val inputRecipientValid by remember {
 		derivedStateOf {
 			AddressHelper.validateAddress(inputRecipient)
 		}
 	}
+	
+	var selectedService by rememberSaveable { mutableStateOf(MessageServiceDescription.IMESSAGE) }
 	
 	Scaffold(
 		modifier = modifier,
@@ -43,36 +45,32 @@ fun NewConversationPane(
 				onChangeTextInput = { inputRecipient = it },
 				inputType = inputRecipientType,
 				onChangeInputType = { inputRecipientType = it },
-				recipients = viewModel.selectedRecipients
-			)
-		}
-	) { contentPadding ->
-		when(viewModel.contactsState) {
-			is NewConversationContactsState.Loading -> {
-			
-			}
-			is NewConversationContactsState.NeedsPermission -> {
-			
-			}
-			is NewConversationContactsState.Error -> {
-			
-			}
-			is NewConversationContactsState.Loaded -> {
-				LazyColumn(
-					contentPadding = contentPadding
-				) {
+				recipients = viewModel.selectedRecipients,
+				onAddRecipient = {
 					if(inputRecipientValid) {
-						item {
-							AddressRowDirect(
-								address = inputRecipient,
-								onClick = {
-									viewModel.addSelectedRecipient(inputRecipient)
-								}
-							)
-						}
+						viewModel.addSelectedRecipient(SelectedRecipient(address = inputRecipient))
+						inputRecipient = ""
 					}
 				}
+			)
+		}
+	) { innerPadding ->
+		val launchContactsPermission = rememberLauncherForActivityResult(
+			contract = ActivityResultContracts.RequestPermission(),
+		) { permissionGranted ->
+			//Reload contacts after the user grants permission
+			if(permissionGranted) {
+				viewModel.loadContacts()
 			}
 		}
+		
+		NewConversationBody(
+			contentPadding = innerPadding,
+			contactsState = viewModel.contactsState,
+			onRequestPermission = { launchContactsPermission.launch(Manifest.permission.READ_CONTACTS) },
+			onReloadContacts = { viewModel.loadContacts() },
+			directAddText = if(inputRecipientValid) inputRecipient else null,
+			onAddRecipient = {}
+		)
 	}
 }
