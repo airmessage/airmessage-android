@@ -3,6 +3,7 @@ package me.tagavari.airmessage.compose.component
 import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
@@ -74,6 +75,7 @@ fun NewConversationPane(
 		}
 		
 		NewConversationBody(
+			modifier = Modifier.fillMaxSize(),
 			contentPadding = innerPadding,
 			contactsState = viewModel.contactsState,
 			onRequestPermission = { launchContactsPermission.launch(Manifest.permission.READ_CONTACTS) },

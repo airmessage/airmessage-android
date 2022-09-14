@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -9,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -47,19 +49,22 @@ fun ContactRow(
 				Text(stringResource(id = R.string.imperative_selectdestination))
 			},
 			text = {
-				for(address in contact.addresses) {
-					Row(
-						modifier = Modifier
-							.fillMaxWidth()
-							.padding(horizontal = 16.dp)
-							.height(56.dp)
-							.clickable {
-								onSelectAddress(address)
-								showAddressSelector = false
-							},
-						verticalAlignment = Alignment.CenterVertically
-					) {
-						Text(address.getDisplay(LocalContext.current.resources))
+				Column {
+					for(address in contact.addresses) {
+						Row(
+							modifier = Modifier
+								.clip(RoundedCornerShape(16.dp))
+								.clickable {
+									onSelectAddress(address)
+									showAddressSelector = false
+								}
+								.fillMaxWidth()
+								.height(56.dp)
+								.padding(horizontal = 16.dp),
+							verticalAlignment = Alignment.CenterVertically
+						) {
+							Text(address.getDisplay(LocalContext.current.resources))
+						}
 					}
 				}
 			}
@@ -68,10 +73,10 @@ fun ContactRow(
 	
 	Row(
 		modifier = modifier
+			.clickable(onClick = ::selectAddress)
 			.fillMaxWidth()
 			.padding(horizontal = 16.dp)
-			.height(56.dp)
-			.clickable(onClick = ::selectAddress),
+			.height(56.dp),
 		verticalAlignment = Alignment.CenterVertically
 	) {
 		MemberImage(
@@ -104,7 +109,7 @@ fun ContactRow(
 					pluralStringResource(
 						id = R.plurals.message_multipledestinations,
 						count = addressCount,
-						firstAddress, addressCount - 1
+						firstAddress.address, addressCount - 1
 					)
 				}
 				
