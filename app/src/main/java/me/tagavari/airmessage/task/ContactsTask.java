@@ -76,6 +76,7 @@ public class ContactsTask {
 			
 			//Closing the cursor
 			cursor.close();
+			emitter.onComplete();
 		}).subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread());
 	}
 	
