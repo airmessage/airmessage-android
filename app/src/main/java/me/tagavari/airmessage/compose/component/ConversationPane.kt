@@ -22,7 +22,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.DelicateCoroutinesApi
 import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.filter
@@ -32,6 +31,7 @@ import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
+import me.tagavari.airmessage.compose.state.ConversationsDetailPage
 import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
@@ -110,7 +110,7 @@ fun ConversationPane(
 		modifier = modifier,
 		floatingPane = floatingPane,
 		conversations = viewModel.conversations,
-		activeConversationID = viewModel.activeConversationID,
+		activeConversationID = (viewModel.detailPage as? ConversationsDetailPage.Messaging)?.conversationID,
 		onSelectConversation = onSelectConversation,
 		onReloadConversations = {
 			viewModel.loadConversations()

@@ -3,15 +3,11 @@ package me.tagavari.airmessage.compose.state
 import android.app.Application
 import android.net.Uri
 import android.provider.Telephony
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.data.DatabaseManager
@@ -31,13 +27,19 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	var conversations by mutableStateOf<Result<List<ConversationInfo>>?>(null)
 		private set
 	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
-	var activeConversationID by mutableStateOf<Long?>(null)
-	
-	private val _receivedContentFlow = MutableStateFlow<ConversationReceivedContent?>(null)
-	val receivedContentFlow = _receivedContentFlow.asStateFlow()
+	var detailPage by mutableStateOf<ConversationsDetailPage?>(null)
 	
 	init {
 		loadConversations()
+		
+		//Record conversation shortcut usages
+		viewModelScope.launch {
+			snapshotFlow { detailPage }
+				.filterIsInstance<ConversationsDetailPage.Messaging>()
+				.collect { page ->
+					ShortcutHelper.reportShortcutUsed(getApplication(), page.conversationID)
+				}
+		}
 	}
 	
 	/**
@@ -248,31 +250,6 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	}
 	
 	/**
-	 * Sets the active conversation and its received content
-	 */
-	fun selectConversation(conversationID: Long?, receivedText: String? = null, receivedAttachments: List<Uri> = listOf()) {
-		//Update the state
-		viewModelScope.launch {
-			activeConversationID = conversationID
-			
-			_receivedContentFlow.emit(
-				conversationID?.let { conversationID ->
-					ConversationReceivedContent(
-						conversationID = conversationID,
-						text = receivedText,
-						attachments = receivedAttachments
-					)
-				}
-			)
-		}
-		
-		//Record conversation shortcut usages
-		if(conversationID != null) {
-			ShortcutHelper.reportShortcutUsed(getApplication(), conversationID)
-		}
-	}
-	
-	/**
 	 * Sets the active conversation for a text message conversation, resolving the conversation
 	 * and creating it if necessary
 	 */
@@ -335,8 +312,16 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			}
 			
 			if(conversationID != null) {
-				selectConversation(conversationID, receivedText, receivedAttachments)
+				detailPage = ConversationsDetailPage.Messaging(conversationID, ConversationReceivedContent(receivedText, receivedAttachments))
 			}
 		}
 	}
+}
+
+sealed interface ConversationsDetailPage {
+	class Messaging(
+		val conversationID: Long,
+		val receivedContent: ConversationReceivedContent? = null
+		) : ConversationsDetailPage
+	object NewConversation : ConversationsDetailPage
 }

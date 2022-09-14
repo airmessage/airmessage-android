@@ -46,12 +46,15 @@ import me.tagavari.airmessage.activity.NewMessage
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.ConversationPane
 import me.tagavari.airmessage.compose.component.MessagingScreen
+import me.tagavari.airmessage.compose.component.NewConversationPane
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
 import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
+import me.tagavari.airmessage.compose.state.ConversationsDetailPage
 import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
@@ -130,83 +133,111 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								floatingPane = true,
 								viewModel = viewModel,
 								onShowSyncDialog = ::showSyncFragment,
-								onSelectConversation = { viewModel.selectConversation(it) },
+								onSelectConversation = { conversationID ->
+									viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
+								},
 								onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
-								onNewConversation = { startActivity(Intent(this@ConversationsCompose, NewMessage::class.java)) }
+								onNewConversation = {
+									viewModel.detailPage = ConversationsDetailPage.NewConversation
+								}
 							)
 							
-							viewModel.activeConversationID?.let { activeConversationID ->
-								Spacer(modifier = Modifier.width(hingeWidth))
-								
+							Spacer(modifier = Modifier.width(hingeWidth))
+							
+							MaterialFadeThrough(
+								targetState = viewModel.detailPage,
+							) { detailPage ->
 								val useFloatingPane = devicePosture?.isSeparating != true
 								
-								MaterialFadeThrough(
-									targetState = activeConversationID,
-								) { localActiveConversationID ->
-									Box(
-										modifier = if(useFloatingPane) {
-											Modifier
-												.statusBarsPadding()
-												.padding(end = 16.dp)
-												.clip(
-													RoundedCornerShape(
-														topStart = 20.dp,
-														topEnd = 20.dp
-													)
+								Box(
+									modifier = if(useFloatingPane) {
+										Modifier
+											.statusBarsPadding()
+											.padding(end = 16.dp)
+											.clip(
+												RoundedCornerShape(
+													topStart = 20.dp,
+													topEnd = 20.dp
 												)
-										} else {
-											Modifier
-										}
-									) {
-										key(localActiveConversationID) {
-											val receivedContent = viewModel.receivedContentFlow.collectAsState()
-												.value.let { if(it?.conversationID == localActiveConversationID) it else null }
-											
-											MessagingScreen(
-												conversationID = localActiveConversationID,
-												floatingPane = useFloatingPane,
-												receivedContent = receivedContent
 											)
+									} else {
+										Modifier
+									}
+								) {
+									when(detailPage) {
+										is ConversationsDetailPage.Messaging -> {
+											val activeConversationID = detailPage.conversationID
+											
+											
+											key(activeConversationID) {
+												MessagingScreen(
+													conversationID = activeConversationID,
+													floatingPane = useFloatingPane,
+													receivedContent = detailPage.receivedContent
+												)
+											}
 										}
+										is ConversationsDetailPage.NewConversation -> {
+											NewConversationPane()
+										}
+										null -> {}
 									}
 								}
 							}
 						}
 					} else {
 						//Handle back presses
-						BackHandler(enabled = viewModel.activeConversationID != null) {
-							viewModel.selectConversation(null)
+						BackHandler(enabled = viewModel.detailPage != null) {
+							viewModel.detailPage = null
 						}
 						
 						MaterialSharedAxisX(
 							modifier = Modifier.background(MaterialTheme.colorScheme.background),
-							targetState = viewModel.activeConversationID,
-							forward = viewModel.activeConversationID != null,
-						) { localActiveConversationID ->
-							if(localActiveConversationID == null) {
-								ConversationPane(
-									viewModel = viewModel,
-									onShowSyncDialog = ::showSyncFragment,
-									onSelectConversation = { viewModel.selectConversation(it) },
-									onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
-									onNewConversation = { startActivity(Intent(this@ConversationsCompose, NewMessage::class.java)) }
-								)
-							} else {
-								key(localActiveConversationID) {
-									val receivedContent = viewModel.receivedContentFlow.collectAsState()
-										.value.let { if(it?.conversationID == localActiveConversationID) it else null }
+							targetState = viewModel.detailPage,
+							forward = viewModel.detailPage != null,
+						) { detailPage ->
+							when(detailPage) {
+								is ConversationsDetailPage.Messaging -> {
+									val activeConversationID = detailPage.conversationID
 									
-									MessagingScreen(
-										conversationID = localActiveConversationID,
+									key(detailPage) {
+										MessagingScreen(
+											conversationID = activeConversationID,
+											navigationIcon = {
+												IconButton(onClick = { viewModel.detailPage = null }) {
+													Icon(
+														imageVector = Icons.Filled.ArrowBack,
+														contentDescription = stringResource(id = R.string.action_back)
+													)
+												}
+											},
+											receivedContent = detailPage.receivedContent
+										)
+									}
+								}
+								is ConversationsDetailPage.NewConversation -> {
+									NewConversationPane(
 										navigationIcon = {
-											IconButton(onClick = { viewModel.selectConversation(null) }) {
+											IconButton(onClick = { viewModel.detailPage = null }) {
 												Icon(
 													imageVector = Icons.Filled.ArrowBack,
 													contentDescription = stringResource(id = R.string.action_back)
 												)
 											}
+										}
+									)
+								}
+								null -> {
+									ConversationPane(
+										viewModel = viewModel,
+										onShowSyncDialog = ::showSyncFragment,
+										onSelectConversation = { conversationID ->
+											viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
 										},
-										receivedContent = receivedContent
+										onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
+										onNewConversation = {
+											viewModel.detailPage = ConversationsDetailPage.NewConversation
+										}
 									)
 								}
 							}
@@ -267,7 +298,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 						messageText = intent.getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)
 					}
 					
-					viewModel.selectConversation(conversationID, messageText)
+					viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID, ConversationReceivedContent(messageText))
 				}
 			}
 			Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_SENDTO -> {
@@ -319,7 +350,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 				}
 				
 				targetConversationID?.let { conversationID ->
-					viewModel.selectConversation(conversationID, messageText, messageAttachments)
+					viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID, ConversationReceivedContent(messageText, messageAttachments))
 				}
 			}
 		}
