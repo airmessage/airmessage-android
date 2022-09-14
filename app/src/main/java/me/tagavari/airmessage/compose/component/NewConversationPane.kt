@@ -34,6 +34,20 @@ fun NewConversationPane(
 	
 	var selectedService by rememberSaveable { mutableStateOf(MessageServiceDescription.IMESSAGE) }
 	
+	///Adds the current input text as a recipient
+	fun addInputRecipient() {
+		//Ignore if the current input text isn't valid
+		if(!inputRecipientValid) return
+		
+		//Add the recipient
+		viewModel.addSelectedRecipient(
+			SelectedRecipient(address = AddressHelper.normalizeAddress(inputRecipient))
+		)
+		
+		//Clear the input text
+		inputRecipient = ""
+	}
+	
 	Scaffold(
 		modifier = modifier,
 		topBar = {
@@ -46,12 +60,7 @@ fun NewConversationPane(
 				inputType = inputRecipientType,
 				onChangeInputType = { inputRecipientType = it },
 				recipients = viewModel.selectedRecipients,
-				onAddRecipient = {
-					if(inputRecipientValid) {
-						viewModel.addSelectedRecipient(SelectedRecipient(address = inputRecipient))
-						inputRecipient = ""
-					}
-				}
+				onAddRecipient = ::addInputRecipient
 			)
 		}
 	) { innerPadding ->
@@ -70,7 +79,15 @@ fun NewConversationPane(
 			onRequestPermission = { launchContactsPermission.launch(Manifest.permission.READ_CONTACTS) },
 			onReloadContacts = { viewModel.loadContacts() },
 			directAddText = if(inputRecipientValid) inputRecipient else null,
-			onAddRecipient = {}
+			onDirectAdd = ::addInputRecipient,
+			onAddRecipient = { contactInfo, addressInfo ->
+				viewModel.addSelectedRecipient(
+					SelectedRecipient(
+						address = addressInfo.address,
+						name = contactInfo.name
+					)
+				)
+			}
 		)
 	}
 }

@@ -26,7 +26,8 @@ fun NewConversationBody(
 	onRequestPermission: () -> Unit,
 	onReloadContacts: () -> Unit,
 	directAddText: String?,
-	onAddRecipient: (String) -> Unit
+	onDirectAdd: () -> Unit,
+	onAddRecipient: (ContactInfo, AddressInfo) -> Unit
 ) {
 	when(contactsState) {
 		is NewConversationContactsState.Loading -> {
@@ -69,7 +70,7 @@ fun NewConversationBody(
 					item {
 						AddressRowDirect(
 							address = directAddText,
-							onClick = { onAddRecipient(directAddText) }
+							onClick = onDirectAdd
 						)
 					}
 				}
@@ -104,7 +105,7 @@ fun NewConversationBody(
 					) {
 						ContactRow(
 							contact = contact,
-							onSelectAddress = onAddRecipient
+							onSelectAddress = { addressInfo -> onAddRecipient(contact, addressInfo) }
 						)
 					}
 					
@@ -161,7 +162,8 @@ private fun PreviewNewConversationBodyLoading() {
 			directAddText = null,
 			onRequestPermission = {},
 			onReloadContacts = {},
-			onAddRecipient = {}
+			onDirectAdd = {},
+			onAddRecipient = { _, _ -> }
 		)
 	}
 }
@@ -175,7 +177,8 @@ private fun PreviewNewConversationBodyPermission() {
 			directAddText = null,
 			onRequestPermission = {},
 			onReloadContacts = {},
-			onAddRecipient = {}
+			onDirectAdd = {},
+			onAddRecipient = { _, _ -> }
 		)
 	}
 }
@@ -189,7 +192,8 @@ private fun PreviewNewConversationBodyError() {
 			directAddText = null,
 			onRequestPermission = {},
 			onReloadContacts = {},
-			onAddRecipient = {}
+			onDirectAdd = {},
+			onAddRecipient = { _, _ -> }
 		)
 	}
 }
@@ -206,7 +210,8 @@ private fun PreviewNewConversationBodyLoaded() {
 			directAddText = "hello@airmessage.org",
 			onRequestPermission = {},
 			onReloadContacts = {},
-			onAddRecipient = {}
+			onDirectAdd = {},
+			onAddRecipient = { _, _ -> }
 		)
 	}
 }

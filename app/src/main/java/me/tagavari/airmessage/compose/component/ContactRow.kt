@@ -2,13 +2,16 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -22,15 +25,45 @@ import me.tagavari.airmessage.util.ContactInfo
 fun ContactRow(
 	modifier: Modifier = Modifier,
 	contact: ContactInfo,
-	onSelectAddress: (String) -> Unit
+	onSelectAddress: (AddressInfo) -> Unit
 ) {
+	var showAddressSelector by remember { mutableStateOf(false) }
+	
 	fun selectAddress() {
 		//Select the first address if there's only one
 		if(contact.addresses.size == 1) {
-			onSelectAddress(contact.addresses.first().address)
+			onSelectAddress(contact.addresses.first())
 		} else if(contact.addresses.size > 1) {
 			//Prompt the user to select an address
+			showAddressSelector = true
 		}
+	}
+	
+	if(showAddressSelector) {
+		AlertDialog(
+			onDismissRequest = { showAddressSelector = false },
+			confirmButton = {},
+			title = {
+				Text(stringResource(id = R.string.imperative_selectdestination))
+			},
+			text = {
+				for(address in contact.addresses) {
+					Row(
+						modifier = Modifier
+							.fillMaxWidth()
+							.padding(horizontal = 16.dp)
+							.height(56.dp)
+							.clickable {
+								onSelectAddress(address)
+								showAddressSelector = false
+							},
+						verticalAlignment = Alignment.CenterVertically
+					) {
+						Text(address.getDisplay(LocalContext.current.resources))
+					}
+				}
+			}
+		)
 	}
 	
 	Row(

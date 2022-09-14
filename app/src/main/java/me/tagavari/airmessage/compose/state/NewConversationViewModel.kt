@@ -92,9 +92,8 @@ data class SelectedRecipient(
 	val address: String,
 	val name: String? = null
 ) {
-	val formattedAddress: String by lazy { AddressHelper.formatAddress(address) }
 	val displayLabel: String
-		get() = name ?: formattedAddress
+		get() = name ?: address
 	
 	override fun equals(other: Any?): Boolean {
 		if(other !is SelectedRecipient) return false
