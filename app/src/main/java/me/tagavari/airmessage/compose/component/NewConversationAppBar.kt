@@ -41,16 +41,6 @@ fun NewConversationAppBar(
 	onAddRecipient: () -> Unit,
 	onRemoveRecipient: (SelectedRecipient) -> Unit
 ) {
-	fun toggleInputRecipientType() {
-		onChangeInputType(
-			if(inputType == ConversationRecipientInputType.EMAIL) {
-				ConversationRecipientInputType.PHONE
-			} else {
-				ConversationRecipientInputType.EMAIL
-			}
-		)
-	}
-	
 	Surface(
 		tonalElevation = 3.dp
 	) {
@@ -172,9 +162,17 @@ fun NewConversationAppBar(
 					)
 				}
 				
-				IconButton(
-					onClick = ::toggleInputRecipientType
-				) {
+				val toggleInputType = {
+					onChangeInputType(
+						if(inputType == ConversationRecipientInputType.EMAIL) {
+							ConversationRecipientInputType.PHONE
+						} else {
+							ConversationRecipientInputType.EMAIL
+						}
+					)
+				}
+				
+				IconButton(onClick = toggleInputType) {
 					Icon(
 						imageVector = when(inputType) {
 							ConversationRecipientInputType.PHONE -> Icons.Outlined.Keyboard
