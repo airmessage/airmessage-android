@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.compose.component
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -12,7 +11,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.outlined.Dialpad
 import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,7 +38,8 @@ fun NewConversationAppBar(
 	inputType: ConversationRecipientInputType,
 	onChangeInputType: (ConversationRecipientInputType) -> Unit,
 	recipients: Collection<SelectedRecipient>,
-	onAddRecipient: () -> Unit
+	onAddRecipient: () -> Unit,
+	onRemoveRecipient: (SelectedRecipient) -> Unit
 ) {
 	fun toggleInputRecipientType() {
 		onChangeInputType(
@@ -124,13 +124,25 @@ fun NewConversationAppBar(
 					mainAxisSpacing = 8.dp
 				) {
 					for(recipient in recipients) {
-						InputChip(
-							selected = false,
-							onClick = {},
-							label = {
-								Text(recipient.displayLabel)
+						Box {
+							var showPopup by remember { mutableStateOf(false) }
+							
+							InputChip(
+								selected = false,
+								onClick = { showPopup = true },
+								label = {
+									Text(recipient.displayLabel)
+								}
+							)
+							
+							if(showPopup) {
+								UserChipPopup(
+									onDismissRequest = { showPopup = false },
+									recipient = recipient,
+									onRemove = { onRemoveRecipient(recipient) }
+								)
 							}
-						)
+						}
 					}
 					
 					BasicTextField(
@@ -188,7 +200,8 @@ private fun PreviewNewConversationAppBar() {
 			inputType = ConversationRecipientInputType.EMAIL,
 			onChangeInputType = {},
 			recipients = setOf(SelectedRecipient("cool@guy.com", "Cool Guy")),
-			onAddRecipient = {}
+			onAddRecipient = {},
+			onRemoveRecipient = {}
 		)
 	}
 }

@@ -61,7 +61,8 @@ fun NewConversationPane(
 				inputType = inputRecipientType,
 				onChangeInputType = { inputRecipientType = it },
 				recipients = viewModel.selectedRecipients,
-				onAddRecipient = ::addInputRecipient
+				onAddRecipient = ::addInputRecipient,
+				onRemoveRecipient = viewModel::removeSelectedRecipient
 			)
 		}
 	) { innerPadding ->
