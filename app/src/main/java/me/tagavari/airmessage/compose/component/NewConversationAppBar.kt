@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -120,8 +121,7 @@ fun NewConversationAppBar(
 				
 				FlowRow(
 					modifier = Modifier.weight(1F),
-					mainAxisSpacing = 8.dp,
-					crossAxisSpacing = 8.dp
+					mainAxisSpacing = 8.dp
 				) {
 					for(recipient in recipients) {
 						InputChip(
@@ -134,9 +134,12 @@ fun NewConversationAppBar(
 					}
 					
 					BasicTextField(
-						modifier = Modifier.widthIn(min = 50.dp),
+						modifier = Modifier
+							.padding(vertical = 13.dp)
+							.sizeIn(minWidth = 50.dp),
 						value = textInput,
 						onValueChange = onChangeTextInput,
+						textStyle = MaterialTheme.typography.bodyLarge,
 						decorationBox = { innerTextField ->
 							if(textInput.isEmpty() && recipients.isEmpty()) {
 								Text(
