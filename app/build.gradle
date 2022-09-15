@@ -53,6 +53,7 @@ android {
 		}
 	}
 	compileSdkVersion 33
+	namespace "me.tagavari.airmessage"
 	defaultConfig {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
