@@ -7,10 +7,11 @@ import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.container.ConversationReceivedContent
+import me.tagavari.airmessage.container.PendingConversationReceivedContent
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -29,6 +30,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		private set
 	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
 	var detailPage by mutableStateOf<ConversationsDetailPage?>(null)
+	private val pendingReceivedContent = MutableStateFlow<PendingConversationReceivedContent?>(null)
 	
 	init {
 		loadConversations()
@@ -318,16 +320,47 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			}
 			
 			if(conversationID != null) {
-				detailPage = ConversationsDetailPage.Messaging(conversationID, ConversationReceivedContent(receivedText, receivedAttachments))
+				setSelectedConversation(
+					conversationID = conversationID,
+					content = ConversationReceivedContent(receivedText, receivedAttachments)
+				)
 			}
 		}
+	}
+	
+	/**
+	 * Sets the selected conversation, along with its associated received content
+	 */
+	fun setSelectedConversation(conversationID: Long, content: ConversationReceivedContent? = null) {
+		detailPage = ConversationsDetailPage.Messaging(conversationID)
+		
+		if(content != null) {
+			viewModelScope.launch {
+				pendingReceivedContent.emit(
+					PendingConversationReceivedContent(conversationID = conversationID, content = content)
+				)
+			}
+		}
+	}
+	
+	/**
+	 * Gets a flow that emits received content for a specific conversation
+	 */
+	fun getPendingReceivedContentFlowForConversation(conversationID: Long): Flow<ConversationReceivedContent> {
+		return pendingReceivedContent
+			//Filter for when we have received content
+			.filterNotNull()
+			//Match the content to the requested conversation.
+			//NULL conversation IDs mean any conversation.
+			.filter { it.conversationID == null || it.conversationID == conversationID }
+			//Map to the content object
+			.map { it.content }
+			//Clear the content state so we don't apply the content multiple times
+			.onEach { pendingReceivedContent.emit(null) }
 	}
 }
 
 sealed interface ConversationsDetailPage {
-	class Messaging(
-		val conversationID: Long,
-		val receivedContent: ConversationReceivedContent? = null
-		) : ConversationsDetailPage
+	class Messaging(val conversationID: Long) : ConversationsDetailPage
 	object NewConversation : ConversationsDetailPage
 }

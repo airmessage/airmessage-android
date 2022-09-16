@@ -6,3 +6,8 @@ data class ConversationReceivedContent(
 	val text: String? = null,
 	val attachments: List<Uri> = listOf()
 )
+
+data class PendingConversationReceivedContent(
+	val conversationID: Long?,
+	val content: ConversationReceivedContent
+)

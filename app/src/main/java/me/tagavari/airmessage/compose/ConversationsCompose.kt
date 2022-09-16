@@ -167,12 +167,11 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 										is ConversationsDetailPage.Messaging -> {
 											val activeConversationID = detailPage.conversationID
 											
-											
 											key(activeConversationID) {
 												MessagingScreen(
 													conversationID = activeConversationID,
 													floatingPane = useFloatingPane,
-													receivedContent = detailPage.receivedContent
+													receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID)
 												)
 											}
 										}
@@ -212,7 +211,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 													)
 												}
 											},
-											receivedContent = detailPage.receivedContent
+											receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID)
 										)
 									}
 								}
@@ -300,7 +299,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 						messageText = intent.getStringExtra(Notification.EXTRA_REMOTE_INPUT_DRAFT)
 					}
 					
-					viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID, ConversationReceivedContent(messageText))
+					viewModel.setSelectedConversation(conversationID, ConversationReceivedContent(messageText))
 				}
 			}
 			Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_SENDTO -> {
@@ -352,7 +351,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 				}
 				
 				targetConversationID?.let { conversationID ->
-					viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID, ConversationReceivedContent(messageText, messageAttachments))
+					viewModel.setSelectedConversation(conversationID, ConversationReceivedContent(messageText))
 				}
 			}
 		}

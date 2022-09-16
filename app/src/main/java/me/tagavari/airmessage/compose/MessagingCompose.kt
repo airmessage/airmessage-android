@@ -10,6 +10,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.ui.res.stringResource
 import androidx.core.view.WindowCompat
+import kotlinx.coroutines.flow.flowOf
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.MessagingScreen
@@ -39,7 +40,8 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 									contentDescription = stringResource(id = R.string.action_back)
 								)
 							}
-						}
+						},
+						receivedContentFlow = flowOf()
 					)
 				}
 			}

@@ -37,10 +37,7 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ConversationDetailsCompose
@@ -70,7 +67,7 @@ fun MessagingScreen(
 	floatingPane: Boolean = false,
 	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {},
-	receivedContent: ConversationReceivedContent? = null
+	receivedContentFlow: Flow<ConversationReceivedContent>
 ) {
 	val application = LocalContext.current.applicationContext as Application
 	val connectionManager = LocalConnectionManager.current
@@ -110,11 +107,10 @@ fun MessagingScreen(
 			}
 	}
 	
-	val currentReceivedContent by rememberUpdatedState(receivedContent)
-	LaunchedEffect(receivedContent) {
+	LaunchedEffect(receivedContentFlow) {
 		snapshotFlow { viewModel.conversation != null }
 			.filter { it }
-			.combine(snapshotFlow { currentReceivedContent }) { _, content -> content}
+			.combine(receivedContentFlow) { _, content -> content}
 			.filterNotNull()
 			.collect { content ->
 				content.text?.let {
