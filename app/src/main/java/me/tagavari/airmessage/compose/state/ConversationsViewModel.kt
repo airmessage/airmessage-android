@@ -101,8 +101,11 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						conversation?.let { list.remove(it) }
 						
 						//Add or re-sort the conversation
-						val updatedConversation = (conversation ?: transferredConversation.clientConversation)
-							.copy(messagePreview = preview)
+						val updatedConversation = (conversation ?: transferredConversation.clientConversation).run {
+							copy(
+								messagePreview = ConversationHelper.getLatestPreview(messagePreview, preview)
+							)
+						}
 						val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
 						list.add(insertionIndex, updatedConversation)
 					}
@@ -112,10 +115,12 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						//Build a conversation preview based on the new messages
 						val preview = ConversationPreviewHelper.latestItemToPreview(newConversationMessages)
 						
-						val updatedConversation = newConversation.copy(
-							messagePreview = preview,
-							unreadMessageCount = newConversationMessages.size
-						)
+						val updatedConversation = newConversation.run {
+							copy(
+								messagePreview = ConversationHelper.getLatestPreview(messagePreview, preview),
+								unreadMessageCount = newConversationMessages.size
+							)
+						}
 						
 						val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
 						list.add(insertionIndex, updatedConversation)

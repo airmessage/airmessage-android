@@ -3,6 +3,7 @@ package me.tagavari.airmessage.helper
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.ConversationItem
+import me.tagavari.airmessage.messaging.ConversationPreview
 import me.tagavari.airmessage.util.ConversationValueUpdateResult
 
 object ConversationHelper {
@@ -28,6 +29,17 @@ object ConversationHelper {
 			item1.localID == -1L -> 1
 			else -> -1 //Item 2's local ID is -1
 		}
+	}
+	
+	/**
+	 * Gets the latest preview between 2 conversation previews, or returns null if
+	 * both previews are null
+	 */
+	fun getLatestPreview(preview1: ConversationPreview?, preview2: ConversationPreview?): ConversationPreview? {
+		return if(preview1 == null) preview2
+		else if(preview2 == null) preview1
+		else if(preview1.date > preview2.date) preview1
+		else preview2
 	}
 	
 	/**
