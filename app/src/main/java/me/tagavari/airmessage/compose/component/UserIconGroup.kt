@@ -19,7 +19,8 @@ import me.tagavari.airmessage.messaging.MemberInfo
 @Composable
 fun UserIconGroup(
 	modifier: Modifier = Modifier,
-	members: List<MemberInfo>
+	members: List<MemberInfo>,
+	highRes: Boolean = false
 ) {
 	Box(modifier.size(40.dp, 40.dp)) {
 		when(members.size) {
@@ -27,7 +28,8 @@ fun UserIconGroup(
 			1 -> {
 				MemberImage(
 					member = members[0],
-					modifier = Modifier.fillMaxSize()
+					modifier = Modifier.fillMaxSize(),
+					highRes = highRes
 				)
 			}
 			2 -> {
@@ -37,13 +39,15 @@ fun UserIconGroup(
 					member = members[0],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.BottomStart)
+						.align(Alignment.BottomStart),
+					highRes = highRes
 				)
 				MemberImage(
 					member = members[1],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.TopEnd)
+						.align(Alignment.TopEnd),
+					highRes = highRes
 				)
 			}
 			3 -> {
@@ -53,19 +57,22 @@ fun UserIconGroup(
 					member = members[0],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.TopCenter)
+						.align(Alignment.TopCenter),
+					highRes = highRes
 				)
 				MemberImage(
 					member = members[1],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.BottomStart)
+						.align(Alignment.BottomStart),
+					highRes = highRes
 				)
 				MemberImage(
 					member = members[2],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.BottomEnd)
+						.align(Alignment.BottomEnd),
+					highRes = highRes
 				)
 			}
 			else -> {
@@ -75,25 +82,29 @@ fun UserIconGroup(
 					member = members[0],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.TopStart)
+						.align(Alignment.TopStart),
+					highRes = highRes
 				)
 				MemberImage(
 					member = members[1],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.TopEnd)
+						.align(Alignment.TopEnd),
+					highRes = highRes
 				)
 				MemberImage(
 					member = members[2],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.BottomStart)
+						.align(Alignment.BottomStart),
+					highRes = highRes
 				)
 				MemberImage(
 					member = members[3],
 					modifier = Modifier
 						.fillMaxSize(size)
-						.align(Alignment.BottomEnd)
+						.align(Alignment.BottomEnd),
+					highRes = highRes
 				)
 			}
 		}

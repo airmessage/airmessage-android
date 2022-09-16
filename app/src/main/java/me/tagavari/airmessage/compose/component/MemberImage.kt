@@ -17,6 +17,7 @@ import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
 /**
@@ -25,15 +26,15 @@ import me.tagavari.airmessage.messaging.MemberInfo
 @Composable
 fun MemberImage(
 	modifier: Modifier = Modifier,
-	member: MemberInfo
+	member: MemberInfo,
+	highRes: Boolean = false
 ) {
 	//Get the user
 	val context = LocalContext.current
-	val thumbnailURI by produceState<Uri?>(null, member.address) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member.address) {
 		value = try {
 			MainApplication.getInstance().userCacheHelper
 				.getUserInfo(context, member.address).await()
-				.thumbnailURI
 		} catch(exception: Throwable) {
 			exception.printStackTrace()
 			return@produceState
@@ -43,7 +44,9 @@ fun MemberImage(
 	MemberImage(
 		modifier = modifier,
 		color = Color(member.color),
-		thumbnailURI = thumbnailURI
+		thumbnailURI = userInfo?.run {
+			if(highRes) photoURI else thumbnailURI
+		}
 	)
 }
 

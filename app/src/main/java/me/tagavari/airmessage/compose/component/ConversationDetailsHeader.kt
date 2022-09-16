@@ -57,7 +57,8 @@ fun ConversationDetailsHeader(
 	) {
 		UserIconGroup(
 			modifier = Modifier.size(96.dp),
-			members = conversation.members
+			members = conversation.members,
+			highRes = true
 		)
 		
 		Spacer(modifier = Modifier.height(16.dp))
