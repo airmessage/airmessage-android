@@ -14,6 +14,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
@@ -163,10 +165,13 @@ fun NewConversationAppBar(
 						}
 					}
 					
+					val focusRequester = remember { FocusRequester() }
+					
 					BasicTextField(
 						modifier = Modifier
 							.padding(vertical = 13.dp)
-							.sizeIn(minWidth = 50.dp),
+							.sizeIn(minWidth = 50.dp)
+							.focusRequester(focusRequester),
 						value = textInput,
 						onValueChange = onChangeTextInput,
 						textStyle = MaterialTheme.typography.bodyLarge,
@@ -189,6 +194,10 @@ fun NewConversationAppBar(
 						enabled = !isLoading,
 						singleLine = true
 					)
+					
+					LaunchedEffect(Unit) {
+						focusRequester.requestFocus()
+					}
 				}
 				
 				val toggleInputType = {
