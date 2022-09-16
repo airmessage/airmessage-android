@@ -125,7 +125,7 @@ fun NewConversationBody(
 							}
 							
 							item(
-								key = contact.identifier
+								key = contact.contactID
 							) {
 								ContactRow(
 									contact = contact,
@@ -262,8 +262,8 @@ private fun PreviewNewConversationBodyLoaded() {
 	AirMessageAndroidTheme {
 		NewConversationBody(
 			contactsState = NewConversationContactsState.Loaded(listOf(
-				ContactInfo(0, "Some Guy", mutableListOf(AddressInfo("some@guy.com", "Home"))),
-				ContactInfo(1, null, mutableListOf(AddressInfo("(604) 739-7997", null))),
+				ContactInfo(0, "Some Guy", null, mutableListOf(AddressInfo("some@guy.com", "Home"))),
+				ContactInfo(1, null, null, mutableListOf(AddressInfo("(604) 739-7997", null))),
 			)),
 			directAddText = "hello@airmessage.org",
 			onRequestPermission = {},

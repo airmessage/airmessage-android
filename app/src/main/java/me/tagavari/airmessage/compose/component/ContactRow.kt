@@ -2,24 +2,17 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.util.AddressInfo
@@ -82,7 +75,7 @@ fun ContactRow(
 		MemberImage(
 			modifier = Modifier.size(40.dp),
 			color = MaterialTheme.colorScheme.primary,
-			contactID = contact.identifier
+			thumbnailURI = contact.thumbnailURI
 		)
 		
 		Spacer(modifier = Modifier.width(16.dp))
@@ -133,7 +126,7 @@ fun ContactRow(
 private fun PreviewContactRowSimple() {
 	AirMessageAndroidTheme {
 		ContactRow(
-			contact = ContactInfo(0, "Some Guy", mutableListOf(AddressInfo("some@guy.com", "Home"))),
+			contact = ContactInfo(0, "Some Guy", null, mutableListOf(AddressInfo("some@guy.com", "Home"))),
 			onSelectAddress = {}
 		)
 	}
@@ -147,7 +140,7 @@ private fun PreviewContactRowSimple() {
 private fun PreviewContactRowMultipleAddresses() {
 	AirMessageAndroidTheme {
 		ContactRow(
-			contact = ContactInfo(0, "Some Guy", mutableListOf(
+			contact = ContactInfo(0, "Some Guy", null, mutableListOf(
 				AddressInfo("some@guy.com", "Home"),
 				AddressInfo("(604) 739-7997", "Mobile")
 			)),

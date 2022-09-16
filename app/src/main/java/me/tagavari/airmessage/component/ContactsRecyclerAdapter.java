@@ -22,12 +22,10 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import io.reactivex.rxjava3.disposables.Disposable;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.activity.NewMessage;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.helper.AddressHelper;
 import me.tagavari.airmessage.helper.ContactHelper;
@@ -235,7 +233,7 @@ public class ContactsRecyclerAdapter extends RecyclerView.Adapter<RecyclerView.V
 
                 //Assigning the contact's image
                 Glide.with(context)
-                        .load(ContactHelper.getContactImageURI(contactInfo.getIdentifier()))
+                        .load(ContactHelper.getContactImageURI(contactInfo.getContactID()))
                         .listener(new RequestListener<Drawable>() {
                             @Override
                             public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {

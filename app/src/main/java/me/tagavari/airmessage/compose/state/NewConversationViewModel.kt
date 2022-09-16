@@ -77,7 +77,7 @@ class NewConversationViewModel(
 				ContactsTask.loadContacts(getApplication()).asFlow()
 					.fold(mutableListOf<ContactInfo>()) { list, contactPart ->
 						//Fold multiple contact parts into a single contact
-						val matchingContact = list.firstOrNull { it.identifier == contactPart.id }
+						val matchingContact = list.firstOrNull { it.contactID == contactPart.id }
 						if(matchingContact != null) {
 							matchingContact.addresses.add(contactPart.address)
 						} else {
@@ -85,6 +85,7 @@ class NewConversationViewModel(
 								ContactInfo(
 									contactPart.id,
 									contactPart.name,
+									contactPart.thumbnailURI,
 									mutableListOf(contactPart.address)
 								)
 							)

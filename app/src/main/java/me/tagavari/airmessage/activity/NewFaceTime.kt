@@ -539,10 +539,10 @@ class NewFaceTime : AppCompatCompositeActivity() {
             ContactsTask.loadContacts(getApplication())
                 .map { contactPart: ContactAddressPart ->
                     //Trying to match a contact in the list
-                    val matchingContactIndex = contactList.indexOfFirst { it.identifier == contactPart.id }
+                    val matchingContactIndex = contactList.indexOfFirst { it.contactID == contactPart.id }
                     if(matchingContactIndex == -1) {
                         //Add a new contact
-                        contactList.add(ContactInfo(contactPart.id, contactPart.name, mutableListOf(contactPart.address)))
+                        contactList.add(ContactInfo(contactPart.id, contactPart.name, contactPart.thumbnailURI, mutableListOf(contactPart.address)))
                         return@map ContactListReactiveUpdate.Addition(contactList.size - 1)
                     } else {
                         //Updating the contact

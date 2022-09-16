@@ -710,11 +710,11 @@ public class NewMessage extends AppCompatCompositeActivity {
 				int contactListSize = contactList.size();
 				int matchingContactIndex = IntStream.range(0, contactListSize)
 						.map(i -> contactListSize - i - 1)
-						.filter(i -> contactList.get(i).getIdentifier() == contactPart.getID()).findAny().orElse(-1);
+						.filter(i -> contactList.get(i).getContactID() == contactPart.getID()).findAny().orElse(-1);
 				
 				if(matchingContactIndex == -1) {
 					//Add a new contact
-					contactList.add(new ContactInfo(contactPart.getID(), contactPart.getName(), new ArrayList<>(Collections.singleton(contactPart.getAddress()))));
+					contactList.add(new ContactInfo(contactPart.getID(), contactPart.getName(), contactPart.getThumbnailURI(), new ArrayList<>(Collections.singleton(contactPart.getAddress()))));
 					
 					return new ContactListReactiveUpdate.Addition(contactListSize);
 				} else {

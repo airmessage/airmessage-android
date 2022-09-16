@@ -49,7 +49,7 @@ fun ConversationDetailsMember(
 		MemberImage(
 			modifier = Modifier.size(40.dp),
 			color = Color(member.color),
-			contactID = userInfo?.contactID
+			thumbnailURI = userInfo?.thumbnailURI
 		)
 		
 		Spacer(modifier = Modifier.width(16.dp))

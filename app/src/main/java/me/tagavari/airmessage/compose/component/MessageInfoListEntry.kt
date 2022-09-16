@@ -121,7 +121,7 @@ fun MessageInfoListEntry(
 						MemberImage(
 							modifier = Modifier.fillMaxSize(),
 							color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
-							contactID = userInfo?.contactID
+							thumbnailURI = userInfo?.thumbnailURI
 						)
 					}
 				}

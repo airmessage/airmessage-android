@@ -3,9 +3,16 @@ package me.tagavari.airmessage.task;
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;
+import android.net.Uri;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
+
 import androidx.annotation.Nullable;
+
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.function.Predicate;
+
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.annotations.NonNull;
@@ -17,10 +24,6 @@ import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.StringHelper;
 import me.tagavari.airmessage.util.AddressInfo;
 import me.tagavari.airmessage.util.ContactInfo;
-
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.function.Predicate;
 
 public class ContactsTask {
 	private static final Predicate<AddressInfo> predicateAddressPhoneNumber = address -> AddressHelper.validatePhoneNumber(address.getNormalizedAddress());
@@ -37,7 +40,7 @@ public class ContactsTask {
 			//Querying the database
 			Cursor cursor = contentResolver.query(
 					ContactsContract.Data.CONTENT_URI,
-					new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.MIMETYPE, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.DATA1, ContactsContract.Data.DATA2, ContactsContract.Data.DATA3},
+					new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.MIMETYPE, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.PHOTO_THUMBNAIL_URI, ContactsContract.Data.DATA1, ContactsContract.Data.DATA2, ContactsContract.Data.DATA3},
 					ContactsContract.Data.MIMETYPE + " = ? OR (" + ContactsContract.Data.HAS_PHONE_NUMBER + "!= 0 AND " + ContactsContract.Data.MIMETYPE + " = ?)",
 					new String[]{ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE},
 					ContactsContract.Data.DISPLAY_NAME + " ASC");
@@ -51,6 +54,7 @@ public class ContactsTask {
 			int indexContactID = cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID);
 			int indexMimeType = cursor.getColumnIndexOrThrow(ContactsContract.Data.MIMETYPE);
 			int indexDisplayName = cursor.getColumnIndexOrThrow(ContactsContract.Data.DISPLAY_NAME);
+			int indexThumbnailURI = cursor.getColumnIndexOrThrow(ContactsContract.Data.PHOTO_THUMBNAIL_URI);
 			int indexAddress = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA1); //The address itself (email or phone number)
 			int indexAddressType = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA2); //The label ID for this address
 			int indexAddressLabel = cursor.getColumnIndexOrThrow(ContactsContract.Data.DATA3); //The custom user-assigned label for this address
@@ -63,6 +67,14 @@ public class ContactsTask {
 				//Getting the general info
 				long contactID = cursor.getLong(indexContactID);
 				String contactName = StringHelper.nullifyEmptyString(cursor.getString(indexDisplayName));
+				
+				Uri thumbnailURI;
+				if(!cursor.isNull(indexThumbnailURI)) {
+					thumbnailURI = Uri.parse(cursor.getString(indexThumbnailURI));
+				} else {
+					thumbnailURI = null;
+				}
+				
 				String addressLabel = null;
 				if(!cursor.isNull(indexAddressType)) {
 					int addressType = cursor.getInt(indexAddressType);
@@ -71,7 +83,7 @@ public class ContactsTask {
 				}
 				AddressInfo addressInfo = new AddressInfo(address, addressLabel);
 				
-				emitter.onNext(new ContactAddressPart(contactID, contactName, addressInfo));
+				emitter.onNext(new ContactAddressPart(contactID, thumbnailURI, contactName, addressInfo));
 			}
 			
 			//Closing the cursor
@@ -85,17 +97,24 @@ public class ContactsTask {
 	 */
 	public static final class ContactAddressPart {
 		private final long id;
+		@Nullable private final Uri thumbnailURI;
 		@Nullable private final String name;
 		private final AddressInfo address;
 		
-		public ContactAddressPart(long id, @Nullable String name, AddressInfo address) {
+		public ContactAddressPart(long id, @Nullable Uri thumbnailURI, @Nullable String name, AddressInfo address) {
 			this.id = id;
+			this.thumbnailURI = thumbnailURI;
 			this.name = name;
 			this.address = address;
 		}
 		
 		public long getID() {
 			return id;
+		}
+		
+		@Nullable
+		public Uri getThumbnailURI() {
+			return thumbnailURI;
 		}
 		
 		@Nullable

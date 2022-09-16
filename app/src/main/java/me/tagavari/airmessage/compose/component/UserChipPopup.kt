@@ -21,6 +21,7 @@ import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.data.UserCacheHelper
 
 @Composable
 fun UserChipPopup(
@@ -64,12 +65,12 @@ private fun UserChipLayout(
 	onRemove: () -> Unit
 ) {
 	val context = LocalContext.current
-	val contactID by produceState<Long?>(initialValue = null, recipient) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, recipient) {
 		//Get the user
 		try {
 			value = MainApplication.getInstance().userCacheHelper
 				.getUserInfo(context, recipient.address)
-				.await().contactID
+				.await()
 		} catch(exception: Throwable) {
 			exception.printStackTrace()
 		}
@@ -84,7 +85,7 @@ private fun UserChipLayout(
 		MemberImage(
 			modifier = Modifier.size(40.dp),
 			color = MaterialTheme.colorScheme.primary,
-			contactID = contactID
+			thumbnailURI = userInfo?.thumbnailURI
 		)
 		
 		Spacer(modifier = Modifier.width(16.dp))

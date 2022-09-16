@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.data
 
 import android.content.Context
+import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import android.util.LruCache
@@ -15,17 +16,7 @@ import java.util.*
 
 class UserCacheHelper {
 	//Creating the values
-	private val cache = object : LruCache<String, UserInfo>((Runtime.getRuntime().maxMemory() / 1024 / 8 / 2).toInt()) {
-		override fun sizeOf(key: String, userInfo: UserInfo): Int {
-			//Calculating the bitmap's size
-			var size = 0
-			if(userInfo.contactName != null) size += userInfo.contactName.toByteArray().size
-			size += 8 //Size of long (user ID)
-			
-			//Returning the size
-			return size
-		}
-	}
+	private val cache = LruCache<String, UserInfo>(128)
 	private val failedCache = Collections.synchronizedList(mutableListOf<String>())
 	
 	/**
@@ -78,7 +69,13 @@ class UserCacheHelper {
 	/**
 	 * Holds a user's name and lookup key
 	 */
-	data class UserInfo(val contactID: Long, val lookupKey: String, val contactName: String?) {
+	data class UserInfo(
+		val contactID: Long,
+		val lookupKey: String,
+		val contactName: String?,
+		val photoURI: Uri?,
+		val thumbnailURI: Uri?
+	) {
 		val contactLookupUri: Uri
 			get() = Uri.withAppendedPath(ContactsContract.Contacts.CONTENT_LOOKUP_URI, lookupKey)
 	}
@@ -89,9 +86,16 @@ class UserCacheHelper {
 	fun clearCache() {
 		cache.evictAll()
 		failedCache.clear()
+		
+		//TODO also clear Coil URI cache
 	}
 	
 	companion object {
+		private fun Cursor.getNullableUri(columnIndex: Int): Uri? {
+			return if(isNull(columnIndex)) null
+			else Uri.parse(getString(columnIndex))
+		}
+		
 		/**
 		 * Fetches user information directly from Android's contacts database
 		 * Only to be called from this helper
@@ -106,7 +110,13 @@ class UserCacheHelper {
 			//Querying the database
 			(contentResolver.query(
 				ContactsContract.Data.CONTENT_URI,
-				arrayOf(ContactsContract.Data.CONTACT_ID, ContactsContract.Contacts.LOOKUP_KEY, ContactsContract.Contacts.DISPLAY_NAME),
+				arrayOf(
+					ContactsContract.Data.CONTACT_ID,
+					ContactsContract.Contacts.LOOKUP_KEY,
+					ContactsContract.Contacts.DISPLAY_NAME,
+					ContactsContract.Contacts.PHOTO_URI,
+					ContactsContract.Contacts.PHOTO_THUMBNAIL_URI
+				),
 				ContactsContract.CommonDataKinds.Email.ADDRESS + " = ? OR " + ContactsContract.CommonDataKinds.Phone.NORMALIZED_NUMBER + " = ?",
 				arrayOf(address, address),
 				null
@@ -118,7 +128,9 @@ class UserCacheHelper {
 				return UserInfo(
 					contactID = cursor.getLong(cursor.getColumnIndexOrThrow(ContactsContract.Data.CONTACT_ID)),
 					lookupKey = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.LOOKUP_KEY)),
-					contactName = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+					contactName = cursor.getString(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME)),
+					photoURI = cursor.getNullableUri(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_URI)),
+					thumbnailURI = cursor.getNullableUri(cursor.getColumnIndexOrThrow(ContactsContract.Contacts.PHOTO_THUMBNAIL_URI))
 				)
 			}
 		}
