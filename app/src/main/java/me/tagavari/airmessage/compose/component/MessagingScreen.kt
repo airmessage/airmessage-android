@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
@@ -176,12 +177,15 @@ fun MessagingScreen(
 												)
 											})
 											.padding(horizontal = 8.dp, vertical = 4.dp),
-										text = title
+										text = title,
+										overflow = TextOverflow.Ellipsis,
+										maxLines = 1,
 									)
 								}
 							} else {
 								Column(
 									modifier = Modifier
+										.padding(horizontal = 24.dp)
 										.clip(RoundedCornerShape(12.dp))
 										.clickable(onClick = {
 											conversationDetailsLauncher.launch(
@@ -201,7 +205,9 @@ fun MessagingScreen(
 									viewModel.conversationTitle?.let { title ->
 										Text(
 											text = title,
-											style = MaterialTheme.typography.bodySmall
+											style = MaterialTheme.typography.bodySmall,
+											overflow = TextOverflow.Ellipsis,
+											maxLines = 1
 										)
 									}
 								}
