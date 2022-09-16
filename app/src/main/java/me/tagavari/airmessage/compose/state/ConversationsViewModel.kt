@@ -261,7 +261,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	 * Sets the active conversation for a text message conversation, resolving the conversation
 	 * and creating it if necessary
 	 */
-	fun selectTextMessageConversation(participants: List<String>, receivedText: String?, receivedAttachments: List<Uri>) {
+	fun selectTextMessageConversation(participants: List<String>, receivedContent: ConversationReceivedContent) {
 		viewModelScope.launch {
 			val conversationID = withContext(Dispatchers.IO) {
 				//Look up the conversation in the messages database
@@ -322,7 +322,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			if(conversationID != null) {
 				setSelectedConversation(
 					conversationID = conversationID,
-					content = ConversationReceivedContent(receivedText, receivedAttachments)
+					content = receivedContent
 				)
 			}
 		}
@@ -350,20 +350,32 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		return pendingReceivedContent
 			//Filter for when we have received content
 			.filterNotNull()
-			//Match the content to the requested conversation.
-			//NULL conversation IDs mean any conversation.
-			.filter { it.conversationID == null || it.conversationID == conversationID }
+			//Match the content to the requested conversation
+			.filter { it.conversationID == conversationID }
 			//Map to the content object
 			.map { it.content }
 	}
 	
 	/**
-	 * Clears the pending received content state, to be called once
-	 * the content has been processed
+	 * Sets the pending received content, or NULL to clear
 	 */
-	fun clearPendingReceivedContent() {
+	fun setPendingReceivedContent(content: PendingConversationReceivedContent?) {
 		viewModelScope.launch {
-			pendingReceivedContent.emit(null)
+			pendingReceivedContent.emit(content)
+		}
+	}
+	
+	/**
+	 * Replaces the current pending received content's conversation ID
+	 * with the specified one if it is currently NULL.
+	 */
+	fun updatePendingReceivedContentTarget(conversationID: Long) {
+		viewModelScope.launch {
+			pendingReceivedContent.value?.let { content ->
+				if(content.conversationID == null) {
+					pendingReceivedContent.emit(PendingConversationReceivedContent(conversationID, content.content))
+				}
+			}
 		}
 	}
 }

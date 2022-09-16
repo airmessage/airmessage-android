@@ -54,6 +54,7 @@ import me.tagavari.airmessage.compose.state.ConversationsViewModel
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.container.ConversationReceivedContent
+import me.tagavari.airmessage.container.PendingConversationReceivedContent
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
@@ -174,13 +175,16 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 													conversationID = activeConversationID,
 													floatingPane = useFloatingPane,
 													receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
-													onProcessedReceivedContent = { viewModel.clearPendingReceivedContent() }
+													onProcessedReceivedContent = { viewModel.setPendingReceivedContent(null) }
 												)
 											}
 										}
 										is ConversationsDetailPage.NewConversation -> {
 											NewConversationPane(
-												onSelectConversation = { viewModel.detailPage = ConversationsDetailPage.Messaging(it.localID) }
+												onSelectConversation = { conversation ->
+													viewModel.updatePendingReceivedContentTarget(conversation.localID)
+													viewModel.detailPage = ConversationsDetailPage.Messaging(conversation.localID)
+												}
 											)
 										}
 										null -> {}
@@ -215,7 +219,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 												}
 											},
 											receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
-											onProcessedReceivedContent = { viewModel.clearPendingReceivedContent() }
+											onProcessedReceivedContent = { viewModel.setPendingReceivedContent(null) }
 										)
 									}
 								}
@@ -229,7 +233,10 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 												)
 											}
 										},
-										onSelectConversation = { viewModel.detailPage = ConversationsDetailPage.Messaging(it.localID) }
+										onSelectConversation = { conversation ->
+											viewModel.updatePendingReceivedContentTarget(conversation.localID)
+											viewModel.detailPage = ConversationsDetailPage.Messaging(conversation.localID)
+										}
 									)
 								}
 								null -> {
@@ -307,6 +314,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 				}
 			}
 			Intent.ACTION_SEND, Intent.ACTION_SEND_MULTIPLE, Intent.ACTION_SENDTO -> {
+				var targetNewConversation = false
 				var targetConversationID: Long? = null
 				var targetSMSParticipants: List<String>? = null
 				
@@ -317,6 +325,10 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					//Handle intents towards a specific conversation
 					if(intent.hasExtra(INTENT_TARGET_ID)) {
 						targetConversationID = intent.getLongExtra(INTENT_TARGET_ID, -1L)
+					}
+					//Handle intents towards a new conversation
+					else if(intent.getBooleanExtra(INTENT_TARGET_NEW, false)) {
+						targetNewConversation = true
 					}
 					//Handle intents from direct share
 					else if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && intent.hasExtra(Intent.EXTRA_SHORTCUT_ID)) {
@@ -349,13 +361,25 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					}
 				}
 				
-				//Resolve the SMS conversation
-				targetSMSParticipants?.let { participants ->
-					viewModel.selectTextMessageConversation(participants, messageText, messageAttachments)
+				val receivedContent = ConversationReceivedContent(messageText, messageAttachments)
+				
+				//Start a new conversation
+				if(targetNewConversation) {
+					//Set the pending received content for a NULL conversation
+					viewModel.setPendingReceivedContent(PendingConversationReceivedContent(null, receivedContent))
+					
+					//Create a new conversation
+					viewModel.detailPage = ConversationsDetailPage.NewConversation
 				}
 				
+				//Resolve the SMS conversation
+				targetSMSParticipants?.let { participants ->
+					viewModel.selectTextMessageConversation(participants, receivedContent)
+				}
+				
+				//Open the target conversation
 				targetConversationID?.let { conversationID ->
-					viewModel.setSelectedConversation(conversationID, ConversationReceivedContent(messageText))
+					viewModel.setSelectedConversation(conversationID, receivedContent)
 				}
 			}
 		}
@@ -388,6 +412,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 		private const val keyFragmentSync = "fragment_sync"
 		
 		const val INTENT_TARGET_ID = "targetID"
+		const val INTENT_TARGET_NEW = "targetNew"
 		const val INTENT_BUBBLE = "bubble"
 	}
 }

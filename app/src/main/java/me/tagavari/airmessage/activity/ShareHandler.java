@@ -163,6 +163,9 @@ public class ShareHandler extends AppCompatCompositeActivity {
 		//Launch a single activity, and copy URI permissions
 		intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_GRANT_READ_URI_PERMISSION);
 		
+		//Set the target to create a new conversation
+		intent.putExtra(ConversationsCompose.INTENT_TARGET_NEW, true);
+		
 		startActivity(intent);
 	}
 	
