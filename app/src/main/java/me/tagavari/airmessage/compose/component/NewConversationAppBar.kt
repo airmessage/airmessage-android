@@ -15,6 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -26,6 +27,7 @@ import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationRecipientInputType
 import me.tagavari.airmessage.enums.MessageServiceDescription
+import me.tagavari.airmessage.messaging.MemberInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -139,6 +141,15 @@ fun NewConversationAppBar(
 								onClick = { showPopup = true },
 								label = {
 									Text(recipient.displayLabel)
+								},
+								leadingIcon = {
+									MemberImage(
+										modifier = Modifier.size(24.dp),
+										member = MemberInfo(
+											address = recipient.address,
+											color = MaterialTheme.colorScheme.primary.toArgb()
+										)
+									)
 								}
 							)
 							
