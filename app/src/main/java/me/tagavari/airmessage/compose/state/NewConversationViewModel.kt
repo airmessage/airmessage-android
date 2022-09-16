@@ -24,6 +24,7 @@ import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.enums.*
+import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.helper.ConversationColorHelper.getColoredMembers
 import me.tagavari.airmessage.helper.ConversationColorHelper.getDefaultConversationColor
 import me.tagavari.airmessage.messaging.ConversationInfo
@@ -124,7 +125,7 @@ class NewConversationViewModel(
 			
 			val serviceHandler = selectedService.serviceHandler
 			val serviceType = selectedService.serviceType
-			val recipients = selectedRecipients.map { it.address }
+			val recipients = selectedRecipients.map { AddressHelper.normalizeAddress(it.address) }
 			
 			try {
 				val (conversation, isConversationNew) = if(serviceHandler == ServiceHandler.appleBridge) {
