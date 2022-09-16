@@ -35,10 +35,10 @@ fun AddressRowDirect(
 	
 	Row(
 		modifier = modifier
+			.clickable(onClick = onClick)
 			.fillMaxWidth()
 			.padding(horizontal = 16.dp)
-			.height(56.dp)
-			.clickable(onClick = onClick),
+			.height(56.dp),
 		verticalAlignment = Alignment.CenterVertically
 	) {
 		Image(
