@@ -1,22 +1,18 @@
 package me.tagavari.airmessage.helper
 
-import android.app.Person
 import android.content.Context
 import android.graphics.*
-import android.graphics.drawable.Icon
 import android.os.Build
 import android.view.View
-import androidx.annotation.RequiresApi
+import androidx.core.app.Person
+import androidx.core.content.res.ResourcesCompat
 import androidx.core.graphics.drawable.IconCompat
 import io.reactivex.rxjava3.annotations.CheckReturnValue
-import io.reactivex.rxjava3.core.Maybe
 import io.reactivex.rxjava3.core.Observable
 import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.schedulers.Schedulers
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.helper.BitmapHelper.loadBitmap
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MemberInfo
@@ -48,8 +44,9 @@ object ConversationBuildHelper {
 	@CheckReturnValue
 	fun buildConversationTitle(context: Context, conversationInfo: ConversationInfo): Single<String> {
 		//Returning the conversation title if it is valid
-		if(!conversationInfo.title.isNullOrEmpty()) {
-			return Single.just(conversationInfo.title)
+		val title = conversationInfo.title
+		if(!title.isNullOrEmpty()) {
+			return Single.just(title)
 		}
 		
 		//Building the title from the conversation's members
@@ -196,7 +193,7 @@ object ConversationBuildHelper {
 	 */
 	private fun drawContact(context: Context, canvas: Canvas, drawRect: Rect, backgroundPaint: Paint, userPaint: Paint, bitmapPaint: Paint, contactData: Union<Int, Bitmap>) {
 		if(contactData.isA) {
-			val drawable = context.resources.getDrawable(R.drawable.user, null)
+			val drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.user, null) ?: return
 			drawable.bounds = drawRect
 			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) drawable.colorFilter = BlendModeColorFilter(contactData.a, BlendMode.MULTIPLY)
 			else drawable.setColorFilter(contactData.a, PorterDuff.Mode.MULTIPLY)
@@ -215,7 +212,7 @@ object ConversationBuildHelper {
 	/**
 	 * Generates a list of [Person] from a conversation's members
 	 */
-	suspend fun generatePersonListCompat(context: Context, conversationInfo: ConversationInfo): List<androidx.core.app.Person> {
+	suspend fun generatePersonListCompat(context: Context, conversationInfo: ConversationInfo): List<Person> {
 		//Return if the conversation has no members
 		if(conversationInfo.members.isEmpty()) {
 			return listOf()
