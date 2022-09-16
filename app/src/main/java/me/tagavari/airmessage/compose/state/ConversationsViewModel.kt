@@ -355,8 +355,16 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			.filter { it.conversationID == null || it.conversationID == conversationID }
 			//Map to the content object
 			.map { it.content }
-			//Clear the content state so we don't apply the content multiple times
-			.onEach { pendingReceivedContent.emit(null) }
+	}
+	
+	/**
+	 * Clears the pending received content state, to be called once
+	 * the content has been processed
+	 */
+	fun clearPendingReceivedContent() {
+		viewModelScope.launch {
+			pendingReceivedContent.emit(null)
+		}
 	}
 }
 

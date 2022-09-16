@@ -67,7 +67,8 @@ fun MessagingScreen(
 	floatingPane: Boolean = false,
 	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {},
-	receivedContentFlow: Flow<ConversationReceivedContent>
+	receivedContentFlow: Flow<ConversationReceivedContent>,
+	onProcessedReceivedContent: () -> Unit
 ) {
 	val application = LocalContext.current.applicationContext as Application
 	val connectionManager = LocalConnectionManager.current
@@ -117,6 +118,7 @@ fun MessagingScreen(
 					viewModel.inputText = it
 				}
 				viewModel.addQueuedFileBlobs(content.attachments.map { ReadableBlobUri(it) })
+				onProcessedReceivedContent()
 			}
 	}
 	

@@ -171,7 +171,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 												MessagingScreen(
 													conversationID = activeConversationID,
 													floatingPane = useFloatingPane,
-													receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID)
+													receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
+													onProcessedReceivedContent = { viewModel.clearPendingReceivedContent() }
 												)
 											}
 										}
@@ -211,7 +212,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 													)
 												}
 											},
-											receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID)
+											receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
+											onProcessedReceivedContent = { viewModel.clearPendingReceivedContent() }
 										)
 									}
 								}

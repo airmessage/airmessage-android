@@ -41,7 +41,8 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 								)
 							}
 						},
-						receivedContentFlow = flowOf()
+						receivedContentFlow = flowOf(),
+						onProcessedReceivedContent = {}
 					)
 				}
 			}
