@@ -71,8 +71,10 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		
-		//Apply intent values
-		applyIntent(intent)
+		//Apply the launch intent when the activity is created
+		if(savedInstanceState == null) {
+			applyIntent(intent)
+		}
 		
 		//Redirect if the user needs to configure the app
 		if(!SharedPreferencesManager.isConnectionConfigured(this)) {
