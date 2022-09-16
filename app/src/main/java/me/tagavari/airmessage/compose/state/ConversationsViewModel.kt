@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.rx3.asFlow
+import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.enums.ConversationState
@@ -250,7 +251,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		
 		//Mark the conversations as read
 		GlobalScope.launch {
-			ConversationActionTask.unreadConversations(unreadConversations, 0)
+			ConversationActionTask.unreadConversations(unreadConversations, 0).await()
 		}
 	}
 	
