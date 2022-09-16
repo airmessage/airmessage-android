@@ -248,8 +248,12 @@ object ConversationBuildHelper {
 		
 		//Getting member info for each member
 		return if(MainApplication.canUseContacts(context)) {
-			return conversationInfo.members.map { member ->
-				val userInfo = MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
+			return conversationInfo.members.mapNotNull { member ->
+				val userInfo = try {
+					MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
+				} catch(exception: Throwable) {
+					return@mapNotNull null
+				}
 				
 				androidx.core.app.Person.Builder()
 					.setName(userInfo.contactName)
