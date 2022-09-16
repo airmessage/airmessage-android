@@ -2629,7 +2629,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							//Loading the profile thumbnail
 							viewHolder.inflateProfile();
 							Glide.with(Messaging.this)
-									.load(ContactHelper.getContactImageURI(userInfo.getContactID()))
+									.load(userInfo.getThumbnailURI())
 									.listener(new RequestListener<Drawable>() {
 										@Override
 										public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
@@ -3897,7 +3897,7 @@ public class Messaging extends AppCompatCompositeActivity {
 							ImageView profileDefault = userView.findViewById(R.id.profile_default);
 							ImageView profileImage = userView.findViewById(R.id.profile_image);
 							Glide.with(Messaging.this)
-									.load(ContactHelper.getContactImageURI(userInfo.getContactID()))
+									.load(userInfo.getThumbnailURI())
 									.listener(new RequestListener<Drawable>() {
 										@Override
 										public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {

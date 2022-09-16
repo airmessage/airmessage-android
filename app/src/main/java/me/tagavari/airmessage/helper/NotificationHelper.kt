@@ -36,7 +36,6 @@ import me.tagavari.airmessage.flavor.MLKitBridge
 import me.tagavari.airmessage.helper.AddressHelper.formatAddress
 import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import me.tagavari.airmessage.helper.BitmapHelper.loadBitmapCircular
-import me.tagavari.airmessage.helper.ContactHelper.getContactImageURI
 import me.tagavari.airmessage.helper.ConversationBuildHelper.buildConversationTitle
 import me.tagavari.airmessage.helper.ConversationBuildHelper.generateShortcutIcon
 import me.tagavari.airmessage.helper.LanguageHelper.createLocalizedList
@@ -226,14 +225,17 @@ object NotificationHelper {
 		
 		//Generate the user icon
 		val singleMemberIcon: Single<Optional<Bitmap>> = singleMemberInfo.flatMap { user: Optional<UserCacheHelper.UserInfo> ->
-			return@flatMap if(!user.isPresent) {
-				Single.just(Optional.empty<Bitmap>())
-			} else {
-				loadBitmapCircular(context, getContactImageURI(user.get().contactID))
-						.map { Optional.of(it) }
-						.doOnError { error -> Log.w(TAG, "Failed to load user icon", error) }
-						.onErrorReturnItem(Optional.empty())
+			if(!user.isPresent) {
+				return@flatMap Single.just(Optional.empty<Bitmap>())
 			}
+			
+			val thumbnailURI = user.get().thumbnailURI
+				?: return@flatMap Single.just(Optional.empty<Bitmap>())
+			
+			return@flatMap loadBitmapCircular(context, thumbnailURI)
+				.map { Optional.of(it) }
+				.doOnError { error -> Log.w(TAG, "Failed to load user icon", error) }
+				.onErrorReturnItem(Optional.empty())
 		}
 		
 		/*

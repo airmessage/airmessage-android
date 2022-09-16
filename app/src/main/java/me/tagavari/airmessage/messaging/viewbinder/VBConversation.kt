@@ -19,7 +19,6 @@ import io.reactivex.rxjava3.core.Observable
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.data.UserCacheHelper
-import me.tagavari.airmessage.helper.ContactHelper.getContactImageURI
 import me.tagavari.airmessage.helper.ConversationBuildHelper.buildConversationTitle
 import me.tagavari.airmessage.helper.ConversationBuildHelper.buildConversationTitleDirect
 import me.tagavari.airmessage.helper.LanguageHelper.getLastUpdateStatusTime
@@ -129,7 +128,7 @@ object VBConversation {
 				if(data.item.second != null) {
 					//Loading the user's picture
 					Glide.with(context)
-						.load(getContactImageURI(data.item.second!!.contactID))
+						.load(data.item.second!!.thumbnailURI)
 						.listener(object : RequestListener<Drawable?> {
 							override fun onLoadFailed(e: GlideException?, model: Any, target: Target<Drawable?>, isFirstResource: Boolean): Boolean {
 								return false

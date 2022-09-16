@@ -18,7 +18,6 @@ import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.helper.BitmapHelper.loadBitmap
-import me.tagavari.airmessage.helper.ContactHelper.getContactImageURI
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MemberInfo
 import me.tagavari.airmessage.util.Union
@@ -95,7 +94,11 @@ object ConversationBuildHelper {
 				.flatMapSingle { member: MemberInfo ->
 					MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address)
 							.flatMap { userInfo ->
-								loadBitmap(context, getContactImageURI(userInfo.contactID), true)
+								if(userInfo.thumbnailURI == null) {
+									throw Exception("No thumbnail URI")
+								}
+								
+								loadBitmap(context, userInfo.thumbnailURI, true)
 										.map<Union<Int, Bitmap>> { Union.ofB(it) }
 							}
 							.onErrorReturnItem(Union.ofA(member.color))
@@ -229,7 +232,7 @@ object ConversationBuildHelper {
 					Person.Builder()
 						.setName(userInfo.contactName)
 						.setKey(userInfo.lookupKey)
-						.setIcon(Icon.createWithContentUri(getContactImageURI(userInfo.contactID)))
+						.setIcon(Icon.createWithContentUri(userInfo.thumbnailURI))
 						.build()
 				}.toList()
 		} else {
@@ -255,10 +258,13 @@ object ConversationBuildHelper {
 					return@mapNotNull null
 				}
 				
-				androidx.core.app.Person.Builder()
-					.setName(userInfo.contactName)
-					.setKey(userInfo.lookupKey)
-					.setIcon(IconCompat.createWithContentUri(getContactImageURI(userInfo.contactID)))
+				androidx.core.app.Person.Builder().apply {
+					setName(userInfo.contactName)
+					setKey(userInfo.lookupKey)
+					userInfo.thumbnailURI?.let { uri ->
+						setIcon(IconCompat.createWithContentUri(uri))
+					}
+				}
 					.build()
 			}
 		} else {

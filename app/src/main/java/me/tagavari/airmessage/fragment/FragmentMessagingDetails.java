@@ -279,7 +279,7 @@ public class FragmentMessagingDetails extends BottomSheetDialogFragment {
 									addressView.setVisibility(View.VISIBLE);
 									
 									Glide.with(this)
-											.load(ContactHelper.getContactImageURI(userInfo.getContactID()))
+											.load(userInfo.getThumbnailURI())
 											.listener(new RequestListener<Drawable>() {
 												@Override
 												public boolean onLoadFailed(@Nullable GlideException e, Object model, Target<Drawable> target, boolean isFirstResource) {
