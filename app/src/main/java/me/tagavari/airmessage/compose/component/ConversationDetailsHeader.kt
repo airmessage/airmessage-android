@@ -11,6 +11,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -63,7 +64,8 @@ fun ConversationDetailsHeader(
 		
 		Text(
 			text = title,
-			style = MaterialTheme.typography.titleLarge
+			style = MaterialTheme.typography.titleLarge,
+			textAlign = TextAlign.Center
 		)
 		
 		if(isRenameSupported) {
