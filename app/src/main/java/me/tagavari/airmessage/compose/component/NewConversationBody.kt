@@ -2,10 +2,12 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -62,9 +64,21 @@ fun NewConversationBody(
 			)
 		}
 		is NewConversationContactsState.Loaded -> {
+			val scrollState = rememberLazyListState()
+			
+			//Scroll to the top when we add the direct add text row
+			LaunchedEffect(directAddText) {
+				if(directAddText != null
+					&& scrollState.firstVisibleItemIndex == 1
+					&& scrollState.firstVisibleItemScrollOffset == 0) {
+					scrollState.scrollToItem(0)
+				}
+			}
+			
 			LazyColumn(
 				modifier = modifier,
-				contentPadding = contentPadding
+				contentPadding = contentPadding,
+				state = scrollState
 			) {
 				if(directAddText != null) {
 					item {
