@@ -215,34 +215,6 @@ object ConversationBuildHelper {
 	/**
 	 * Generates a list of [Person] from a conversation's members
 	 */
-	@JvmStatic
-	@RequiresApi(api = Build.VERSION_CODES.P)
-	@CheckReturnValue
-	fun generatePersonList(context: Context, conversationInfo: ConversationInfo): Single<List<Person>> {
-		//Returning if the conversation has no members
-		if(conversationInfo.members.isEmpty()) {
-			return Single.just(emptyList())
-		}
-		
-		//Getting member info for each member
-		return if(MainApplication.canUseContacts(context)) {
-			Maybe.concat(conversationInfo.members.map { memberInfo -> MainApplication.getInstance().userCacheHelper.getUserInfo(context, memberInfo.address).onErrorComplete() })
-				.observeOn(Schedulers.io())
-				.map { userInfo: UserCacheHelper.UserInfo ->
-					Person.Builder()
-						.setName(userInfo.contactName)
-						.setKey(userInfo.lookupKey)
-						.setIcon(Icon.createWithContentUri(userInfo.thumbnailURI))
-						.build()
-				}.toList()
-		} else {
-			Single.just(conversationInfo.members.map { member: MemberInfo -> Person.Builder().setKey(member.address).build() })
-		}
-	}
-	
-	/**
-	 * Generates a list of [Person] from a conversation's members
-	 */
 	suspend fun generatePersonListCompat(context: Context, conversationInfo: ConversationInfo): List<androidx.core.app.Person> {
 		//Return if the conversation has no members
 		if(conversationInfo.members.isEmpty()) {
@@ -264,6 +236,7 @@ object ConversationBuildHelper {
 					userInfo.thumbnailURI?.let { uri ->
 						setIcon(IconCompat.createWithContentUri(uri))
 					}
+					setUri(userInfo.contactLookupUri.toString())
 				}
 					.build()
 			}
