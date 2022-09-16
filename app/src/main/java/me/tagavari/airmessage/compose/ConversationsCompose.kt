@@ -42,7 +42,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.NewMessage
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.ConversationPane
 import me.tagavari.airmessage.compose.component.MessagingScreen
@@ -178,7 +177,9 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 											}
 										}
 										is ConversationsDetailPage.NewConversation -> {
-											NewConversationPane()
+											NewConversationPane(
+												onSelectConversation = { viewModel.detailPage = ConversationsDetailPage.Messaging(it.localID) }
+											)
 										}
 										null -> {}
 									}
@@ -224,7 +225,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 													contentDescription = stringResource(id = R.string.action_back)
 												)
 											}
-										}
+										},
+										onSelectConversation = { viewModel.detailPage = ConversationsDetailPage.Messaging(it.localID) }
 									)
 								}
 								null -> {

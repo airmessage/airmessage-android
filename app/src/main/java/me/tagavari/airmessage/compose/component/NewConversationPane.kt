@@ -10,19 +10,35 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.flow.filterNotNull
+import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NewConversationViewModel
 import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.enums.ConversationRecipientInputType
-import me.tagavari.airmessage.enums.MessageServiceDescription
 import me.tagavari.airmessage.helper.AddressHelper
+import me.tagavari.airmessage.messaging.ConversationInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NewConversationPane(
 	modifier: Modifier = Modifier,
-	navigationIcon: @Composable () -> Unit = {}
+	navigationIcon: @Composable () -> Unit = {},
+	onSelectConversation: (ConversationInfo) -> Unit
 ) {
 	val viewModel = viewModel<NewConversationViewModel>()
+	
+	//Listen for selection events
+	LaunchedEffect(viewModel.launchFlow) {
+		viewModel.launchFlow
+			.filterNotNull()
+			.collect { conversation ->
+				//Submit the conversation
+				onSelectConversation(conversation)
+				
+				//Reset the state
+				viewModel.launchFlow.emit(null)
+			}
+	}
 	
 	var inputRecipient by rememberSaveable { mutableStateOf("") }
 	var inputRecipientType by rememberSaveable { mutableStateOf(ConversationRecipientInputType.EMAIL) }
@@ -32,8 +48,6 @@ fun NewConversationPane(
 			AddressHelper.validateAddress(inputRecipient)
 		}
 	}
-	
-	var selectedService by rememberSaveable { mutableStateOf(MessageServiceDescription.IMESSAGE) }
 	
 	///Adds the current input text as a recipient
 	fun addInputRecipient() {
@@ -52,17 +66,21 @@ fun NewConversationPane(
 	Scaffold(
 		modifier = modifier,
 		topBar = {
+			val connectionManager = LocalConnectionManager.current
+			
 			NewConversationAppBar(
 				navigationIcon = navigationIcon,
-				selectedService = selectedService,
-				onSelectService = { selectedService = it },
+				onDone = { viewModel.createConversation(connectionManager) },
+				selectedService = viewModel.selectedService,
+				onSelectService = { viewModel.selectedService = it },
 				textInput = inputRecipient,
 				onChangeTextInput = { inputRecipient = it },
 				inputType = inputRecipientType,
 				onChangeInputType = { inputRecipientType = it },
 				recipients = viewModel.selectedRecipients,
 				onAddRecipient = ::addInputRecipient,
-				onRemoveRecipient = viewModel::removeSelectedRecipient
+				onRemoveRecipient = viewModel::removeSelectedRecipient,
+				isLoading = viewModel.isLoading
 			)
 		}
 	) { innerPadding ->
@@ -90,7 +108,8 @@ fun NewConversationPane(
 						name = contactInfo.name
 					)
 				)
-			}
+			},
+			isLoading = viewModel.isLoading
 		)
 	}
 }

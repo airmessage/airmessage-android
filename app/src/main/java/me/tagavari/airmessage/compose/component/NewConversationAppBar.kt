@@ -31,6 +31,7 @@ import me.tagavari.airmessage.enums.MessageServiceDescription
 @Composable
 fun NewConversationAppBar(
 	navigationIcon: @Composable () -> Unit = {},
+	onDone: () -> Unit,
 	selectedService: MessageServiceDescription,
 	onSelectService: (MessageServiceDescription) -> Unit,
 	textInput: String,
@@ -39,7 +40,8 @@ fun NewConversationAppBar(
 	onChangeInputType: (ConversationRecipientInputType) -> Unit,
 	recipients: Collection<SelectedRecipient>,
 	onAddRecipient: () -> Unit,
-	onRemoveRecipient: (SelectedRecipient) -> Unit
+	onRemoveRecipient: (SelectedRecipient) -> Unit,
+	isLoading: Boolean
 ) {
 	Surface(
 		tonalElevation = 3.dp
@@ -50,6 +52,16 @@ fun NewConversationAppBar(
 					Text(stringResource(R.string.screen_newconversation))
 				},
 				navigationIcon = navigationIcon,
+				actions = {
+					if(recipients.isNotEmpty()) {
+						TextButton(
+							onClick = onDone,
+							enabled = !isLoading
+						) {
+							Text(stringResource(R.string.action_done))
+						}
+					}
+				},
 				colors = TopAppBarDefaults.smallTopAppBarColors(
 					containerColor = Color.Transparent,
 					scrolledContainerColor = Color.Transparent
@@ -78,6 +90,7 @@ fun NewConversationAppBar(
 						
 						FilterChip(
 							selected = selected,
+							enabled = !isLoading,
 							onClick = { onSelectService(service) },
 							label = { Text(stringResource(service.title)) },
 							leadingIcon = {
@@ -119,13 +132,14 @@ fun NewConversationAppBar(
 							
 							InputChip(
 								selected = false,
+								enabled = !isLoading,
 								onClick = { showPopup = true },
 								label = {
 									Text(recipient.displayLabel)
 								}
 							)
 							
-							if(showPopup) {
+							if(showPopup && !isLoading) {
 								UserChipPopup(
 									onDismissRequest = { showPopup = false },
 									recipient = recipient,
@@ -158,6 +172,7 @@ fun NewConversationAppBar(
 						keyboardActions = KeyboardActions(
 							onDone = { onAddRecipient() }
 						),
+						enabled = !isLoading,
 						singleLine = true
 					)
 				}
@@ -172,7 +187,10 @@ fun NewConversationAppBar(
 					)
 				}
 				
-				IconButton(onClick = toggleInputType) {
+				IconButton(
+					onClick = toggleInputType,
+					enabled = !isLoading
+				) {
 					Icon(
 						imageVector = when(inputType) {
 							ConversationRecipientInputType.PHONE -> Icons.Outlined.Keyboard
@@ -191,6 +209,7 @@ fun NewConversationAppBar(
 private fun PreviewNewConversationAppBar() {
 	AirMessageAndroidTheme {
 		NewConversationAppBar(
+			onDone = {},
 			selectedService = MessageServiceDescription.IMESSAGE,
 			onSelectService = {},
 			textInput = "",
@@ -199,7 +218,28 @@ private fun PreviewNewConversationAppBar() {
 			onChangeInputType = {},
 			recipients = setOf(SelectedRecipient("cool@guy.com", "Cool Guy")),
 			onAddRecipient = {},
-			onRemoveRecipient = {}
+			onRemoveRecipient = {},
+			isLoading = false
+		)
+	}
+}
+
+@Preview
+@Composable
+private fun PreviewNewConversationAppBarDisabled() {
+	AirMessageAndroidTheme {
+		NewConversationAppBar(
+			onDone = {},
+			selectedService = MessageServiceDescription.IMESSAGE,
+			onSelectService = {},
+			textInput = "",
+			onChangeTextInput = {},
+			inputType = ConversationRecipientInputType.EMAIL,
+			onChangeInputType = {},
+			recipients = setOf(SelectedRecipient("cool@guy.com", "Cool Guy")),
+			onAddRecipient = {},
+			onRemoveRecipient = {},
+			isLoading = true
 		)
 	}
 }
