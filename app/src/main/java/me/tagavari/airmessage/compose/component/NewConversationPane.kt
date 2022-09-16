@@ -9,8 +9,10 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.filterNotNull
+import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NewConversationViewModel
 import me.tagavari.airmessage.compose.state.SelectedRecipient
@@ -66,11 +68,13 @@ fun NewConversationPane(
 	Scaffold(
 		modifier = modifier,
 		topBar = {
+			val context = LocalContext.current
 			val connectionManager = LocalConnectionManager.current
 			
 			NewConversationAppBar(
 				navigationIcon = navigationIcon,
 				onDone = { viewModel.createConversation(connectionManager) },
+				showServiceSelector = remember { Preferences.getPreferenceTextMessageIntegration(context) },
 				selectedService = viewModel.selectedService,
 				onSelectService = { viewModel.selectedService = it },
 				textInput = inputRecipient,

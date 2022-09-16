@@ -32,6 +32,7 @@ import me.tagavari.airmessage.enums.MessageServiceDescription
 fun NewConversationAppBar(
 	navigationIcon: @Composable () -> Unit = {},
 	onDone: () -> Unit,
+	showServiceSelector: Boolean,
 	selectedService: MessageServiceDescription,
 	onSelectService: (MessageServiceDescription) -> Unit,
 	textInput: String,
@@ -69,44 +70,46 @@ fun NewConversationAppBar(
 			)
 			
 			//Via
-			Row(
-				modifier = Modifier.height(48.dp),
-				verticalAlignment = Alignment.CenterVertically
-			) {
-				Text(
-					modifier = Modifier.width(60.dp),
-					textAlign = TextAlign.Center,
-					text = stringResource(R.string.part_via)
-				)
-				
+			if(showServiceSelector) {
 				Row(
-					modifier = Modifier
-						.weight(1F)
-						.horizontalScroll(rememberScrollState()),
-					horizontalArrangement = Arrangement.spacedBy(8.dp)
+					modifier = Modifier.height(48.dp),
+					verticalAlignment = Alignment.CenterVertically
 				) {
-					for(service in MessageServiceDescription.availableServices) {
-						val selected = selectedService == service
-						
-						FilterChip(
-							selected = selected,
-							enabled = !isLoading,
-							onClick = { onSelectService(service) },
-							label = { Text(stringResource(service.title)) },
-							leadingIcon = {
-								if(selected) {
-									Icon(
-										imageVector = Icons.Default.Check,
-										contentDescription = null
-									)
-								} else {
-									Icon(
-										painter = painterResource(id = service.icon),
-										contentDescription = null
-									)
+					Text(
+						modifier = Modifier.width(60.dp),
+						textAlign = TextAlign.Center,
+						text = stringResource(R.string.part_via)
+					)
+					
+					Row(
+						modifier = Modifier
+							.weight(1F)
+							.horizontalScroll(rememberScrollState()),
+						horizontalArrangement = Arrangement.spacedBy(8.dp)
+					) {
+						for(service in MessageServiceDescription.availableServices) {
+							val selected = selectedService == service
+							
+							FilterChip(
+								selected = selected,
+								enabled = !isLoading,
+								onClick = { onSelectService(service) },
+								label = { Text(stringResource(service.title)) },
+								leadingIcon = {
+									if(selected) {
+										Icon(
+											imageVector = Icons.Default.Check,
+											contentDescription = null
+										)
+									} else {
+										Icon(
+											painter = painterResource(id = service.icon),
+											contentDescription = null
+										)
+									}
 								}
-							}
-						)
+							)
+						}
 					}
 				}
 			}
@@ -210,6 +213,7 @@ private fun PreviewNewConversationAppBar() {
 	AirMessageAndroidTheme {
 		NewConversationAppBar(
 			onDone = {},
+			showServiceSelector = true,
 			selectedService = MessageServiceDescription.IMESSAGE,
 			onSelectService = {},
 			textInput = "",
@@ -230,6 +234,7 @@ private fun PreviewNewConversationAppBarDisabled() {
 	AirMessageAndroidTheme {
 		NewConversationAppBar(
 			onDone = {},
+			showServiceSelector = true,
 			selectedService = MessageServiceDescription.IMESSAGE,
 			onSelectService = {},
 			textInput = "",
