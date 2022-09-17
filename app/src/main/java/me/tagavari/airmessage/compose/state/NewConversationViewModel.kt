@@ -3,9 +3,12 @@ package me.tagavari.airmessage.compose.state
 import android.Manifest
 import android.app.Application
 import android.content.pm.PackageManager
+import android.os.Parcelable
 import android.provider.Telephony
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.SaverScope
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
@@ -20,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import kotlinx.coroutines.withContext
+import kotlinx.parcelize.Parcelize
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.data.DatabaseManager
@@ -47,7 +51,7 @@ class NewConversationViewModel(
 	var selectedService by savedStateHandle.saveable { mutableStateOf(MessageServiceDescription.IMESSAGE) }
 	
 	//Selected recipients
-	var selectedRecipients by savedStateHandle.saveable { mutableStateOf(LinkedHashSet<SelectedRecipient>()) }
+	var selectedRecipients by savedStateHandle.saveable(stateSaver = LinkedHashSetSaver()) { mutableStateOf(LinkedHashSet<SelectedRecipient>()) }
 		private set
 	
 	//Loading state
@@ -223,10 +227,11 @@ class NewConversationViewModel(
 	}
 }
 
+@Parcelize
 data class SelectedRecipient(
 	val address: String,
 	val name: String? = null
-) {
+) : Parcelable {
 	val displayLabel: String
 		get() = name ?: address
 	
@@ -243,4 +248,14 @@ sealed class NewConversationContactsState {
 	object NeedsPermission : NewConversationContactsState()
 	class Error(val exception: Throwable) : NewConversationContactsState()
 	class Loaded(val contacts: List<ContactInfo>) : NewConversationContactsState()
+}
+
+private class LinkedHashSetSaver<T> : Saver<LinkedHashSet<T>, List<T>> {
+	override fun restore(value: List<T>): LinkedHashSet<T> {
+		return LinkedHashSet(value)
+	}
+	
+	override fun SaverScope.save(value: LinkedHashSet<T>): List<T> {
+		return value.toList()
+	}
 }
