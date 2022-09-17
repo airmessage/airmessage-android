@@ -5,11 +5,9 @@ import android.app.Application
 import android.content.pm.PackageManager
 import android.os.Parcelable
 import android.provider.Telephony
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.SaverScope
-import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.SavedStateHandle
@@ -46,6 +44,14 @@ class NewConversationViewModel(
 	//Contacts list
 	var contactsState by mutableStateOf<NewConversationContactsState>(NewConversationContactsState.Loading)
 		private set
+	
+	//Text field input
+	var recipientInput by savedStateHandle.saveable { mutableStateOf("") }
+	var recipientInputType by savedStateHandle.saveable { mutableStateOf(ConversationRecipientInputType.EMAIL) }
+	
+	val recipientInputValid by derivedStateOf {
+		AddressHelper.validateAddress(recipientInput)
+	}
 	
 	//Selected service
 	var selectedService by savedStateHandle.saveable { mutableStateOf(MessageServiceDescription.IMESSAGE) }

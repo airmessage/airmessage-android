@@ -6,8 +6,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -16,7 +17,6 @@ import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NewConversationViewModel
 import me.tagavari.airmessage.compose.state.SelectedRecipient
-import me.tagavari.airmessage.enums.ConversationRecipientInputType
 import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 
@@ -42,27 +42,18 @@ fun NewConversationPane(
 			}
 	}
 	
-	var inputRecipient by rememberSaveable { mutableStateOf("") }
-	var inputRecipientType by rememberSaveable { mutableStateOf(ConversationRecipientInputType.EMAIL) }
-	
-	val inputRecipientValid by remember {
-		derivedStateOf {
-			AddressHelper.validateAddress(inputRecipient)
-		}
-	}
-	
 	///Adds the current input text as a recipient
 	fun addInputRecipient() {
 		//Ignore if the current input text isn't valid
-		if(!inputRecipientValid) return
+		if(!viewModel.recipientInputValid) return
 		
 		//Add the recipient
 		viewModel.addSelectedRecipient(
-			SelectedRecipient(address = AddressHelper.normalizeAddress(inputRecipient))
+			SelectedRecipient(address = AddressHelper.normalizeAddress(viewModel.recipientInput))
 		)
 		
 		//Clear the input text
-		inputRecipient = ""
+		viewModel.recipientInput = ""
 	}
 	
 	Scaffold(
@@ -77,10 +68,10 @@ fun NewConversationPane(
 				showServiceSelector = remember { Preferences.getPreferenceTextMessageIntegration(context) },
 				selectedService = viewModel.selectedService,
 				onSelectService = { viewModel.selectedService = it },
-				textInput = inputRecipient,
-				onChangeTextInput = { inputRecipient = it },
-				inputType = inputRecipientType,
-				onChangeInputType = { inputRecipientType = it },
+				textInput = viewModel.recipientInput,
+				onChangeTextInput = { viewModel.recipientInput = it },
+				inputType = viewModel.recipientInputType,
+				onChangeInputType = { viewModel.recipientInputType = it },
 				recipients = viewModel.selectedRecipients,
 				onAddRecipient = ::addInputRecipient,
 				onRemoveRecipient = viewModel::removeSelectedRecipient,
@@ -103,7 +94,7 @@ fun NewConversationPane(
 			contactsState = viewModel.contactsState,
 			onRequestPermission = { launchContactsPermission.launch(Manifest.permission.READ_CONTACTS) },
 			onReloadContacts = { viewModel.loadContacts() },
-			directAddText = if(inputRecipientValid) inputRecipient else null,
+			directAddText = if(viewModel.recipientInputValid) viewModel.recipientInput else null,
 			onDirectAdd = ::addInputRecipient,
 			onAddRecipient = { contactInfo, addressInfo ->
 				viewModel.addSelectedRecipient(
