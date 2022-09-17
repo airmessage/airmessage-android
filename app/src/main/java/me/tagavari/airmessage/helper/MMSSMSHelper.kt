@@ -222,7 +222,7 @@ object MMSSMSHelper {
 			}
 			
 			//Updating the conversation values in response to the added message
-			val foregroundConversations = ForegroundState.conversationIDs.toList()
+			val foregroundConversations = ForegroundState.foregroundConversationIDs
 			return@flatMap Single.fromCallable { updateConversationValues(foregroundConversations, conversationInfo, if(messageInfo.isOutgoing) 0 else 1) }
 					.subscribeOn(Schedulers.single())
 					.observeOn(AndroidSchedulers.mainThread())

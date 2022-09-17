@@ -55,6 +55,7 @@ import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.PendingConversationReceivedContent
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.fragment.FragmentSync
 import me.tagavari.airmessage.helper.NotificationHelper
@@ -272,6 +273,16 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					notificationManager.cancel(it.tag, it.id)
 				}
 		}
+		
+		//Update the foreground state
+		ForegroundState.isInForeground = true
+	}
+	
+	override fun onPause() {
+		super.onPause()
+		
+		//Update the foreground state
+		ForegroundState.isInForeground = false
 	}
 	
 	override fun onNewIntent(intent: Intent?) {

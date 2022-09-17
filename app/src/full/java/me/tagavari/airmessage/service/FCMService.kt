@@ -179,9 +179,9 @@ class FCMService : FirebaseMessagingService() {
 		}
 		
 		//Load the foreground conversations (needs to be done on the main thread)
-		Single.fromCallable { ForegroundState.conversationIDs.toList() }
+		Single.fromCallable { ForegroundState.foregroundConversationIDs }
 			.subscribeOn(AndroidSchedulers.mainThread())
-			.flatMap { foregroundConversations: List<Long> ->
+			.flatMap { foregroundConversations: Collection<Long> ->
 				MessageUpdateTask.create(this, foregroundConversations, conversationItems!!, false)
 			}
 			.observeOn(AndroidSchedulers.mainThread())

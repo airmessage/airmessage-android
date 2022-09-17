@@ -122,7 +122,7 @@ class MessagingViewModel(
 		}
 		
 		//Register this as a foreground conversation
-		ForegroundState.conversationIDs.add(conversationID)
+		ForegroundState.loadedConversationIDs.add(conversationID)
 	}
 	
 	override fun onCleared() {
@@ -130,7 +130,7 @@ class MessagingViewModel(
 		soundPool.release()
 		
 		//Unregister this as a foreground conversation
-		ForegroundState.conversationIDs.remove(conversationID)
+		ForegroundState.loadedConversationIDs.remove(conversationID)
 	}
 	
 	/**

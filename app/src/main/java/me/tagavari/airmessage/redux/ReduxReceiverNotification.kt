@@ -25,7 +25,7 @@ class ReduxReceiverNotification(private val context: Context) {
 		compositeDisposable.add(ReduxEmitterNetwork.messageUpdateSubject.subscribe { event: ReduxEventMessaging ->
 			if(event is ConversationUpdate) {
 				//Loading a list of conversations in the foreground for later filtering
-				val foregroundConversations = ForegroundState.conversationIDs.toList()
+				val foregroundConversations = ForegroundState.foregroundConversationIDs
 				
 				//Gathering updated conversations
 				val transferredConversations: List<Pair<ConversationInfo, Collection<ConversationItem>>> =
@@ -53,7 +53,7 @@ class ReduxReceiverNotification(private val context: Context) {
 				}
 			} else if(event is Message) {
 				//Getting foreground conversations
-				val foregroundConversations = ForegroundState.conversationIDs.toList()
+				val foregroundConversations = ForegroundState.foregroundConversationIDs
 				
 				//Sending notifications for received messages
 				for((conversation, results) in event.conversationItems) {

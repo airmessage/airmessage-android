@@ -50,8 +50,8 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				.map { it != null }
 				.distinctUntilChanged()
 				.collect { detailPageSelected ->
-					if(detailPageSelected) ForegroundState.conversationListCount++
-					else ForegroundState.conversationListCount--
+					if(detailPageSelected) ForegroundState.conversationListLoadCount++
+					else ForegroundState.conversationListLoadCount--
 				}
 		}
 	}
@@ -59,7 +59,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	override fun onCleared() {
 		//Make sure we update the count
 		if(detailPage != null) {
-			ForegroundState.conversationListCount--
+			ForegroundState.conversationListLoadCount--
 		}
 	}
 	
