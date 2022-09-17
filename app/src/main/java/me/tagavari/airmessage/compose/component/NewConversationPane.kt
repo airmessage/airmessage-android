@@ -49,7 +49,7 @@ fun NewConversationPane(
 		
 		//Add the recipient
 		viewModel.addSelectedRecipient(
-			SelectedRecipient(address = AddressHelper.normalizeAddress(viewModel.recipientInput))
+			SelectedRecipient(address = AddressHelper.formatAddress(viewModel.recipientInput))
 		)
 		
 		//Clear the input text
