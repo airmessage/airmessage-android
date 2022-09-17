@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.messaging
 
-import android.app.Application
 import android.os.Parcelable
 import kotlinx.parcelize.Parcelize
 import me.tagavari.airmessage.BuildConfig
@@ -14,22 +13,22 @@ import me.tagavari.airmessage.util.ConversationTarget.*
 
 @Parcelize
 data class ConversationInfo @JvmOverloads constructor(
-	val localID: Long,
-	@get:JvmName("getGUID") val guid: String?,
-	val externalID: Long,
-	val state: Int,
-	val serviceHandler: Int,
-	val serviceType: String?,
-	val conversationColor: Int = 0xFF000000.toInt(), //Black
-	val members: List<MemberInfo>,
-	val title: String?,
-	val unreadMessageCount: Int = 0,
-	val isArchived: Boolean = false,
-	val isMuted: Boolean = false,
-	val messagePreview: ConversationPreview? = null,
-	val draftMessage: String? = null,
-	val draftFiles: List<FileDraft> = mutableListOf(),
-	val draftUpdateTime: Long = -1
+	var localID: Long,
+	@get:JvmName("getGUID") @set:JvmName("setGUID") var guid: String?,
+	var externalID: Long,
+	var state: Int,
+	var serviceHandler: Int,
+	var serviceType: String?,
+	var conversationColor: Int = 0xFF000000.toInt(), //Black
+	var members: MutableList<MemberInfo>,
+	var title: String?,
+	var unreadMessageCount: Int = 0,
+	var isArchived: Boolean = false,
+	var isMuted: Boolean = false,
+	var messagePreview: ConversationPreview? = null,
+	var draftMessage: String? = null,
+	var draftFiles: MutableList<FileDraft> = mutableListOf(),
+	var draftUpdateTime: Long = -1
 ) : Parcelable {
 	/**
 	 * Gets whether this conversation is a group conversation

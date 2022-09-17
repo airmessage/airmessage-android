@@ -16,7 +16,6 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import kotlin.Pair;
 import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.enums.*;
@@ -1151,16 +1150,17 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			}
 			
 			//Creating the conversation item
-			MessageInfo messageInfo = new MessageInfo(localID, serverID, guid, date, sender, messageText, messageSubject, attachments, sendStyle, sendStyleViewed, dateRead, stateCode, errorCode, errorDetailsAvailable, null);
+			long previewID;
+			if(cursor.isNull(indices.iPreviewID)) {
+				previewID = -1L;
+			} else {
+				previewID = cursor.getLong(indices.iPreviewID);
+			}
+			MessageComponentText messageComponentText = MessageComponentText.Companion.fromText(localID, guid, messageText, messageSubject, previewState, previewID);
+			
+			MessageInfo messageInfo = new MessageInfo(localID, serverID, guid, date, sender, messageComponentText, attachments, sendStyle, sendStyleViewed, dateRead, stateCode, errorCode, errorDetailsAvailable, null);
 			loadApplyStickers(context, messageInfo);
 			loadApplyTapbacks(messageInfo);
-			
-			//Setting the message preview state
-			MessageComponentText messageTextInfo = messageInfo.getMessageTextComponent();
-			if(messageTextInfo != null) {
-				messageTextInfo.setMessagePreviewState(previewState);
-				if(!cursor.isNull(indices.iPreviewID)) messageTextInfo.setMessagePreviewID(cursor.getLong(indices.iPreviewID));
-			}
 			
 			//Returning the item
 			return messageInfo;
@@ -3654,14 +3654,17 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			cursor.moveToPosition(cursorPosition);
 		}
 		
-		public abstract List<T> loadNextChunk(@NonNull Context context);
+		public abstract List<T> loadNextChunk(@NonNull Context context, int chunkSize);
 	}
 	
 	public static class ConversationLazyLoader extends LazyLoader<ConversationItem> {
 		private final DatabaseManager databaseManager;
 		private final ConversationItemIndices conversationItemIndices;
 		
-		public ConversationLazyLoader(@NonNull DatabaseManager databaseManager, @NonNull ConversationInfo conversationInfo) {
+		public ConversationLazyLoader(
+				@NonNull DatabaseManager databaseManager,
+				@NonNull ConversationInfo conversationInfo
+		) {
 			this.databaseManager = databaseManager;
 			
 			//Building the query
@@ -3678,12 +3681,12 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 		
 		@Override
-		public List<ConversationItem> loadNextChunk(@NonNull Context context) {
+		public List<ConversationItem> loadNextChunk(@NonNull Context context, int chunkSize) {
 			//Creating the message list
 			List<ConversationItem> conversationItems = new ArrayList<>();
 			
 			//Loading the messages
-			for(int i = 0; i < Messaging.messageChunkSize; i++) {
+			for(int i = 0; i < chunkSize; i++) {
 				if(!super.cursor.moveToNext()) break;
 				conversationItems.add(databaseManager.loadConversationItem(context, conversationItemIndices, super.cursor, super.database));
 			}

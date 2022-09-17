@@ -48,29 +48,31 @@ class ConversationDetailsViewModel(
 	private fun applyMessageUpdate(event: ReduxEventMessaging) {
 		when(event) {
 			is ReduxEventMessaging.ConversationMute -> {
-				conversation = conversation?.clone()?.apply {
+				conversation = conversation?.copy(
 					isMuted = event.isMuted
-				}
+				)
 			}
 			is ReduxEventMessaging.ConversationArchive -> {
-				conversation = conversation?.clone()?.apply {
+				conversation = conversation?.copy(
 					isArchived = event.isArchived
-				}
+				)
 			}
 			is ReduxEventMessaging.ConversationTitle -> {
-				conversation = conversation?.clone()?.apply {
+				conversation = conversation?.copy(
 					title = event.title
-				}
+				)
 			}
 			is ReduxEventMessaging.ConversationMember -> {
-				conversation = conversation?.clone()?.apply {
-					members = members.toMutableList().apply {
-						if(event.isJoin) {
-							add(event.member.clone())
-						} else {
-							filter { it.address != event.member.address }
+				conversation = conversation?.let { conversation ->
+					conversation.copy(
+						members = conversation.members.toMutableList().apply {
+							if(event.isJoin) {
+								add(event.member.clone())
+							} else {
+								filter { it.address != event.member.address }
+							}
 						}
-					}
+					)
 				}
 			}
 			else -> {}

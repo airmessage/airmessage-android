@@ -117,19 +117,19 @@ class NewFaceTime : AppCompatCompositeActivity() {
     
     private val contactStateObserver = Observer { state: Int ->
         when(state) {
-            NewMessage.ActivityViewModel.contactStateReady -> {
+            ActivityViewModel.contactStateReady -> {
                 contactListView.visibility = View.VISIBLE
                 buttonConfirm.visibility = View.VISIBLE
                 groupMessagePermission.visibility = View.GONE
                 groupMessageError.visibility = View.GONE
             }
-            NewMessage.ActivityViewModel.contactStateNoAccess -> {
+            ActivityViewModel.contactStateNoAccess -> {
                 contactListView.visibility = View.GONE
                 buttonConfirm.visibility = View.GONE
                 groupMessagePermission.visibility = View.VISIBLE
                 groupMessageError.visibility = View.GONE
             }
-            NewMessage.ActivityViewModel.contactStateFailed -> {
+            ActivityViewModel.contactStateFailed -> {
                 contactListView.visibility = View.GONE
                 buttonConfirm.visibility = View.GONE
                 groupMessagePermission.visibility = View.GONE
@@ -456,7 +456,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
     }
     
     fun onClickRetryLoad(view: View? = null) {
-        if(viewModel.contactState.value == NewMessage.ActivityViewModel.contactStateFailed) viewModel.loadContacts()
+        if(viewModel.contactState.value == ActivityViewModel.contactStateFailed) viewModel.loadContacts()
     }
     
     fun onToggleInputType(view: View) {
@@ -528,12 +528,12 @@ class NewFaceTime : AppCompatCompositeActivity() {
         fun loadContacts() {
             //Aborting if contacts cannot be used
             if(!MainApplication.canUseContacts(getApplication())) {
-                contactState.value = NewMessage.ActivityViewModel.contactStateNoAccess
+                contactState.value = contactStateNoAccess
                 return
             }
 
             //Updating the state
-            contactState.value = NewMessage.ActivityViewModel.contactStateReady
+            contactState.value = contactStateReady
 
             //Loading the contacts
             ContactsTask.loadContacts(getApplication())
@@ -587,6 +587,13 @@ class NewFaceTime : AppCompatCompositeActivity() {
                         }
                     )
             )
+        }
+        
+        companion object {
+            const val contactStateIdle = 0
+            const val contactStateReady = 1
+            const val contactStateNoAccess = 2
+            const val contactStateFailed = 3
         }
     }
 }

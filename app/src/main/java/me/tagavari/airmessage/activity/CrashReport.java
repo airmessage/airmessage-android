@@ -16,6 +16,7 @@ import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.compose.ConversationsCompose;
 import me.tagavari.airmessage.helper.ExternalStorageHelper;
 
 public class CrashReport extends AppCompatActivity {
@@ -72,7 +73,7 @@ public class CrashReport extends AppCompatActivity {
 	}
 	
 	private void buttonRestart(View view) {
-		startActivity(new Intent(this, Conversations.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+		startActivity(new Intent(this, ConversationsCompose.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
 		finish();
 	}
 }

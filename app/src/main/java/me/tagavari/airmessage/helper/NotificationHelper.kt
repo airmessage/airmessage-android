@@ -27,10 +27,9 @@ import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.FaceTimeCall
-import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.compose.ConversationsCompose
 import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.flavor.MLKitBridge
@@ -292,7 +291,7 @@ object NotificationHelper {
 	 */
 	private fun getSummaryNotificationLegacy(context: Context, newConversationID: Int, newMessageConversation: String, newMessageText: String): Notification {
 		//Creating the click intent
-		val clickIntent = Intent(context, Conversations::class.java)
+		val clickIntent = Intent(context, ConversationsCompose::class.java)
 		
 		//Getting the pending intent
 		val clickPendingIntent = PendingIntent.getActivity(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -393,7 +392,7 @@ object NotificationHelper {
 			setSmallIcon(R.drawable.message_push_group)
 			setColor(context.resources.getColor(R.color.colorPrimary, null))
 			setContentIntent(
-					Intent(context, Conversations::class.java)
+					Intent(context, ConversationsCompose::class.java)
 							.let { intent -> PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) }
 			)
 			
@@ -419,15 +418,12 @@ object NotificationHelper {
 	 */
 	private fun buildBaseMessageNotification(context: Context, conversationInfo: ConversationInfo, isOutgoing: Boolean, largeIcon: Bitmap?, shortcutIcon: IconCompat?, memberInfo: UserCacheHelper.UserInfo?, replySuggestions: List<String>?): NotificationCompat.Builder {
 		//Creating the click intent
-		val clickIntent = Intent(context, Messaging::class.java).apply {
-			putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
+		val clickIntent = Intent(context, ConversationsCompose::class.java).apply {
+			putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationInfo.localID)
 		}
 		
 		//Creating the task stack builder
 		val clickStackBuilder = TaskStackBuilder.create(context)
-		
-		//Adding the back stack
-		clickStackBuilder.addParentStack(Messaging::class.java)
 		
 		//Setting the result intent
 		clickStackBuilder.addNextIntent(clickIntent)
@@ -542,9 +538,9 @@ object NotificationHelper {
 				//Adding the bubble metadata
 				notificationBuilder.bubbleMetadata =
 					NotificationCompat.BubbleMetadata.Builder(
-						Intent(context, Messaging::class.java).apply {
-							putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
-							putExtra(Messaging.intentParamBubble, true)
+						Intent(context, ConversationsCompose::class.java).apply {
+							putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationInfo.localID)
+							putExtra(ConversationsCompose.INTENT_BUBBLE, true)
 						}.let { intent -> PendingIntent.getActivity(
 							context,
 							pendingIntentOffsetBubble + conversationInfo.localID.toInt(),
@@ -684,9 +680,8 @@ object NotificationHelper {
 			
 			//Creating the task stack builder
 			val clickStackBuilder = TaskStackBuilder.create(context).apply {
-				addParentStack(Messaging::class.java)
-				addNextIntent(Intent(context, Messaging::class.java).apply {
-					putExtra(Messaging.intentParamTargetID, conversationInfo.localID)
+				addNextIntent(Intent(context, ConversationsCompose::class.java).apply {
+					putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationInfo.localID)
 				})
 			}
 			
@@ -719,10 +714,7 @@ object NotificationHelper {
 		val notificationManager = NotificationManagerCompat.from(context)
 
 		//Getting the pending intent
-		val clickPendingIntent: PendingIntent = TaskStackBuilder.create(context).run {
-			addNextIntentWithParentStack(Intent(context, Conversations::class.java))
-			getPendingIntent(0, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-		}
+		val clickPendingIntent = PendingIntent.getActivity(context, 0, Intent(context, ConversationsCompose::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
 		
 		//Creating the notification
 		val notification = NotificationCompat.Builder(context, notificationChannelMessageReceiveError)
@@ -847,7 +839,7 @@ object NotificationHelper {
 			setOngoing(true)
 			setOnlyAlertOnce(true)
 			
-			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, Conversations::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, ConversationsCompose::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
 			
 			//Disconnect (only available in debug)
 			if(BuildConfig.DEBUG) {
@@ -876,7 +868,7 @@ object NotificationHelper {
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
 			setColor(context.resources.getColor(R.color.colorServerDisconnected, null))
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
-			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, Conversations::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, ConversationsCompose::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
 			
 			setShowWhen(false)
 			setPriority(NotificationCompat.PRIORITY_HIGH)

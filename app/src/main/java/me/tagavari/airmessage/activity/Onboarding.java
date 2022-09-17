@@ -15,6 +15,7 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.compose.ConversationsCompose;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
@@ -173,7 +174,7 @@ public class Onboarding extends AppCompatActivity implements FragmentCommunicati
 		connectionManager.setDisableReconnections(false);
 		
 		//Starting the new activity
-		startActivity(new Intent(this, Conversations.class));
+		startActivity(new Intent(this, ConversationsCompose.class));
 		
 		//Enabling transitions
 		//overridePendingTransition(R.anim.fade_in_light, R.anim.activity_slide_up);

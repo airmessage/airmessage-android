@@ -48,7 +48,6 @@ import io.reactivex.rxjava3.subjects.SingleSubject;
 import kotlin.Pair;
 import kotlin.Unit;
 import me.tagavari.airmessage.MainApplication;
-import me.tagavari.airmessage.activity.Messaging;
 import me.tagavari.airmessage.common.Blocks;
 import me.tagavari.airmessage.connection.comm5.ClientComm5;
 import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException;
@@ -60,6 +59,7 @@ import me.tagavari.airmessage.connection.task.ChatResponseTask;
 import me.tagavari.airmessage.connection.task.MessageUpdateTask;
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask;
 import me.tagavari.airmessage.data.DatabaseManager;
+import me.tagavari.airmessage.data.ForegroundState;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode;
 import me.tagavari.airmessage.enums.ChatCreateErrorCode;
@@ -403,7 +403,7 @@ public class ConnectionManager {
 			if(filteredData.isEmpty()) return;
 			
 			//Loading the foreground conversations (needs to be done on the main thread)
-			Single.fromCallable(Messaging::getForegroundConversations)
+			Single.fromCallable(ForegroundState.INSTANCE::getForegroundConversationIDs)
 					.subscribeOn(AndroidSchedulers.mainThread())
 					.flatMap(foregroundConversations -> MessageUpdateTask.create(getContext(), foregroundConversations, filteredData, false))
 					.observeOn(AndroidSchedulers.mainThread())

@@ -152,7 +152,7 @@ class MessagingViewModel(
 			
 			//Load the initial messages
 			withContext(Dispatchers.IO) {
-				lazyLoader.loadNextChunk(getApplication())
+				lazyLoader.loadNextChunk(getApplication(), messageChunkSize)
 			}.let { messages.addAll(it) }
 		}
 	}
@@ -175,7 +175,7 @@ class MessagingViewModel(
 			
 			//Fetch messages
 			val loadedMessages = withContext(Dispatchers.IO) {
-				lazyLoader.loadNextChunk(getApplication())
+				lazyLoader.loadNextChunk(getApplication(), messageChunkSize)
 			}
 			
 			//Handle the result
@@ -344,10 +344,12 @@ class MessagingViewModel(
 				
 				//Update the members
 				conversation = loadedConversation.copy(
-					members = if(event.isJoin) {
-						loadedConversation.members + event.member
-					} else {
-						loadedConversation.members.filter { it.address != event.member.address }
+					members = loadedConversation.members.toMutableList().also { list ->
+						if(event.isJoin) {
+							list.add(event.member)
+						} else {
+							list.removeAll { it.address != event.member.address }
+						}
 					}
 				)
 			}
@@ -686,6 +688,8 @@ class MessagingViewModel(
 	
 	private companion object {
 		val TAG = MessagingViewModel::class.simpleName
+		
+		const val messageChunkSize = 20
 	}
 }
 

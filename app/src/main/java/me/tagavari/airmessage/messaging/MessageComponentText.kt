@@ -81,7 +81,20 @@ class MessageComponentText : MessageComponent {
 		 */
 		fun fromText(localID: Long, guid: String?, body: String?, subject: String?): MessageComponentText? {
 			//No message text if there is no text to begin with
-			return if(body == null && subject == null) null else MessageComponentText(localID, guid, body, subject)
+			return if(body == null && subject == null) {
+				null
+			} else {
+				MessageComponentText(localID, guid, body, subject)
+			}
+		}
+		
+		fun fromText(localID: Long, guid: String?, body: String?, subject: String?, previewState: Int, previewID: Long): MessageComponentText? {
+			//No message text if there is no text to begin with
+			return if(body == null && subject == null) {
+				null
+			} else {
+				MessageComponentText(localID, guid, listOf(), listOf(), previewState, previewID, body, subject)
+			}
 		}
 		
 		@JvmField val CREATOR: Parcelable.Creator<MessageComponentText> = object : Parcelable.Creator<MessageComponentText> {
