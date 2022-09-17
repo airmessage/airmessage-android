@@ -2,22 +2,25 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import androidx.core.os.ParcelCompat
-import io.reactivex.rxjava3.core.Single
-import io.reactivex.rxjava3.subjects.SingleSubject
 import java.io.File
-import java.util.function.Supplier
 
+/**
+ * An object that represents an attachment file
+ * associated with a message
+ */
+@Immutable
 class AttachmentInfo : MessageComponent {
 	val fileName: String?
 	val contentType: String?
-	var fileSize: Long
-	var sort: Long
-	var file: File?
-	var fileChecksum: ByteArray?
-	var downloadFileName: String?
-	var downloadFileType: String?
-	var shouldAutoDownload: Boolean
+	val fileSize: Long
+	val sort: Long
+	val file: File?
+	val fileChecksum: ByteArray?
+	val downloadFileName: String?
+	val downloadFileType: String?
+	val shouldAutoDownload: Boolean
 	
 	val computedFileName
 		get() = downloadFileName ?: fileName
@@ -48,19 +51,52 @@ class AttachmentInfo : MessageComponent {
 		this.shouldAutoDownload = shouldAutoDownload
 	}
 	
-	@Transient
-	private var displayMetadataSubject: SingleSubject<FileDisplayMetadata>? = null
+	override fun copy(
+		localID: Long,
+		guid: String?,
+		stickers: List<StickerInfo>,
+		tapbacks: List<TapbackInfo>,
+		previewState: Int,
+		previewID: Long
+	) = AttachmentInfo(
+		localID,
+		guid,
+		fileName,
+		contentType,
+		fileSize,
+		sort,
+		file,
+		fileChecksum,
+		downloadFileName,
+		downloadFileType,
+		shouldAutoDownload
+	)
 	
-	fun <T : FileDisplayMetadata> getDisplayMetadata(supplier: Supplier<Single<T>>): Single<T> {
-		if(displayMetadataSubject != null) return displayMetadataSubject as Single<T>
-		displayMetadataSubject = SingleSubject.create()
-		supplier.get().subscribe(displayMetadataSubject)
-		return displayMetadataSubject as Single<T>
-	}
-	
-	fun clone(): AttachmentInfo {
-		return AttachmentInfo(localID, guid, fileName, contentType, fileSize, sort, file, fileChecksum, downloadFileName, downloadFileType, shouldAutoDownload)
-	}
+	fun copy(
+		localID: Long = this.localID,
+		guid: String? = this.guid,
+		fileName: String? = this.fileName,
+		contentType: String? = this.contentType,
+		fileSize: Long = this.fileSize,
+		sort: Long = this.sort,
+		file: File? = this.file,
+		fileChecksum: ByteArray? = this.fileChecksum,
+		downloadFileName: String? = this.downloadFileName,
+		downloadFileType: String? = this.downloadFileType,
+		shouldAutoDownload: Boolean = this.shouldAutoDownload
+	) = AttachmentInfo(
+		localID,
+		guid,
+		fileName,
+		contentType,
+		fileSize,
+		sort,
+		file,
+		fileChecksum,
+		downloadFileName,
+		downloadFileType,
+		shouldAutoDownload
+	)
 	
 	override fun describeContents(): Int {
 		return 0
@@ -75,7 +111,7 @@ class AttachmentInfo : MessageComponent {
 		parcel.writeLong(sort)
 		parcel.writeString(file?.path)
 		if(fileChecksum != null) {
-			parcel.writeInt(fileChecksum!!.size)
+			parcel.writeInt(fileChecksum.size)
 			parcel.writeByteArray(fileChecksum)
 		} else {
 			parcel.writeInt(0)

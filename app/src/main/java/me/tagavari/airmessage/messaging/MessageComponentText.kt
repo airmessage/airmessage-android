@@ -2,14 +2,37 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 
+/**
+ * An object that represents the text part of
+ * a message
+ */
+@Immutable
 class MessageComponentText : MessageComponent {
-	//Creating the component values
 	val text: String?
 	val subject: String?
 	
-	constructor(localID: Long, guid: String?, messageText: String?, messageSubject: String?) : super(localID, guid) {
-		//Setting the text
+	constructor(
+		localID: Long,
+		guid: String?,
+		messageText: String?,
+		messageSubject: String?
+	) : super(localID, guid) {
+		text = messageText
+		subject = messageSubject
+	}
+	
+	constructor(
+		localID: Long,
+		guid: String?,
+		stickers: List<StickerInfo>,
+		tapbacks: List<TapbackInfo>,
+		previewState: Int,
+		previewID: Long,
+		messageText: String?,
+		messageSubject: String?
+	) : super(localID, guid, stickers, tapbacks, previewState, previewID) {
 		text = messageText
 		subject = messageSubject
 	}
@@ -23,6 +46,24 @@ class MessageComponentText : MessageComponent {
 		parcel.writeString(text)
 		parcel.writeString(subject)
 	}
+	
+	override fun copy(
+		localID: Long,
+		guid: String?,
+		stickers: List<StickerInfo>,
+		tapbacks: List<TapbackInfo>,
+		previewState: Int,
+		previewID: Long
+	) = MessageComponentText(
+		localID,
+		guid,
+		stickers,
+		tapbacks,
+		previewState,
+		previewID,
+		text,
+		subject
+	)
 	
 	private constructor(parcel: Parcel) : super(parcel) {
 		text = parcel.readString()

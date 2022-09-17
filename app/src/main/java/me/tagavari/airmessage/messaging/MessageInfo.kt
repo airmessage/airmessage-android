@@ -56,7 +56,7 @@ class MessageInfo @JvmOverloads constructor(
 			super.localID = value
 			
 			//Updating the local ID of the message text
-			messageTextComponent?.localID = value
+			messageTextComponent = messageTextComponent?.copy(localID = value)
 		}
 	
 	val isOutgoing: Boolean
@@ -95,6 +95,35 @@ class MessageInfo @JvmOverloads constructor(
 			if(index == 0) messageTextComponent!! else attachments[index - 1]
 		} else {
 			attachments[index]
+		}
+	}
+	
+	/**
+	 * Gets the component at the specified index
+	 * Returns null of the index is out of range
+	 * (`index < 0 || index >= getComponentCount()`)
+	 */
+	fun getComponentOrNull(index: Int): MessageComponent? {
+		val text = messageTextComponent
+		return if(text == null) {
+			return attachments.getOrNull(index)
+		} else if(index == 0) {
+			text
+		} else {
+			attachments.getOrNull(index - 1)
+		}
+	}
+	
+	/**
+	 * Updates a message component instance
+	 */
+	fun updateComponent(index: Int, component: MessageComponent) {
+		if(messageTextComponent == null) {
+			attachments[index] = component as AttachmentInfo
+		} else if(index == 0) {
+			messageTextComponent = component as MessageComponentText
+		} else {
+			attachments[index + 1] = component as AttachmentInfo
 		}
 	}
 	

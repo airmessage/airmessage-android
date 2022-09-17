@@ -2,12 +2,14 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import me.tagavari.airmessage.enums.TapbackType
 
+@Immutable
 data class TapbackInfo(
-	var localID: Long,
-	var sender: String?,
-	@get:TapbackType @field:TapbackType @param:TapbackType var code: Int
+	val localID: Long,
+	val sender: String?,
+	@TapbackType val code: Int
 ) : Parcelable {
 	override fun describeContents(): Int {
 		return 0

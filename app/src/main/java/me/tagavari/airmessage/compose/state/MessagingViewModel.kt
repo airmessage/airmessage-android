@@ -8,9 +8,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
@@ -101,6 +99,22 @@ class MessagingViewModel(
 		//Load conversations
 		loadConversation()
 		
+		//Update the conversation title
+		viewModelScope.launch {
+			snapshotFlow { conversation }
+				.filterNotNull()
+				.collectLatest { conversation ->
+					//If we're generating the conversation title for the first time, display member addresses
+					//until we manage to resolve the full title.
+					//If we already have a title and are responding to a change in conversation metadata,
+					//don't flicker back to the fallback title.
+					if(conversationTitle == null) {
+						conversationTitle = ConversationBuildHelper.buildConversationTitleDirect(getApplication(), conversation)
+					}
+					conversationTitle = ConversationBuildHelper.buildConversationTitle(getApplication(), conversation).await()
+				}
+		}
+		
 		//Listen to message updates
 		viewModelScope.launch {
 			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(this@MessagingViewModel::applyMessageUpdate)
@@ -123,12 +137,6 @@ class MessagingViewModel(
 			conversation = loadedConversation ?: return@launch
 			loadedConversation.draftMessage?.let { inputText = it }
 			queuedFiles.addAll(loadedConversation.draftFiles.map { QueuedFile(it) })
-			
-			//Load the conversation title
-			launch {
-				conversationTitle = ConversationBuildHelper.buildConversationTitleDirect(getApplication(), loadedConversation)
-				conversationTitle = ConversationBuildHelper.buildConversationTitle(getApplication(), loadedConversation).await()
-			}
 			
 			//Initialize the lazy loader
 			val lazyLoader = DatabaseManager.ConversationLazyLoader(DatabaseManager.getInstance(), loadedConversation)
@@ -257,16 +265,95 @@ class MessagingViewModel(
 				if(attachmentIndex == -1) return
 				
 				//Update the attachment
-				attachmentList[attachmentIndex] = attachmentList[attachmentIndex].clone().apply {
-					file = event.file
-					downloadFileName = event.downloadName
+				attachmentList[attachmentIndex] = attachmentList[attachmentIndex].copy(
+					file = event.file,
+					downloadFileName = event.downloadName,
 					downloadFileType = event.downloadType
-				}
+				)
 				
 				//Update the message
 				messages[messageIndex] = messageInfo.clone().apply {
 					attachments = attachmentList
 				}
+			}
+			is ReduxEventMessaging.TapbackUpdate -> {
+				//Find the message
+				val messageIndex = messages.indexOfFirst { it.localID == event.metadata.messageID }
+				if(messageIndex == -1) return
+				val messageInfo = messages[messageIndex] as? MessageInfo ?: return
+				
+				//Find the component
+				val component = messageInfo.getComponentOrNull(event.metadata.componentIndex) ?: return
+				
+				//Update the component's tapbacks
+				val updatedComponent = if(event.isAddition) {
+					component.copy(
+						tapbacks = component.tapbacks.toMutableList().also { list ->
+							val existingTapbackIndex = list.indexOfFirst { it.sender == event.tapbackInfo.sender }
+							if(existingTapbackIndex == -1) {
+								list.add(event.tapbackInfo)
+							} else {
+								list[existingTapbackIndex] = list[existingTapbackIndex].copy(code = event.tapbackInfo.code)
+							}
+						}
+					)
+				} else {
+					component.copy(
+						tapbacks = component.tapbacks.filter { it.sender != event.tapbackInfo.sender }
+					)
+				}
+				
+				//Update the message
+				messages[messageIndex] = messageInfo.clone().apply {
+					updateComponent(event.metadata.componentIndex, updatedComponent)
+				}
+			}
+			is ReduxEventMessaging.StickerAdd -> {
+				//Find the message
+				val messageIndex = messages.indexOfFirst { it.localID == event.metadata.messageID }
+				if(messageIndex == -1) return
+				val messageInfo = messages[messageIndex] as? MessageInfo ?: return
+				
+				//Find the component
+				val component = messageInfo.getComponentOrNull(event.metadata.componentIndex) ?: return
+				
+				//Add the sticker
+				val updatedComponent = component.copy(
+					stickers = component.stickers + event.stickerInfo
+				)
+				
+				//Update the message
+				messages[messageIndex] = messageInfo.clone().apply {
+					updateComponent(event.metadata.componentIndex, updatedComponent)
+				}
+			}
+			is ReduxEventMessaging.ConversationMember -> {
+				//Ignore if the event is not relevant to this conversation
+				if(event.conversationInfo.localID != conversationID) return
+				
+				//Ignore if the conversation isn't loaded
+				val loadedConversation = conversation ?: return
+				
+				//Update the members
+				conversation = loadedConversation.copy(
+					members = if(event.isJoin) {
+						loadedConversation.members + event.member
+					} else {
+						loadedConversation.members.filter { it.address != event.member.address }
+					}
+				)
+			}
+			is ReduxEventMessaging.ConversationTitle -> {
+				//Ignore if the event is not relevant to this conversation
+				if(event.conversationInfo.localID != conversationID) return
+				
+				//Ignore if the conversation isn't loaded
+				val loadedConversation = conversation ?: return
+				
+				//Update the conversation title
+				conversation = loadedConversation.copy(
+					title = event.title
+				)
 			}
 			else -> {}
 		}
