@@ -29,6 +29,7 @@ import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationRecipientInputType
 import me.tagavari.airmessage.enums.MessageServiceDescription
+import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,6 +76,11 @@ fun NewConversationAppBar(
 			
 			//Via
 			if(showServiceSelector) {
+				//Get if any of the recipients are an email address
+				val emailInRecipients = remember(recipients) {
+					recipients.any { AddressHelper.validateEmail(it.address) }
+				}
+				
 				Row(
 					modifier = Modifier.height(48.dp),
 					verticalAlignment = Alignment.CenterVertically
@@ -96,7 +102,7 @@ fun NewConversationAppBar(
 							
 							FilterChip(
 								selected = selected,
-								enabled = !isLoading,
+								enabled = !isLoading && (service.serviceSupportsEmail || !emailInRecipients),
 								onClick = { onSelectService(service) },
 								label = { Text(stringResource(service.title)) },
 								leadingIcon = {

@@ -92,6 +92,7 @@ fun NewConversationPane(
 			modifier = Modifier.fillMaxSize(),
 			contentPadding = innerPadding,
 			contactsState = viewModel.contactsState,
+			requiredService = viewModel.selectedService,
 			onRequestPermission = { launchContactsPermission.launch(Manifest.permission.READ_CONTACTS) },
 			onReloadContacts = { viewModel.loadContacts() },
 			directAddText = if(viewModel.recipientInputValid) viewModel.recipientInput else null,

@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.state.NewConversationContactsState
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.enums.MessageServiceDescription
 import me.tagavari.airmessage.util.AddressInfo
 import me.tagavari.airmessage.util.ContactInfo
 
@@ -32,6 +33,7 @@ fun NewConversationBody(
 	modifier: Modifier = Modifier,
 	contentPadding: PaddingValues = PaddingValues(0.dp),
 	contactsState: NewConversationContactsState,
+	requiredService: MessageServiceDescription,
 	onRequestPermission: () -> Unit,
 	onReloadContacts: () -> Unit,
 	directAddText: String?,
@@ -128,6 +130,7 @@ fun NewConversationBody(
 								key = contact.contactID
 							) {
 								ContactRow(
+									requiredService = requiredService,
 									contact = contact,
 									onSelectAddress = { addressInfo -> onAddRecipient(contact, addressInfo) }
 								)
@@ -214,6 +217,7 @@ private fun PreviewNewConversationBodyLoading() {
 	AirMessageAndroidTheme {
 		NewConversationBody(
 			contactsState = NewConversationContactsState.Loading,
+			requiredService = MessageServiceDescription.IMESSAGE,
 			directAddText = null,
 			onRequestPermission = {},
 			onReloadContacts = {},
@@ -230,6 +234,7 @@ private fun PreviewNewConversationBodyPermission() {
 	AirMessageAndroidTheme {
 		NewConversationBody(
 			contactsState = NewConversationContactsState.NeedsPermission,
+			requiredService = MessageServiceDescription.IMESSAGE,
 			directAddText = null,
 			onRequestPermission = {},
 			onReloadContacts = {},
@@ -246,6 +251,7 @@ private fun PreviewNewConversationBodyError() {
 	AirMessageAndroidTheme {
 		NewConversationBody(
 			contactsState = NewConversationContactsState.Error(Throwable()),
+			requiredService = MessageServiceDescription.IMESSAGE,
 			directAddText = null,
 			onRequestPermission = {},
 			onReloadContacts = {},
@@ -265,6 +271,7 @@ private fun PreviewNewConversationBodyLoaded() {
 				ContactInfo(0, "Some Guy", null, mutableListOf(AddressInfo("some@guy.com", "Home"))),
 				ContactInfo(1, null, null, mutableListOf(AddressInfo("(604) 739-7997", null))),
 			)),
+			requiredService = MessageServiceDescription.IMESSAGE,
 			directAddText = "hello@airmessage.org",
 			onRequestPermission = {},
 			onReloadContacts = {},

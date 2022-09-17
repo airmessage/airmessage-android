@@ -10,21 +10,28 @@ import android.net.Uri
  * @param thumbnailURI A URI to display the thumbnail of this contact
  * @param addresses The list of addresses associated with this contact
  */
-class ContactInfo(
+data class ContactInfo(
 	val contactID: Long,
 	val name: String?,
 	val thumbnailURI: Uri?,
-	val addresses: MutableList<AddressInfo>
+	val addresses: List<AddressInfo>
 ) {
-	fun addAddress(address: AddressInfo) {
-		addresses.add(address)
-	}
-	
 	fun getAddressDisplayList(resources: Resources): List<String> {
 		return addresses.map { it.getDisplay(resources) }
 	}
 	
-	fun clone(): ContactInfo {
-		return ContactInfo(contactID, name, thumbnailURI, addresses.toMutableList())
+	class Builder(
+		var contactID: Long
+	) {
+		var name: String? = null
+		var thumbnailURI: Uri? = null
+		var addresses: MutableList<AddressInfo> = mutableListOf()
+		
+		fun build() = ContactInfo(
+			contactID = contactID,
+			name = name,
+			thumbnailURI = thumbnailURI,
+			addresses = addresses
+		)
 	}
 }

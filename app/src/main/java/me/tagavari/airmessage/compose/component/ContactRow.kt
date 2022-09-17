@@ -7,6 +7,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -15,6 +16,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.enums.MessageServiceDescription
+import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.util.AddressInfo
 import me.tagavari.airmessage.util.ContactInfo
 
@@ -22,6 +25,7 @@ import me.tagavari.airmessage.util.ContactInfo
 @Composable
 fun ContactRow(
 	modifier: Modifier = Modifier,
+	requiredService: MessageServiceDescription,
 	contact: ContactInfo,
 	onSelectAddress: (AddressInfo) -> Unit
 ) {
@@ -46,9 +50,14 @@ fun ContactRow(
 		) {
 			Column {
 				for(address in contact.addresses) {
+					val enabled = remember {
+						requiredService.serviceSupportsEmail || AddressHelper.validateEmail(address.address)
+					}
+					
 					Row(
 						modifier = Modifier
-							.clickable {
+							.alpha(if(enabled) 1F else 0.38F)
+							.clickable(enabled = enabled) {
 								onSelectAddress(address)
 								showAddressSelector = false
 							}
@@ -126,6 +135,7 @@ fun ContactRow(
 private fun PreviewContactRowSimple() {
 	AirMessageAndroidTheme {
 		ContactRow(
+			requiredService = MessageServiceDescription.IMESSAGE,
 			contact = ContactInfo(0, "Some Guy", null, mutableListOf(AddressInfo("some@guy.com", "Home"))),
 			onSelectAddress = {}
 		)
@@ -140,6 +150,7 @@ private fun PreviewContactRowSimple() {
 private fun PreviewContactRowMultipleAddresses() {
 	AirMessageAndroidTheme {
 		ContactRow(
+			requiredService = MessageServiceDescription.IMESSAGE,
 			contact = ContactInfo(0, "Some Guy", null, mutableListOf(
 				AddressInfo("some@guy.com", "Home"),
 				AddressInfo("(604) 739-7997", "Mobile")

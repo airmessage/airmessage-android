@@ -546,7 +546,10 @@ class NewFaceTime : AppCompatCompositeActivity() {
                         return@map ContactListReactiveUpdate.Addition(contactList.size - 1)
                     } else {
                         //Updating the contact
-                        contactList[matchingContactIndex].addAddress(contactPart.address)
+                        val contact = contactList[matchingContactIndex]
+                        contactList[matchingContactIndex] = contact.copy(
+                            addresses = contact.addresses + contactPart.address
+                        )
                         return@map ContactListReactiveUpdate.Change(matchingContactIndex)
                     }
                 }.subscribe(contactListSubject)

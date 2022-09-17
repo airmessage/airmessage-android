@@ -15,8 +15,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.SavedStateHandleSaveableApi
 import androidx.lifecycle.viewmodel.compose.saveable
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.fold
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
@@ -42,6 +41,7 @@ class NewConversationViewModel(
 	savedStateHandle: SavedStateHandle
 ) : AndroidViewModel(application) {
 	//Contacts list
+	private var contactsList by mutableStateOf<List<ContactInfo>?>(null)
 	var contactsState by mutableStateOf<NewConversationContactsState>(NewConversationContactsState.Loading)
 		private set
 	
@@ -69,6 +69,51 @@ class NewConversationViewModel(
 	
 	init {
 		loadContacts()
+		
+		viewModelScope.launch {
+			snapshotFlow { contactsList?.toList() }
+				.filterNotNull()
+				.combine(snapshotFlow { Pair(recipientInput, selectedService) }) { list, (input, service) -> Triple(list, input, service) }
+				.collectLatest { (list, input, service) ->
+					val filteredContacts = withContext(Dispatchers.Default) {
+						//Clean the input text
+						val filter = input.trim().lowercase()
+						
+						//If there's no filter text, don't do any work
+						if(filter.isEmpty() && service.serviceSupportsEmail) {
+							return@withContext list
+						}
+						
+						val filterPhoneNumber = ContactsTask.formatPhoneFilter(filter)
+						
+						list.filter { contact ->
+							//Filter out contacts that don't have any phone numbers
+							if(!service.serviceSupportsEmail && contact.addresses.none { AddressHelper.validatePhoneNumber(it.normalizedAddress) }) {
+								return@filter false
+							}
+							
+							//Filter by text
+							if(filter.isNotEmpty()
+								&& contact.name?.lowercase()?.contains(filter) != true
+								&& contact.addresses.none { address ->
+									//The contact's email address matches the filter
+									address.normalizedAddress.lowercase().startsWith(filter)
+											////The contact's phone number matches the filter
+											|| (filterPhoneNumber != null
+											&& AddressHelper.validatePhoneNumber(address.normalizedAddress)
+											&& AddressHelper.stripPhoneNumber(address.normalizedAddress).startsWith(filterPhoneNumber))
+								}) {
+								return@filter false
+							}
+							
+							return@filter true
+						}
+					}
+					
+					//Update the contacts state
+					contactsState = NewConversationContactsState.Loaded(filteredContacts)
+				}
+		}
 	}
 	
 	fun loadContacts() {
@@ -80,35 +125,38 @@ class NewConversationViewModel(
 		
 		//Set the state to loading
 		contactsState = NewConversationContactsState.Loading
+		contactsList = null
 		
 		viewModelScope.launch {
 			val contacts = try {
 				//Load contacts
 				ContactsTask.loadContacts(getApplication()).asFlow()
-					.fold(mutableListOf<ContactInfo>()) { list, contactPart ->
+					.fold(mutableListOf<ContactInfo.Builder>()) { list, contactPart ->
 						//Fold multiple contact parts into a single contact
 						val matchingContact = list.firstOrNull { it.contactID == contactPart.id }
 						if(matchingContact != null) {
 							matchingContact.addresses.add(contactPart.address)
 						} else {
 							list.add(
-								ContactInfo(
-									contactPart.id,
-									contactPart.name,
-									contactPart.thumbnailURI,
-									mutableListOf(contactPart.address)
-								)
+								ContactInfo.Builder(contactPart.id).apply {
+									name = contactPart.name
+									thumbnailURI = contactPart.thumbnailURI
+									addresses.add(contactPart.address)
+								}
 							)
 						}
 						
 						list
 					}
+					.map { it.build() }
 			} catch(exception: Throwable) {
 				contactsState = NewConversationContactsState.Error(exception)
 				return@launch
 			}
 			
-			contactsState = NewConversationContactsState.Loaded(contacts)
+			//Set the contacts list, and delegate the state update to
+			//NewConversationContactsState.Loaded once we finish filtering
+			contactsList = contacts
 		}
 	}
 	

@@ -167,7 +167,7 @@ public class ContactsTask {
 	}
 	
 	@Nullable
-	private static String formatPhoneFilter(String filter) {
+	public static String formatPhoneFilter(@NonNull String filter) {
 		//Remove all non-phone number characters
 		String strippedFilter = AddressHelper.stripPhoneNumber(filter);
 		
