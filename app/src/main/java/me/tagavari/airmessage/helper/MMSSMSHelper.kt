@@ -17,10 +17,10 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.constants.SMSReceiverConstants
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.enums.*
 import me.tagavari.airmessage.helper.AddressHelper.normalizeAddress
 import me.tagavari.airmessage.helper.AttachmentStorageHelper.deleteContentFile
@@ -222,7 +222,7 @@ object MMSSMSHelper {
 			}
 			
 			//Updating the conversation values in response to the added message
-			val foregroundConversations = Messaging.getForegroundConversations()
+			val foregroundConversations = ForegroundState.conversationIDs.toList()
 			return@flatMap Single.fromCallable { updateConversationValues(foregroundConversations, conversationInfo, if(messageInfo.isOutgoing) 0 else 1) }
 					.subscribeOn(Schedulers.single())
 					.observeOn(AndroidSchedulers.mainThread())

@@ -6,8 +6,8 @@ import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.disposables.CompositeDisposable
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.MainApplication
-import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.enums.ConversationItemType
 import me.tagavari.airmessage.enums.MessageSendErrorCode
 import me.tagavari.airmessage.helper.LanguageHelper
@@ -25,7 +25,7 @@ class ReduxReceiverNotification(private val context: Context) {
 		compositeDisposable.add(ReduxEmitterNetwork.messageUpdateSubject.subscribe { event: ReduxEventMessaging ->
 			if(event is ConversationUpdate) {
 				//Loading a list of conversations in the foreground for later filtering
-				val foregroundConversations = Messaging.getForegroundConversations()
+				val foregroundConversations = ForegroundState.conversationIDs.toList()
 				
 				//Gathering updated conversations
 				val transferredConversations: List<Pair<ConversationInfo, Collection<ConversationItem>>> =
@@ -53,7 +53,7 @@ class ReduxReceiverNotification(private val context: Context) {
 				}
 			} else if(event is Message) {
 				//Getting foreground conversations
-				val foregroundConversations = Messaging.getForegroundConversations()
+				val foregroundConversations = ForegroundState.conversationIDs.toList()
 				
 				//Sending notifications for received messages
 				for((conversation, results) in event.conversationItems) {

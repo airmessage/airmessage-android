@@ -56,52 +56,13 @@
 		android:name=".MainApplication"
 		android:supportsRtl="true"
 		tools:ignore="GoogleAppIndexingWarning">
-		<!-- Conversation list -->
-		<activity
-			android:label="@string/app_name"
-			android:name=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar.Protected"
-			android:windowSoftInputMode="adjustResize"
-			android:exported="true">
-			<intent-filter>
-				<action android:name="android.intent.action.MAIN" />
-				<category android:name="android.intent.category.LAUNCHER" />
-			</intent-filter>
-
-			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
-			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
-		</activity>
-
-		<!-- Messaging screen -->
-		<activity
-			android:name=".activity.Messaging"
-			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/DayNight.NoActionBar"
-			android:windowSoftInputMode="adjustResize"
-			android:allowEmbedded="true"
-			android:resizeableActivity="true"
-			android:exported="true">
-			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
-		</activity>
-
-		<!-- New message -->
-		<activity
-			android:exported="false"
-			android:label="@string/screen_newconversation"
-			android:name=".activity.NewMessage"
-			android:parentActivityName=".activity.Conversations"
-			android:theme="@style/Theme.AirMessage.M3.API"
-			android:windowSoftInputMode="adjustResize|stateVisible">
-			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
-		</activity>
-
 		<!-- Preferences -->
 		<activity
 			android:exported="true"
 			android:label="@string/screen_settings"
 			android:name=".activity.Preferences"
 			android:theme="@style/Theme.AirMessage.M3.API"
-			android:parentActivityName=".activity.Conversations">
+			android:parentActivityName=".compose.ConversationsCompose">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
@@ -115,7 +76,7 @@
 			android:exported="false"
 			android:name=".activity.ServerUpdate"
 			android:theme="@style/DayNight.NoActionBar.Protected"
-			android:parentActivityName=".activity.Conversations"
+			android:parentActivityName=".compose.ConversationsCompose"
 			android:label="@string/screen_serverupdate">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -146,7 +107,7 @@
 		<activity
 			android:exported="false"
 			android:name=".activity.MediaViewer"
-			android:parentActivityName=".activity.Messaging"
+			android:parentActivityName=".compose.ConversationsCompose"
 			android:theme="@style/ThemeBlack"
 			android:configChanges="orientation|screenSize|layoutDirection">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
@@ -184,7 +145,7 @@
 		<activity
 			android:exported="false"
 			android:name=".activity.CallHistory"
-			android:parentActivityName=".activity.Conversations"
+			android:parentActivityName=".compose.ConversationsCompose"
 			android:theme="@style/ThemeFaceTime">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -246,6 +207,8 @@
 				<data android:scheme="mms" />
 				<data android:scheme="mmsto" />
 			</intent-filter>
+			
+			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
 		</activity>
 		
 		<activity

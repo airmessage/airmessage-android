@@ -31,6 +31,7 @@ import me.tagavari.airmessage.activity.Conversations
 import me.tagavari.airmessage.activity.FaceTimeCall
 import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.flavor.MLKitBridge
 import me.tagavari.airmessage.helper.AddressHelper.formatAddress
@@ -177,7 +178,7 @@ object NotificationHelper {
 	@JvmStatic
 	fun sendNotification(context: Context, message: String, sender: String?, timestamp: Long, conversationInfo: ConversationInfo) {
 		//Ignoring if conversations are in the foreground, the message is outgoing, the message's conversation is loaded, or a mass retrieval is happening
-		if(Conversations.isForeground() || sender == null || Messaging.getForegroundConversations().contains(conversationInfo.localID) || ConnectionService.getConnectionManager().let {it != null && it.isMassRetrievalInProgress}) return
+		if(ForegroundState.conversationListForegrounded || sender == null || ForegroundState.conversationIDs.contains(conversationInfo.localID) || ConnectionService.getConnectionManager().let {it != null && it.isMassRetrievalInProgress}) return
 		
 		//Returning if notifications are disabled or the conversation is muted
 		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.O && !PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.resources.getString(R.string.preference_messagenotifications_getnotifications_key), false) || conversationInfo.isMuted) return
@@ -674,7 +675,7 @@ object NotificationHelper {
 	@JvmStatic
 	fun sendErrorNotification(context: Context, conversationInfo: ConversationInfo) {
 		//Returning if the message's conversation is loaded
-		if(Messaging.getForegroundConversations().contains(conversationInfo.localID)) return
+		if(ForegroundState.conversationIDs.contains(conversationInfo.localID)) return
 		
 		//Building the conversation title
 		buildConversationTitle(context, conversationInfo).subscribe { title ->

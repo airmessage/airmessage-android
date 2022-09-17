@@ -7,7 +7,6 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
-import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.common.Blocks
 import me.tagavari.airmessage.connection.comm5.AirUnpacker
 import me.tagavari.airmessage.connection.comm5.ClientProtocol4
@@ -15,6 +14,7 @@ import me.tagavari.airmessage.connection.comm5.ClientProtocol5
 import me.tagavari.airmessage.connection.encryption.EncryptionAES
 import me.tagavari.airmessage.connection.task.MessageUpdateTask
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper
 import me.tagavari.airmessage.helper.NotificationHelper
@@ -179,7 +179,7 @@ class FCMService : FirebaseMessagingService() {
 		}
 		
 		//Load the foreground conversations (needs to be done on the main thread)
-		Single.fromCallable { Messaging.getForegroundConversations() }
+		Single.fromCallable { ForegroundState.conversationIDs.toList() }
 			.subscribeOn(AndroidSchedulers.mainThread())
 			.flatMap { foregroundConversations: List<Long> ->
 				MessageUpdateTask.create(this, foregroundConversations, conversationItems!!, false)

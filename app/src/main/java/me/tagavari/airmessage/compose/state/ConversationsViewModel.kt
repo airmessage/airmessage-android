@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.compose.state
 
 import android.app.Application
-import android.net.Uri
 import android.provider.Telephony
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
@@ -13,6 +12,7 @@ import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.PendingConversationReceivedContent
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
@@ -42,6 +42,24 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				.collect { page ->
 					ShortcutHelper.reportShortcutUsed(getApplication(), page.conversationID)
 				}
+		}
+		
+		//Keep track of whether we're in the foreground
+		viewModelScope.launch {
+			snapshotFlow { detailPage }
+				.map { it != null }
+				.distinctUntilChanged()
+				.collect { detailPageSelected ->
+					if(detailPageSelected) ForegroundState.conversationListCount++
+					else ForegroundState.conversationListCount--
+				}
+		}
+	}
+	
+	override fun onCleared() {
+		//Make sure we update the count
+		if(detailPage != null) {
+			ForegroundState.conversationListCount--
 		}
 	}
 	
@@ -134,36 +152,38 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
 					if(index == -1) return
-					list[index] = list[index].clone().apply { unreadMessageCount = event.unreadCount }
+					list[index] = list[index].copy(
+						unreadMessageCount = event.unreadCount
+					)
 				})
 			}
 			is ReduxEventMessaging.ConversationMember -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
 					if(index == -1) return
-					list[index] = list[index].clone().apply {
-						members = members.toMutableList().also { list ->
+					list[index] = list[index].copy(
+						members = list[index].members.toMutableList().also { list ->
 							if(event.isJoin) {
 								list.add(event.member)
 							} else {
 								list.removeAll { it.address == event.member.address }
 							}
 						}
-					}
+					)
 				})
 			}
 			is ReduxEventMessaging.ConversationMute -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
 					if(index == -1) return
-					list[index] = list[index].clone().apply { isMuted = event.isMuted }
+					list[index] = list[index].copy(isMuted = event.isMuted)
 				})
 			}
 			is ReduxEventMessaging.ConversationArchive -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
 					if(index == -1) return
-					list[index] = list[index].clone().apply { isArchived = event.isArchived }
+					list[index] = list[index].copy(isArchived = event.isArchived)
 				})
 			}
 			is ReduxEventMessaging.ConversationDelete -> {
@@ -176,7 +196,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
 					if(index == -1) return
-					list[index] = list[index].clone().apply { title = event.title }
+					list[index] = list[index].copy(title = event.title)
 				})
 			}
 			is ReduxEventMessaging.ConversationDraftMessageUpdate -> {

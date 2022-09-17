@@ -20,6 +20,7 @@ import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlob
 import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
@@ -119,10 +120,17 @@ class MessagingViewModel(
 		viewModelScope.launch {
 			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(this@MessagingViewModel::applyMessageUpdate)
 		}
+		
+		//Register this as a foreground conversation
+		ForegroundState.conversationIDs.add(conversationID)
 	}
 	
 	override fun onCleared() {
+		//Release sounds
 		soundPool.release()
+		
+		//Unregister this as a foreground conversation
+		ForegroundState.conversationIDs.remove(conversationID)
 	}
 	
 	/**
