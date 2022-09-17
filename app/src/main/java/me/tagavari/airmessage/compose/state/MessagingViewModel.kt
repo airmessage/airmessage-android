@@ -307,7 +307,7 @@ class MessagingViewModel(
 					)
 				} else {
 					component.copy(
-						tapbacks = component.tapbacks.filter { it.sender != event.tapbackInfo.sender }
+						tapbacks = component.tapbacks.filter { it.sender != event.tapbackInfo.sender }.toMutableList()
 					)
 				}
 				
@@ -327,7 +327,7 @@ class MessagingViewModel(
 				
 				//Add the sticker
 				val updatedComponent = component.copy(
-					stickers = component.stickers + event.stickerInfo
+					stickers = (component.stickers + event.stickerInfo).toMutableList()
 				)
 				
 				//Update the message

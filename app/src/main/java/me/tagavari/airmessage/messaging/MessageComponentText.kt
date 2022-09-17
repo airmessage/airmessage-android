@@ -8,7 +8,6 @@ import androidx.compose.runtime.Immutable
  * An object that represents the text part of
  * a message
  */
-@Immutable
 class MessageComponentText : MessageComponent {
 	val text: String?
 	val subject: String?
@@ -26,8 +25,8 @@ class MessageComponentText : MessageComponent {
 	constructor(
 		localID: Long,
 		guid: String?,
-		stickers: List<StickerInfo>,
-		tapbacks: List<TapbackInfo>,
+		stickers: MutableList<StickerInfo>,
+		tapbacks: MutableList<TapbackInfo>,
 		previewState: Int,
 		previewID: Long,
 		messageText: String?,
@@ -50,8 +49,8 @@ class MessageComponentText : MessageComponent {
 	override fun copy(
 		localID: Long,
 		guid: String?,
-		stickers: List<StickerInfo>,
-		tapbacks: List<TapbackInfo>,
+		stickers: MutableList<StickerInfo>,
+		tapbacks: MutableList<TapbackInfo>,
 		previewState: Int,
 		previewID: Long
 	) = MessageComponentText(
@@ -93,7 +92,7 @@ class MessageComponentText : MessageComponent {
 			return if(body == null && subject == null) {
 				null
 			} else {
-				MessageComponentText(localID, guid, listOf(), listOf(), previewState, previewID, body, subject)
+				MessageComponentText(localID, guid, mutableListOf(), mutableListOf(), previewState, previewID, body, subject)
 			}
 		}
 		

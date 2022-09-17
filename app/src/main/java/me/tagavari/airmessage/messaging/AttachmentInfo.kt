@@ -10,7 +10,6 @@ import java.io.File
  * An object that represents an attachment file
  * associated with a message
  */
-@Immutable
 class AttachmentInfo : MessageComponent {
 	val fileName: String?
 	val contentType: String?
@@ -54,8 +53,8 @@ class AttachmentInfo : MessageComponent {
 	override fun copy(
 		localID: Long,
 		guid: String?,
-		stickers: List<StickerInfo>,
-		tapbacks: List<TapbackInfo>,
+		stickers: MutableList<StickerInfo>,
+		tapbacks: MutableList<TapbackInfo>,
 		previewState: Int,
 		previewID: Long
 	) = AttachmentInfo(

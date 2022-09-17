@@ -11,8 +11,8 @@ import me.tagavari.airmessage.enums.MessagePreviewState
 abstract class MessageComponent(
 	var localID: Long,
 	@get:JvmName("getGUID") val guid: String?,
-	val stickers: List<StickerInfo> = listOf(),
-	val tapbacks: List<TapbackInfo> = listOf(),
+	val stickers: MutableList<StickerInfo> = mutableListOf(),
+	val tapbacks: MutableList<TapbackInfo> = mutableListOf(),
 	@MessagePreviewState val previewState: Int = MessagePreviewState.notTried,
 	val previewID: Long = -1L
 ) : Parcelable {
@@ -38,8 +38,8 @@ abstract class MessageComponent(
 	abstract fun copy(
 		localID: Long = this.localID,
 		guid: String? = this.guid,
-		stickers: List<StickerInfo> = this.stickers,
-		tapbacks: List<TapbackInfo> = this.tapbacks,
+		stickers: MutableList<StickerInfo> = this.stickers,
+		tapbacks: MutableList<TapbackInfo> = this.tapbacks,
 		@MessagePreviewState previewState: Int = this.previewState,
 		previewID: Long = this.previewID
 	): MessageComponent
