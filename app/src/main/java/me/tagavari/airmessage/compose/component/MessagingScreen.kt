@@ -109,15 +109,22 @@ fun MessagingScreen(
 	}
 	
 	LaunchedEffect(receivedContentFlow) {
+		//Wait until we have a valid conversation
 		snapshotFlow { viewModel.conversation != null }
 			.filter { it }
-			.combine(receivedContentFlow) { _, content -> content}
+			//If the conversation changes, (for example the user changes
+			//conversation name) don't reapply content
+			.distinctUntilChanged()
+			//Switch to the received content flow, such that we only
+			//pull from it once we have a valid conversation
+			.combine(receivedContentFlow) { _, content -> content }
 			.filterNotNull()
 			.collect { content ->
 				content.text?.let {
 					viewModel.inputText = it
 				}
 				viewModel.addQueuedFileBlobs(content.attachments.map { ReadableBlobUri(it) })
+				
 				onProcessedReceivedContent()
 			}
 	}
