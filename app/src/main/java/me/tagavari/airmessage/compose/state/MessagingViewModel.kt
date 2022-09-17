@@ -663,15 +663,11 @@ class MessagingViewModel(
 	 */
 	@OptIn(DelicateCoroutinesApi::class)
 	fun saveInputDraft() {
+		val conversation = conversation ?: return
+		
 		GlobalScope.launch {
 			val text = inputText.ifBlank { null }
-			withContext(Dispatchers.IO) {
-				DatabaseManager.getInstance().updateConversationDraftMessage(
-					conversationID,
-					text,
-					System.currentTimeMillis()
-				)
-			}
+			ConversationActionTask.setConversationDraft(conversation, text, System.currentTimeMillis()).await()
 		}
 	}
 	
