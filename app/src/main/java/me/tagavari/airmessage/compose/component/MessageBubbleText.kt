@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import android.text.SpannableString
 import android.text.method.LinkMovementMethod
+import android.view.MotionEvent
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -10,8 +11,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -21,6 +25,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.material.textview.MaterialTextView
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.helper.LinkifyHelper
+import me.tagavari.airmessage.helper.SendStyleHelper
 import me.tagavari.airmessage.helper.StringHelper
 import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod
 import me.tagavari.airmessage.util.MessagePartFlow
@@ -28,11 +33,13 @@ import me.tagavari.airmessage.util.MessagePartFlow
 /**
  * A message bubble that displays a text message
  */
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 fun MessageBubbleText(
 	flow: MessagePartFlow,
 	subject: String? = null,
 	text: String? = null,
+	sendStyle: String? = null,
 	onSetSelected: (Boolean) -> Unit
 ) {
 	val colors = flow.colors
@@ -53,6 +60,8 @@ fun MessageBubbleText(
 		subject == null && text != null && StringHelper.stringContainsOnlyEmoji(text)
 	}
 	
+	val isInvisibleInk = sendStyle == SendStyleHelper.appleSendStyleBubbleInvisibleInk
+	
 	if(isSingleEmoji) {
 		Text(
 			text = text!!,
@@ -60,14 +69,20 @@ fun MessageBubbleText(
 		)
 	} else {
 		Surface(
+			modifier = Modifier
+				.width(IntrinsicSize.Min)
+				.height(IntrinsicSize.Min),
 			color = colors.background,
 			shape = flow.bubbleShape,
 			contentColor = colors.foreground
 		) {
+			val invisibleInkState = rememberInvisibleInkState(isInvisibleInk)
+			
 			Column(
 				modifier = Modifier
 					.heightIn(min = 40.dp)
-					.padding(horizontal = 12.dp, vertical = 8.dp),
+					.padding(horizontal = 12.dp, vertical = 8.dp)
+					.alpha(invisibleInkState.contentAlpha),
 				verticalArrangement = Arrangement.Center
 			) {
 				val typography = MaterialTheme.typography.bodyLarge
@@ -126,6 +141,20 @@ fun MessageBubbleText(
 						}
 					)
 				}
+			}
+			
+			if(isInvisibleInk) {
+				InvisibleInk(
+					modifier = Modifier
+						.alpha(1F - invisibleInkState.contentAlpha)
+						.pointerInteropFilter { event ->
+							if(event.action == MotionEvent.ACTION_DOWN) {
+								invisibleInkState.reveal()
+							}
+							return@pointerInteropFilter false
+						}
+						.fillMaxSize()
+				)
 			}
 		}
 	}

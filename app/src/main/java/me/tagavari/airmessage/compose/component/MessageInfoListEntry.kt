@@ -162,6 +162,7 @@ fun MessageInfoListEntry(
 								),
 								subject = textComponent.subject,
 								text = textComponent.text,
+								sendStyle = messageInfo.sendStyle,
 								onSetSelected = { selected ->
 									selectionState.setSelectionMessageID(textComponent.localID, selected)
 								}
