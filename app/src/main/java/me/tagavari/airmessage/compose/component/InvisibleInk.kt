@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.FlowPreview
@@ -200,13 +202,19 @@ fun rememberInvisibleInkState(enable: Boolean): InvisibleInkState {
 	
 	val contentAlpha by animateFloatAsState(
 		targetValue = if(!enable || invisibleInkReveal) 1F else 0F,
-		animationSpec = InvisibleInkConstants.animationSpec
+		animationSpec = InvisibleInkConstants.getAnimationSpec()
+	)
+	
+	val contentBlur by animateDpAsState(
+		targetValue = if(!enable || invisibleInkReveal) 0.dp else InvisibleInkConstants.blurDp,
+		animationSpec = InvisibleInkConstants.getAnimationSpec()
 	)
 	
 	return InvisibleInkState(
 		isRevealed = invisibleInkReveal,
 		reveal = ::triggerReveal,
-		contentAlpha = contentAlpha
+		contentAlpha = contentAlpha,
+		contentBlur = contentBlur
 	)
 }
 
@@ -214,14 +222,16 @@ fun rememberInvisibleInkState(enable: Boolean): InvisibleInkState {
 data class InvisibleInkState(
 	val isRevealed: Boolean,
 	val reveal: () -> Unit,
-	val contentAlpha: Float
+	val contentAlpha: Float,
+	val contentBlur: Dp
 )
 
 object InvisibleInkConstants {
 	const val timeRevealTransition = 500 //0.5 seconds
 	const val timeRevealStay = 9L * 1000 //9 seconds
+	val blurDp = 16.dp
 	
-	val animationSpec = tween<Float>(durationMillis = timeRevealTransition, easing = LinearEasing)
-	val enterTransition = fadeIn(animationSpec = animationSpec)
-	val exitTransition = fadeOut(animationSpec = animationSpec)
+	fun <T> getAnimationSpec() = tween<T>(durationMillis = timeRevealTransition, easing = LinearEasing)
+	val enterTransition = fadeIn(animationSpec = getAnimationSpec())
+	val exitTransition = fadeOut(animationSpec = getAnimationSpec())
 }

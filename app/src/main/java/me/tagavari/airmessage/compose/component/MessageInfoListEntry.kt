@@ -242,7 +242,8 @@ fun MessageInfoListEntry(
 										},
 										onSetSelected = { selected ->
 											selectionState.setSelectionAttachmentID(attachment.localID, selected)
-										}
+										},
+										sendStyle = messageInfo.sendStyle
 									)
 								}
 								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio) -> {
