@@ -18,7 +18,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import me.tagavari.airmessage.activity.Messaging
 import me.tagavari.airmessage.compose.component.ConversationDetails
 import me.tagavari.airmessage.compose.state.ConversationDetailsViewModel
 import me.tagavari.airmessage.compose.state.ConversationDetailsViewModelFactory
@@ -37,7 +36,7 @@ class ConversationDetailsCompose : ComponentActivity() {
 		
 		WindowCompat.setDecorFitsSystemWindows(window, false)
 		
-		val conversationID = intent.getLongExtra(Messaging.intentParamTargetID, -1)
+		val conversationID = intent.getLongExtra(ConversationsCompose.INTENT_TARGET_ID, -1)
 		
 		setContent {
 			val application = LocalContext.current.applicationContext as Application
@@ -130,7 +129,7 @@ class ConversationDetailsCompose : ComponentActivity() {
 	object ResultContract : ActivityResultContract<Long, LatLngInfo?>() {
 		override fun createIntent(context: Context, input: Long) =
 			Intent(context, ConversationDetailsCompose::class.java).apply {
-				putExtra(Messaging.intentParamTargetID, input)
+				putExtra(ConversationsCompose.INTENT_TARGET_ID, input)
 			}
 		
 		override fun parseResult(resultCode: Int, intent: Intent?): LatLngInfo? {
