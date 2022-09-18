@@ -292,7 +292,9 @@ object NotificationHelper {
 	 */
 	private fun getSummaryNotificationLegacy(context: Context, newConversationID: Int, newMessageConversation: String, newMessageText: String): Notification {
 		//Creating the click intent
-		val clickIntent = Intent(context, ConversationsCompose::class.java)
+		val clickIntent = Intent(context, ConversationsCompose::class.java).apply {
+			action = Intent.ACTION_DEFAULT
+		}
 		
 		//Getting the pending intent
 		val clickPendingIntent = PendingIntent.getActivity(context, 0, clickIntent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
@@ -393,8 +395,9 @@ object NotificationHelper {
 			setSmallIcon(R.drawable.message_push_group)
 			setColor(context.resources.getColor(R.color.colorPrimary, null))
 			setContentIntent(
-					Intent(context, ConversationsCompose::class.java)
-							.let { intent -> PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) }
+				Intent(context, ConversationsCompose::class.java)
+					.apply { action = Intent.ACTION_DEFAULT }
+					.let { intent -> PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE) }
 			)
 			
 			//Setting the group
@@ -420,6 +423,7 @@ object NotificationHelper {
 	private fun buildBaseMessageNotification(context: Context, conversationInfo: ConversationInfo, isOutgoing: Boolean, largeIcon: Bitmap?, shortcutIcon: IconCompat?, memberInfo: UserCacheHelper.UserInfo?, replySuggestions: List<String>?): NotificationCompat.Builder {
 		//Creating the click intent
 		val clickIntent = Intent(context, ConversationsCompose::class.java).apply {
+			action = Intent.ACTION_DEFAULT
 			putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationInfo.localID)
 		}
 		
@@ -681,6 +685,7 @@ object NotificationHelper {
 			//Creating the task stack builder
 			val clickStackBuilder = TaskStackBuilder.create(context).apply {
 				addNextIntent(Intent(context, ConversationsCompose::class.java).apply {
+					action = Intent.ACTION_DEFAULT
 					putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationInfo.localID)
 				})
 			}
@@ -714,7 +719,13 @@ object NotificationHelper {
 		val notificationManager = NotificationManagerCompat.from(context)
 
 		//Getting the pending intent
-		val clickPendingIntent = PendingIntent.getActivity(context, 0, Intent(context, ConversationsCompose::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+		val clickPendingIntent = PendingIntent.getActivity(
+			context,
+			0,
+			Intent(context, ConversationsCompose::class.java)
+				.apply { action = Intent.ACTION_DEFAULT },
+			PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+		)
 		
 		//Creating the notification
 		val notification = NotificationCompat.Builder(context, notificationChannelMessageReceiveError)
@@ -839,7 +850,13 @@ object NotificationHelper {
 			setOngoing(true)
 			setOnlyAlertOnce(true)
 			
-			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, ConversationsCompose::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+			setContentIntent(PendingIntent.getActivity(
+				context,
+				0,
+				Intent(context, ConversationsCompose::class.java)
+					.apply { action = Intent.ACTION_DEFAULT },
+				PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+			))
 			
 			//Disconnect (only available in debug)
 			if(BuildConfig.DEBUG) {
@@ -868,7 +885,13 @@ object NotificationHelper {
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
 			setColor(context.resources.getColor(R.color.colorServerDisconnected, null))
 			setContentText(context.resources.getString(R.string.imperative_tapopenapp))
-			setContentIntent(PendingIntent.getActivity(context, 0, Intent(context, ConversationsCompose::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
+			setContentIntent(PendingIntent.getActivity(
+				context,
+				0,
+				Intent(context, ConversationsCompose::class.java)
+					.apply { action = Intent.ACTION_DEFAULT },
+				PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+			))
 			
 			setShowWhen(false)
 			setPriority(NotificationCompat.PRIORITY_HIGH)
