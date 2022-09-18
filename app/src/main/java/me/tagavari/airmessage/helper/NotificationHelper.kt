@@ -220,7 +220,7 @@ object NotificationHelper {
 			 * Otherwise, get the icon of the other member in the one-on-one chat
 			 */
 			val memberAddress: String = if(conversationInfo.isGroupChat) sender!! else conversationInfo.members[0].address
-			MainApplication.getInstance().userCacheHelper.getUserInfo(context, memberAddress)
+			MainApplication.instance.userCacheHelper.getUserInfo(context, memberAddress)
 					.map { Optional.of(it) }.onErrorReturnItem(Optional.empty()).cache()
 		}
 		

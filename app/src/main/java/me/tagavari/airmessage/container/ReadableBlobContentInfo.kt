@@ -30,7 +30,7 @@ class ReadableBlobContentInfo(
 	}
 	
 	private val context: Context
-		get() = MainApplication.getInstance()
+		get() = MainApplication.instance
 	
 	private val ContentInfoCompat.blobUri: Uri
 		get() = clip.getItemAt(index).uri

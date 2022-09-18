@@ -72,16 +72,16 @@ class ReduxReceiverNotification(private val context: Context) {
 						if(messageInfo.isOutgoing) continue
 						
 						//Sending the notification
-						NotificationHelper.sendNotification(MainApplication.getInstance(), conversation, messageInfo)
+						NotificationHelper.sendNotification(MainApplication.instance, conversation, messageInfo)
 					}
 				}
 			} else if(event is MessageError) {
 				if(event.errorCode != MessageSendErrorCode.none) {
-					NotificationHelper.sendErrorNotification(MainApplication.getInstance(), event.conversationInfo)
+					NotificationHelper.sendErrorNotification(MainApplication.instance, event.conversationInfo)
 				}
 			} else if(event is TapbackUpdate) {
 				Single.fromCallable {
-					val pair = DatabaseManager.getInstance().loadConversationItemWithChat(MainApplication.getInstance(), event.metadata.messageID)
+					val pair = DatabaseManager.getInstance().loadConversationItemWithChat(MainApplication.instance, event.metadata.messageID)
 					
 					if(pair == null || pair.first.itemType != ConversationItemType.message) {
 						throw Exception("Failed to load message ID " + event.metadata.messageID + " for tapback")
@@ -94,16 +94,16 @@ class ReduxReceiverNotification(private val context: Context) {
 					.flatMapSingle { (item, conversation) ->
 						//Getting the tapback summary
 						val tapbackInfo = event.tapbackInfo
-						val messageSummary = LanguageHelper.messageToString(MainApplication.getInstance().resources, item as MessageInfo)
+						val messageSummary = LanguageHelper.messageToString(MainApplication.instance.resources, item as MessageInfo)
 						
-						return@flatMapSingle LanguageHelper.getTapbackSummary(MainApplication.getInstance(), tapbackInfo.sender, tapbackInfo.code, messageSummary)
+						return@flatMapSingle LanguageHelper.getTapbackSummary(MainApplication.instance, tapbackInfo.sender, tapbackInfo.code, messageSummary)
 							//Preserving the conversation info
 							.map { summary: String -> Pair(summary, conversation) }
 					}
 					.subscribe { (summary, conversation) ->
 						//Sending the notification
 						NotificationHelper.sendNotification(
-							MainApplication.getInstance(),
+							MainApplication.instance,
 							summary,
 							event.tapbackInfo.sender,
 							System.currentTimeMillis(),

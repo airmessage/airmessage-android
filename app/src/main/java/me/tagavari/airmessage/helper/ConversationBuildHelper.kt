@@ -68,7 +68,7 @@ object ConversationBuildHelper {
 		//Map each member to their name
 		return Single.concat(members.map { member: MemberInfo ->
 			//If the member's name is available, use it, otherwise use their address
-			MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address)
+			MainApplication.instance.userCacheHelper.getUserInfo(context, member.address)
 					.map {userInfo -> userInfo.contactName ?: member.address}
 					.onErrorReturnItem(member.address)
 		})
@@ -89,7 +89,7 @@ object ConversationBuildHelper {
 				.take(4)
 				//Map each user to their color or their bitmap
 				.flatMapSingle { member: MemberInfo ->
-					MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address)
+					MainApplication.instance.userCacheHelper.getUserInfo(context, member.address)
 							.flatMap { userInfo ->
 								if(userInfo.thumbnailURI == null) {
 									throw Exception("No thumbnail URI")
@@ -222,7 +222,7 @@ object ConversationBuildHelper {
 		return if(MainApplication.canUseContacts(context)) {
 			return conversationInfo.members.mapNotNull { member ->
 				val userInfo = try {
-					MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
+					MainApplication.instance.userCacheHelper.getUserInfo(context, member.address).await()
 				} catch(exception: Throwable) {
 					return@mapNotNull null
 				}

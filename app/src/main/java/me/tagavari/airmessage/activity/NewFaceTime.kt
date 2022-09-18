@@ -145,7 +145,7 @@ class NewFaceTime : AppCompatCompositeActivity() {
             viewModel.loadContacts()
     
             //Start the update listener
-            MainApplication.getInstance().registerContactsListener()
+            MainApplication.instance.registerContactsListener()
         } else {
             //Show a snackbar
             Snackbar.make(findViewById(android.R.id.content), R.string.message_permissionrejected, Snackbar.LENGTH_LONG)
@@ -431,10 +431,10 @@ class NewFaceTime : AppCompatCompositeActivity() {
                     
                         //Copy to clipboard
                         setNeutralButton(R.string.action_copy) { dialog, _ ->
-                            val clipboard = MainApplication.getInstance().getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                            val clipboard = MainApplication.instance.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                             clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetails))
                         
-                            Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+                            Toast.makeText(MainApplication.instance, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
                             dialog.dismiss()
                         }
                         setPositiveButton(R.string.action_dismiss) { dialog, _ ->

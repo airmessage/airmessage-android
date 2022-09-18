@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.filterNotNull
+import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.state.NewConversationViewModel
@@ -85,6 +86,7 @@ fun NewConversationPane(
 			//Reload contacts after the user grants permission
 			if(permissionGranted) {
 				viewModel.loadContacts()
+				MainApplication.instance.registerContactsListener()
 			}
 		}
 		

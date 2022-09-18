@@ -33,7 +33,7 @@ fun ConversationDetailsMember(
 	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, member.address) {
 		//Get the user
 		try {
-			value = MainApplication.getInstance().userCacheHelper.getUserInfo(context, member.address).await()
+			value = MainApplication.instance.userCacheHelper.getUserInfo(context, member.address).await()
 		} catch(exception: Throwable) {
 			exception.printStackTrace()
 		}

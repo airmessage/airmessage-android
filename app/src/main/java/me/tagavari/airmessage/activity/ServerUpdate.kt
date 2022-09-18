@@ -173,10 +173,10 @@ class ServerUpdate : AppCompatCompositeActivity() {
 
                                         //Copy to clipboard
                                         setNeutralButton(R.string.action_copy) { dialog, _ ->
-                                            val clipboard = MainApplication.getInstance().getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                            val clipboard = MainApplication.instance.getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
                                             clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetails))
 
-                                            Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+                                            Toast.makeText(MainApplication.instance, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
                                             dialog.dismiss()
                                         }
                                         setPositiveButton(R.string.action_dismiss) { dialog, _ ->

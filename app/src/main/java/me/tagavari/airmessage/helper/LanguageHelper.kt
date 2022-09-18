@@ -395,7 +395,7 @@ object LanguageHelper {
 			}
 			
 			//Returning the string with the sender's name
-			MainApplication.getInstance().userCacheHelper.getUserInfo(context, sender)
+			MainApplication.instance.userCacheHelper.getUserInfo(context, sender)
 					.map { userInfo -> userInfo.contactName }
 					.onErrorReturnItem(sender)
 					.map { name -> context.resources.getString(stringID, name, messageText) }

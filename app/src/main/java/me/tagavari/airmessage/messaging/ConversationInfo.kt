@@ -101,7 +101,7 @@ data class ConversationInfo @JvmOverloads constructor(
 			//Android system MMS messaging
 			if(serviceHandler == ServiceHandler.systemMessaging && serviceType == ServiceType.systemSMS) {
 				//Return the carrier-specific information
-				return getMaxMessageSize(MainApplication.getInstance())
+				return getMaxMessageSize(MainApplication.instance)
 			}
 			
 			//No compression required

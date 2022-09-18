@@ -74,7 +74,7 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 			compositeDisposable.add(
 				Observable.fromIterable(participantsList)
 					.flatMapSingle { address ->
-						ContactHelper.getUserDisplayName(MainApplication.getInstance(), address)
+						ContactHelper.getUserDisplayName(MainApplication.instance, address)
 							.defaultIfEmpty(address)
 					}
 					.toList()
@@ -178,12 +178,12 @@ class FragmentCallPending : FragmentCommunication<FragmentCommunicationFaceTime>
 				
 				//Add copy to clipboard button
 				setNeutralButton(R.string.action_copy) { dialog, _ ->
-					val clipboard = MainApplication.getInstance().getSystemService(
+					val clipboard = MainApplication.instance.getSystemService(
 						AppCompatCompositeActivity.CLIPBOARD_SERVICE
 					) as ClipboardManager
 					clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetails))
 					
-					Toast.makeText(MainApplication.getInstance(), R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+					Toast.makeText(MainApplication.instance, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
 					dialog.dismiss()
 				}
 			}

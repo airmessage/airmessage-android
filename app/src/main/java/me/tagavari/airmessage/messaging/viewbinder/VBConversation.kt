@@ -111,7 +111,7 @@ object VBConversation {
 			}
 			//Get user info for each member
 			.flatMapSingle { data: IndexedItem<MemberInfo> ->
-				MainApplication.getInstance().userCacheHelper.getUserInfo(context, data.item.address)
+				MainApplication.instance.userCacheHelper.getUserInfo(context, data.item.address)
 					.map { Optional.of(it) }
 					.onErrorReturnItem(Optional.empty())
 					.map { optionalUserInfo -> IndexedItem(data.index, Pair(data.item, optionalUserInfo.orElse(null))) }

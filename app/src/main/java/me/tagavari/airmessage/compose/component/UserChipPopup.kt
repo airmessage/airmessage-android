@@ -68,7 +68,7 @@ private fun UserChipLayout(
 	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, recipient) {
 		//Get the user
 		try {
-			value = MainApplication.getInstance().userCacheHelper
+			value = MainApplication.instance.userCacheHelper
 				.getUserInfo(context, recipient.address)
 				.await()
 		} catch(exception: Throwable) {

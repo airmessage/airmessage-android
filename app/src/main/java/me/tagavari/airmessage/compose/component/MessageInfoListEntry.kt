@@ -88,7 +88,7 @@ fun MessageInfoListEntry(
 		messageInfo.sender?.let { sender ->
 			//Get the user
 			try {
-				value = MainApplication.getInstance().userCacheHelper.getUserInfo(context, sender).await()
+				value = MainApplication.instance.userCacheHelper.getUserInfo(context, sender).await()
 			} catch(exception: Throwable) {
 				exception.printStackTrace()
 			}

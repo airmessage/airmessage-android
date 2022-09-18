@@ -33,7 +33,7 @@ fun MemberImage(
 	val context = LocalContext.current
 	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member.address) {
 		value = try {
-			MainApplication.getInstance().userCacheHelper
+			MainApplication.instance.userCacheHelper
 				.getUserInfo(context, member.address).await()
 		} catch(exception: Throwable) {
 			exception.printStackTrace()

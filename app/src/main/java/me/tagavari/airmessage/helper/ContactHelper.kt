@@ -11,7 +11,7 @@ object ContactHelper {
 	@JvmStatic
 	fun getUserDisplayName(context: Context, address: String?): Maybe<String> {
 		return if(address != null) {
-			MainApplication.getInstance().userCacheHelper.getUserInfo(context, address)
+			MainApplication.instance.userCacheHelper.getUserInfo(context, address)
 					.map { userInfo -> userInfo.contactName }
 					.toMaybe()
 					.onErrorReturnItem(address) as Maybe<String>

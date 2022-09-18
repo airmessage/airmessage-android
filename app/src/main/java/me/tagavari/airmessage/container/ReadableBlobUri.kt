@@ -22,7 +22,7 @@ class ReadableBlobUri(
 	private val uri: Uri
 ) : ReadableBlob {
 	private val context: Context
-		get() = MainApplication.getInstance()
+		get() = MainApplication.instance
 	
 	override fun openInputStream() =
 		context.contentResolver.openInputStream(uri)
