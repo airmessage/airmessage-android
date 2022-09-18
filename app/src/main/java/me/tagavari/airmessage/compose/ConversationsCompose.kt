@@ -424,6 +424,5 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 		
 		const val INTENT_TARGET_ID = "targetID"
 		const val INTENT_TARGET_NEW = "targetNew"
-		const val INTENT_BUBBLE = "bubble"
 	}
 }

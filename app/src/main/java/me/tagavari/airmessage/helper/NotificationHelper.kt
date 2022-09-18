@@ -30,6 +30,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.FaceTimeCall
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.ConversationsCompose
+import me.tagavari.airmessage.compose.MessagingCompose
 import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.flavor.MLKitBridge
@@ -538,9 +539,8 @@ object NotificationHelper {
 				//Adding the bubble metadata
 				notificationBuilder.bubbleMetadata =
 					NotificationCompat.BubbleMetadata.Builder(
-						Intent(context, ConversationsCompose::class.java).apply {
-							putExtra(ConversationsCompose.INTENT_TARGET_ID, conversationInfo.localID)
-							putExtra(ConversationsCompose.INTENT_BUBBLE, true)
+						Intent(context, MessagingCompose::class.java).apply {
+							putExtra(MessagingCompose.INTENT_TARGET_ID, conversationInfo.localID)
 						}.let { intent -> PendingIntent.getActivity(
 							context,
 							pendingIntentOffsetBubble + conversationInfo.localID.toInt(),
