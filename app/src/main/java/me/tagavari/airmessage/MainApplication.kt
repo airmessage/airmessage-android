@@ -20,6 +20,9 @@ import androidx.work.OutOfQuotaPolicy
 import androidx.work.WorkManager
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import coil.decode.GifDecoder
+import coil.decode.ImageDecoderDecoder
+import coil.decode.VideoFrameDecoder
 import com.google.android.material.color.DynamicColors
 import me.tagavari.airmessage.activity.CrashReport
 import me.tagavari.airmessage.activity.Preferences
@@ -40,7 +43,6 @@ import me.tagavari.airmessage.worker.SystemMessageCleanupWorker
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.PrintWriter
 import java.io.StringWriter
-import java.lang.ref.WeakReference
 import java.security.Security
 
 class MainApplication : Application(), ImageLoaderFactory {
@@ -191,6 +193,17 @@ class MainApplication : Application(), ImageLoaderFactory {
 	
 	override fun newImageLoader() = ImageLoader.Builder(this)
 		.components {
+			//Decode GIFs
+			if(Build.VERSION.SDK_INT >= 28) {
+				add(ImageDecoderDecoder.Factory())
+			} else {
+				add(GifDecoder.Factory())
+			}
+			
+			//Decode videos
+			add(VideoFrameDecoder.Factory())
+			
+			//Decode icons
 			add(IconFetcher.Factory())
 		}
 		.build()
