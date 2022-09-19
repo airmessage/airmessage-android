@@ -21,6 +21,7 @@ import me.tagavari.airmessage.container.ReadableBlob
 import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.ForegroundState
+import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
@@ -58,6 +59,27 @@ class MessagingViewModel(
 	var lazyLoadState by mutableStateOf(MessageLazyLoadState.IDLE)
 		private set
 	val messages = mutableStateListOf<ConversationItem>()
+	val messageStateIndices by derivedStateOf {
+		//Find the latest outgoing message with a state of "read"
+		val readTargetIndex = messages.indexOfLast { conversationItem ->
+			conversationItem is MessageInfo
+					&& conversationItem.isOutgoing
+					&& conversationItem.messageState == MessageState.read
+		}
+		
+		//Find the latest outgoing message with a state of "delivered",
+		//no earlier than the "read" message
+		val deliveredTargetIndex = messages.subList(readTargetIndex + 1, messages.size)
+			.indexOfLast { conversationItem ->
+				conversationItem is MessageInfo
+						&& conversationItem.isOutgoing
+						&& conversationItem.messageState == MessageState.delivered
+			}.let {
+				if(it == -1) -1 else it + (readTargetIndex + 1)
+			}
+		
+		setOf(readTargetIndex, deliveredTargetIndex).filter { it != -1 }
+	}
 	val queuedFiles = mutableStateListOf<QueuedFile>()
 	val messageSelectionState = MessageSelectionState()
 	val conversationSuggestions = snapshotFlow { messages.toList() }

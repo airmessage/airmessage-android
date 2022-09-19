@@ -5,6 +5,7 @@ import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -44,6 +45,7 @@ import me.tagavari.airmessage.helper.ConversationColorHelper
 import me.tagavari.airmessage.helper.ErrorLanguageHelper.getErrorDisplay
 import me.tagavari.airmessage.helper.FileHelper.compareMimeTypes
 import me.tagavari.airmessage.helper.IntentHelper
+import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.helper.MessageSendHelperCoroutine
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MessageInfo
@@ -69,6 +71,7 @@ fun MessageInfoListEntry(
 		anchorBottom = false
 	),
 	selectionState: MessageSelectionState = MessageSelectionState(),
+	showStatus: Boolean = false,
 	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
 	scrollProgress: Float = 0F
 ) {
@@ -306,6 +309,24 @@ fun MessageInfoListEntry(
 							}
 						}
 					}
+				}
+				
+				AnimatedVisibility(visible = showStatus) {
+					Text(
+						modifier = Modifier.padding(horizontal = 2.dp),
+						text = when(messageInfo.messageState) {
+							MessageState.delivered ->
+								stringResource(R.string.state_delivered)
+							MessageState.read ->
+								stringResource(R.string.state_read) +
+										LanguageHelper.bulletSeparator +
+										LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead)
+							else ->
+								stringResource(R.string.part_unknown)
+						},
+						style = MaterialTheme.typography.bodyMedium,
+						color = MaterialTheme.colorScheme.onSurfaceVariant
+					)
 				}
 			}
 			

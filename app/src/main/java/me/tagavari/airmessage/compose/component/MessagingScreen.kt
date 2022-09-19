@@ -348,6 +348,7 @@ fun MessagingScreen(
 					modifier = Modifier.weight(1F),
 					conversation = conversation,
 					messages = viewModel.messages,
+					messageStateIndices = viewModel.messageStateIndices,
 					scrollState = scrollState,
 					messageSelectionState = viewModel.messageSelectionState,
 					onLoadPastMessages = { viewModel.loadPastMessages() },

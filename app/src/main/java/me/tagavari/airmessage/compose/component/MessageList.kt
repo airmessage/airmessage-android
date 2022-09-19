@@ -29,6 +29,7 @@ fun MessageList(
 	modifier: Modifier = Modifier,
 	conversation: ConversationInfo,
 	messages: List<ConversationItem>,
+	messageStateIndices: Collection<Int>,
 	messageSelectionState: MessageSelectionState,
 	scrollState: LazyListState = rememberLazyListState(),
 	onLoadPastMessages: () -> Unit,
@@ -36,8 +37,6 @@ fun MessageList(
 	actionSuggestions: List<AMConversationAction>,
 	onSelectActionSuggestion: (AMConversationAction) -> Unit
 ) {
-	val reversedMessages = messages.asReversed()
-	
 	val scrollOffsetMap by remember {
 		var scrollProgressModificationTime: Long? = null
 		var lastScrollOffsetMap: Map<Long, Float>? = null
@@ -99,14 +98,15 @@ fun MessageList(
 		
 		//Message items
 		items(
-			key = { reversedMessages[it].localID },
-			count = reversedMessages.size
-		) { index ->
-			val conversationItem = reversedMessages[index]
+			key = { messages[messages.lastIndex - it].localID },
+			count = messages.size
+		) { reversedIndex ->
+			val adjustedIndex = messages.lastIndex - reversedIndex
+			val conversationItem = messages[adjustedIndex]
 			
 			if(conversationItem is MessageInfo) {
-				val messageAbove = reversedMessages.getOrNull(index + 1)
-				val messageBelow = reversedMessages.getOrNull(index - 1)
+				val messageAbove = messages.getOrNull(adjustedIndex - 1)
+				val messageBelow = messages.getOrNull(adjustedIndex + 1)
 				
 				val flow = remember(conversationItem, messageAbove, messageBelow) {
 					MessageFlow(
@@ -131,6 +131,7 @@ fun MessageList(
 					messageInfo = conversationItem,
 					flow = flow,
 					selectionState = messageSelectionState,
+					showStatus = messageStateIndices.contains(adjustedIndex),
 					spacing = spacing,
 					scrollProgress = scrollProgress
 				)
