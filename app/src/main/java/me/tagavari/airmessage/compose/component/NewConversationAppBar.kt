@@ -13,12 +13,16 @@ import androidx.compose.material.icons.outlined.Keyboard
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -33,7 +37,7 @@ import me.tagavari.airmessage.enums.MessageServiceDescription
 import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
 fun NewConversationAppBar(
 	navigationIcon: @Composable () -> Unit = {},
@@ -178,7 +182,17 @@ fun NewConversationAppBar(
 						modifier = Modifier
 							.padding(vertical = 13.dp)
 							.sizeIn(minWidth = 50.dp)
-							.focusRequester(focusRequester),
+							.focusRequester(focusRequester)
+							.onKeyEvent { keyEvent ->
+								keyEvent.key.keyCode
+								if(keyEvent.key == Key.Backspace) {
+									//Remove the last recipient
+									recipients.lastOrNull()?.let(onRemoveRecipient)
+									true
+								} else {
+									false
+								}
+							},
 						value = textInput,
 						onValueChange = onChangeTextInput,
 						textStyle = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
