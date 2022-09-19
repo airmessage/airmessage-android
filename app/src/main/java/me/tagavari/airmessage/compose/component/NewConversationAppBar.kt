@@ -17,6 +17,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -180,7 +181,8 @@ fun NewConversationAppBar(
 							.focusRequester(focusRequester),
 						value = textInput,
 						onValueChange = onChangeTextInput,
-						textStyle = MaterialTheme.typography.bodyLarge,
+						textStyle = MaterialTheme.typography.bodyLarge.copy(color = LocalContentColor.current),
+						cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
 						decorationBox = { innerTextField ->
 							if(textInput.isEmpty() && recipients.isEmpty()) {
 								Text(
