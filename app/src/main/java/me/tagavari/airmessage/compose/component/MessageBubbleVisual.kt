@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import android.os.Build
 import android.view.MotionEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -13,6 +14,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -65,7 +67,18 @@ fun MessageBubbleVisual(
 					modifier = Modifier
 						.width(200.dp)
 						.clip(flow.bubbleShape)
-						.blur(invisibleInkState.contentBlur)
+						.then(run {
+							//Blur is only supported on Android 12+
+							if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+								Modifier.blur(invisibleInkState.contentBlur)
+							} else {
+								val color = flow.colors.background.copy(alpha = 1F - invisibleInkState.contentAlpha)
+								Modifier.drawWithContent {
+									drawContent()
+									drawRect(color)
+								}
+							}
+						})
 						.wrapContentHeight()
 						.combinedClickable(
 							onClick = {
