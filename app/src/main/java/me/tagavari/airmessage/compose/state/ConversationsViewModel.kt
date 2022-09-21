@@ -190,7 +190,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				conversations = Result.success(conversationList.filter { it.localID != event.conversationInfo.localID })
 			}
 			is ReduxEventMessaging.ConversationServiceHandlerDelete -> {
-				conversations = Result.success(conversationList.filter { it.serviceHandler == event.serviceHandler })
+				conversations = Result.success(conversationList.filter { it.serviceHandler != event.serviceHandler })
 			}
 			is ReduxEventMessaging.ConversationTitle -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
