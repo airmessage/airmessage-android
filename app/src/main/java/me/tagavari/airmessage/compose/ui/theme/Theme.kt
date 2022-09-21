@@ -9,6 +9,7 @@ import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import me.tagavari.airmessage.helper.ThemeHelper
 
 private val DarkColorScheme = darkColorScheme(
 	primary = AMColor.md_theme_dark_primary,
@@ -72,7 +73,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun AirMessageAndroidTheme(
-	darkTheme: Boolean = isSystemInDarkTheme(),
+	darkTheme: Boolean = ThemeHelper.darkModeOverride ?: isSystemInDarkTheme(),
 	// Dynamic color is available on Android 12+
 	dynamicColor: Boolean = true,
 	content: @Composable () -> Unit

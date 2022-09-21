@@ -8,6 +8,9 @@ import android.os.Build
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.constants.ColorConstants
@@ -16,6 +19,15 @@ object ThemeHelper {
 	const val darkModeFollowSystem = "follow_system"
 	const val darkModeLight = "off"
 	const val darkModeDark = "on"
+	
+	var darkModeOverride by mutableStateOf(
+		when(AppCompatDelegate.getDefaultNightMode()) {
+			AppCompatDelegate.MODE_NIGHT_NO -> false
+			AppCompatDelegate.MODE_NIGHT_YES -> true
+			else -> null
+		}
+	)
+		private set
 	
 	/**
 	 * Gets if the app is currently being displayed in night mode
@@ -45,9 +57,16 @@ object ThemeHelper {
 			darkModeFollowSystem -> {
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM) //On Android Q and above, the app should follow the system's dark mode setting
 				else AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_AUTO_BATTERY) //On older versions of Android, "automatic" should mean to follow the battery saver setting
+				darkModeOverride = null
 			}
-			darkModeLight -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
-			darkModeDark -> AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+			darkModeLight -> {
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_NO)
+				darkModeOverride = false
+			}
+			darkModeDark -> {
+				AppCompatDelegate.setDefaultNightMode(AppCompatDelegate.MODE_NIGHT_YES)
+				darkModeOverride = true
+			}
 		}
 	}
 	
