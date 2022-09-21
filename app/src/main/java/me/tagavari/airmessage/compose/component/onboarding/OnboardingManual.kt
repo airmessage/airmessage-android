@@ -219,7 +219,7 @@ private fun OnboardingManualLayout(
 			}
 			
 			//Password
-			var passwordHidden by remember { mutableStateOf(true) }
+			var passwordHidden by rememberSaveable { mutableStateOf(true) }
 			TextField(
 				modifier = Modifier.fillMaxWidth(),
 				value = inputPassword,

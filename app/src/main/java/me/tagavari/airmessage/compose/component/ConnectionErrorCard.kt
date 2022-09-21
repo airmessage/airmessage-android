@@ -25,15 +25,16 @@ import me.tagavari.airmessage.helper.IntentHelper
 @Composable
 fun ConnectionErrorCard(
 	connectionManager: ConnectionManager?,
-	@ConnectionErrorCode code: Int
+	@ConnectionErrorCode code: Int,
+	onRequestChangePassword: () -> Unit
 ) {
 	val errorDetails = remember(code) {
 		ErrorDetailsHelper.getErrorDetails(code, false)
 	}
 	
 	val context = LocalContext.current
-	fun recoverError() {
-		val button = errorDetails.button ?: return
+	val recoverError = recoverError@{
+		val button = errorDetails.button ?: return@recoverError
 		when(button.action) {
 			ErrorDetailsAction.RECONNECT -> {
 				if(connectionManager == null) {
@@ -49,7 +50,9 @@ fun ConnectionErrorCard(
 			ErrorDetailsAction.UPDATE_SERVER -> {
 				IntentHelper.launchUri(context, ExternalLinkConstants.serverUpdateAddress)
 			}
-			ErrorDetailsAction.CHANGE_PASSWORD -> {}
+			ErrorDetailsAction.CHANGE_PASSWORD -> {
+				onRequestChangePassword()
+			}
 		}
 	}
 	
@@ -77,7 +80,8 @@ private fun ConnectionErrorCardPreview() {
 	AirMessageAndroidTheme {
 		ConnectionErrorCard(
 			connectionManager = null,
-			code = ConnectionErrorCode.connection
+			code = ConnectionErrorCode.connection,
+			onRequestChangePassword = {}
 		)
 	}
 }

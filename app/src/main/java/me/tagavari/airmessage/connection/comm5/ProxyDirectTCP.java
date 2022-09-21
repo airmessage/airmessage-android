@@ -13,6 +13,7 @@ import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ConnectionErrorCode;
 import me.tagavari.airmessage.flavor.CrashlyticsBridge;
 import me.tagavari.airmessage.util.ConnectionParams;
+import me.tagavari.airmessage.util.DirectConnectionDetails;
 
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -62,21 +63,36 @@ class ProxyDirectTCP extends DataProxy<EncryptedPacket> {
 		
 		ConnectionParams.Direct connectionParams;
 		
-		if(override == null) {
+		if(override instanceof ConnectionParams.Direct) {
+			connectionParams = (ConnectionParams.Direct) override;
+		} else {
 			try {
-				connectionParams = SharedPreferencesManager.getDirectConnectionDetails(context).toConnectionParams();
+				DirectConnectionDetails details = SharedPreferencesManager.getDirectConnectionDetails(context);
+				String address = details.getAddress();
+				String fallbackAddress = details.getFallbackAddress();
+				String password;
 				
-				if(connectionParams == null) {
+				if(override instanceof ConnectionParams.Security) {
+					password = ((ConnectionParams.Security) override).getPassword();
+				} else {
+					password = details.getPassword();
+				}
+				
+				if(address == null || password == null) {
 					notifyClose(ConnectionErrorCode.internalError);
 					return;
 				}
+				
+				connectionParams = new ConnectionParams.Direct(
+						address,
+						fallbackAddress,
+						password
+				);
 			} catch(IOException | GeneralSecurityException exception) {
 				exception.printStackTrace();
 				notifyClose(ConnectionErrorCode.internalError);
 				return;
 			}
-		} else {
-			connectionParams = (ConnectionParams.Direct) override;
 		}
 		
 		String hostname, hostnameFallback;
