@@ -226,6 +226,11 @@
 			android:name=".compose.OnboardingCompose"
 			android:theme="@style/Theme.AirMessage.Compose"
 			android:windowSoftInputMode="adjustResize" />
+		
+		<activity
+			android:name=".compose.ServerConfigStandaloneCompose"
+			android:theme="@style/Theme.AirMessage.Compose"
+			android:windowSoftInputMode="adjustResize" />
 
 		<!-- Notification response -->
 		<receiver

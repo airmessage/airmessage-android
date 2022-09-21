@@ -66,6 +66,7 @@ import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
+import me.tagavari.airmessage.compose.OnboardingCompose;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
 import me.tagavari.airmessage.connection.ConnectionTaskManager;
@@ -1008,7 +1009,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			getContext().stopService(new Intent(getContext(), ConnectionService.class));
 			
 			//Opening the onboarding activity
-			startActivity(new Intent(getActivity(), Onboarding.class)
+			startActivity(new Intent(getActivity(), OnboardingCompose.class)
 				.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
 		}
 		

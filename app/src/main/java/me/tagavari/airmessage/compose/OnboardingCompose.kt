@@ -24,14 +24,12 @@ import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingConnect
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingManual
-import me.tagavari.airmessage.compose.component.onboarding.OnboardingManualState
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingWelcome
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.connection.ConnectionOverride
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
-import me.tagavari.airmessage.enums.ConnectionState
 import me.tagavari.airmessage.enums.ProxyType
 import me.tagavari.airmessage.flavor.FirebaseAuthBridge
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
@@ -166,46 +164,9 @@ class OnboardingCompose : ComponentActivity() {
 							)
 						}
 						OnboardingComposeScreen.MANUAL -> {
-							var connectionState by remember { mutableStateOf<OnboardingManualState>(OnboardingManualState.Idle) }
-							
-							LaunchedEffect(Unit) {
-								ReduxEmitterNetwork.connectionStateSubject.asFlow().collect { update ->
-									if(connectionState is OnboardingManualState.Connecting) {
-										//Listen for state updates if we're connecting
-										if(update.state == ConnectionState.connected) {
-											val connectionManager = connectionManager ?: return@collect
-											
-											connectionState = OnboardingManualState.Connected(
-												deviceName = connectionManager.serverDeviceName,
-												fallback = connectionManager.isUsingFallback
-											)
-										} else if(update is ReduxEventConnection.Disconnected) {
-											connectionState = OnboardingManualState.Error(
-												errorCode = update.code
-											)
-										}
-									} else if(connectionState is OnboardingManualState.Connected) {
-										//If the user disconnects after connecting, discard the state
-										if(update is ReduxEventConnection.Disconnected) {
-											connectionState = OnboardingManualState.Idle
-										}
-									}
-								}
-							}
-							
 							OnboardingManual(
 								modifier = Modifier.fillMaxSize(),
-								state = connectionState,
-								onConnect = { connectionParams ->
-									connectionManager?.let { connectionManager ->
-										connectionState = OnboardingManualState.Connecting
-										connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.direct, connectionParams))
-										connectionManager.connect()
-									}
-								},
-								onReset = {
-									connectionManager?.disconnect(ConnectionErrorCode.user)
-								},
+								connectionManager = connectionManager,
 								onCancel = ::navigateWelcome,
 								onFinish = { connectionParams ->
 									//Save the connection data to shared preferences
@@ -245,10 +206,10 @@ class OnboardingCompose : ComponentActivity() {
 		//Unbinding from the connection service
 		unbindService(serviceConnection)
 	}
-}
-
-private enum class OnboardingComposeScreen {
-	WELCOME,
-	MANUAL,
-	CONNECT
+	
+	private enum class OnboardingComposeScreen {
+		WELCOME,
+		MANUAL,
+		CONNECT
+	}
 }

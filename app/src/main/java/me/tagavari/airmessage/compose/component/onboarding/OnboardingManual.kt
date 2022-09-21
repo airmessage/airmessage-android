@@ -16,6 +16,7 @@ import androidx.compose.material.icons.outlined.CheckCircleOutline
 import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -27,21 +28,82 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.component.AlertCard
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.connection.ConnectionOverride
 import me.tagavari.airmessage.constants.ExternalLinkConstants
 import me.tagavari.airmessage.constants.RegexConstants
+import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
+import me.tagavari.airmessage.enums.ConnectionState
+import me.tagavari.airmessage.enums.ProxyType
 import me.tagavari.airmessage.helper.ErrorDetailsAction
 import me.tagavari.airmessage.helper.ErrorDetailsHelper
 import me.tagavari.airmessage.helper.IntentHelper
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.redux.ReduxEventConnection
 import me.tagavari.airmessage.util.ConnectionParams
 import soup.compose.material.motion.MaterialSharedAxisY
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun OnboardingManual(
+	modifier: Modifier = Modifier,
+	connectionManager: ConnectionManager?,
+	onCancel: () -> Unit,
+	onFinish: (ConnectionParams.Direct) -> Unit
+) {
+	var connectionState by remember { mutableStateOf<OnboardingManualState>(OnboardingManualState.Idle) }
+	val currentConnectionManager by rememberUpdatedState(connectionManager)
+	
+	LaunchedEffect(Unit) {
+		ReduxEmitterNetwork.connectionStateSubject.asFlow().collect { update ->
+			if(connectionState is OnboardingManualState.Connecting) {
+				//Listen for state updates if we're connecting
+				if(update.state == ConnectionState.connected) {
+					val localConnectionManager = currentConnectionManager ?: return@collect
+					
+					connectionState = OnboardingManualState.Connected(
+						deviceName = localConnectionManager.serverDeviceName,
+						fallback = localConnectionManager.isUsingFallback
+					)
+				} else if(update is ReduxEventConnection.Disconnected) {
+					connectionState = OnboardingManualState.Error(
+						errorCode = update.code
+					)
+				}
+			} else if(connectionState is OnboardingManualState.Connected) {
+				//If the user disconnects after connecting, discard the state
+				if(update is ReduxEventConnection.Disconnected) {
+					connectionState = OnboardingManualState.Idle
+				}
+			}
+		}
+	}
+	
+	OnboardingManualLayout(
+		modifier = modifier,
+		state = connectionState,
+		onConnect = { connectionParams ->
+			connectionManager?.let { connectionManager ->
+				connectionState = OnboardingManualState.Connecting
+				connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.direct, connectionParams))
+				connectionManager.connect()
+			}
+		},
+		onReset = {
+			connectionManager?.disconnect(ConnectionErrorCode.user)
+		},
+		onCancel = onCancel,
+		onFinish = onFinish
+	)
+}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@Composable
+private fun OnboardingManualLayout(
 	modifier: Modifier = Modifier,
 	state: OnboardingManualState,
 	onConnect: (ConnectionParams.Direct) -> Unit,
@@ -49,9 +111,12 @@ fun OnboardingManual(
 	onCancel: () -> Unit,
 	onFinish: (ConnectionParams.Direct) -> Unit
 ) {
-	var inputAddress by remember { mutableStateOf("") }
-	var inputFallbackAddress by remember { mutableStateOf("") }
-	var inputPassword by remember { mutableStateOf("") }
+	val context = LocalContext.current
+	val initialDetails = remember { SharedPreferencesManager.getDirectConnectionDetails(context) }
+	
+	var inputAddress by rememberSaveable { mutableStateOf(initialDetails.address ?: "") }
+	var inputFallbackAddress by rememberSaveable { mutableStateOf(initialDetails.fallbackAddress ?: "") }
+	var inputPassword by rememberSaveable { mutableStateOf(initialDetails.password ?: "") }
 	
 	val connectionParams by remember {
 		derivedStateOf {
@@ -316,7 +381,7 @@ private fun PreviewOnboardingWelcomeInitial() {
 		Surface(
 			color = MaterialTheme.colorScheme.background
 		) {
-			OnboardingManual(
+			OnboardingManualLayout(
 				state = OnboardingManualState.Idle,
 				onConnect = {},
 				onReset = {},
@@ -334,7 +399,7 @@ private fun PreviewOnboardingWelcomeConnecting() {
 		Surface(
 			color = MaterialTheme.colorScheme.background
 		) {
-			OnboardingManual(
+			OnboardingManualLayout(
 				state = OnboardingManualState.Connecting,
 				onConnect = {},
 				onReset = {},
@@ -352,7 +417,7 @@ private fun PreviewOnboardingWelcomeConnected() {
 		Surface(
 			color = MaterialTheme.colorScheme.background
 		) {
-			OnboardingManual(
+			OnboardingManualLayout(
 				state = OnboardingManualState.Connected(deviceName = "My Computer", fallback = true),
 				onConnect = {},
 				onReset = {},
@@ -370,7 +435,7 @@ private fun PreviewOnboardingWelcomeError() {
 		Surface(
 			color = MaterialTheme.colorScheme.background
 		) {
-			OnboardingManual(
+			OnboardingManualLayout(
 				state = OnboardingManualState.Error(errorCode = ConnectionErrorCode.unauthorized),
 				onConnect = {},
 				onReset = {},
