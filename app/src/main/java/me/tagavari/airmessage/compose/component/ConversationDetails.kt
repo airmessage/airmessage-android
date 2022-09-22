@@ -117,7 +117,7 @@ fun ConversationDetails(
 								GlobalScope.launch {
 									ConversationActionTask
 										.muteConversations(
-											setOf(conversation),
+											setOf(conversation.localID),
 											!conversation.isMuted
 										)
 										.await()

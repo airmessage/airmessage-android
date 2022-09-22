@@ -77,7 +77,16 @@ class ReduxReceiverNotification(private val context: Context) {
 				}
 			} else if(event is MessageError) {
 				if(event.errorCode != MessageSendErrorCode.none) {
-					NotificationHelper.sendErrorNotification(MainApplication.instance, event.conversationInfo)
+					Single.fromCallable {
+						DatabaseManager.getInstance().fetchConversationInfo(MainApplication.instance, event.conversationID)
+							?: throw NoSuchElementException()
+					}
+						.subscribeOn(Schedulers.single())
+						.observeOn(AndroidSchedulers.mainThread())
+						.onErrorComplete()
+						.subscribe { conversation ->
+							NotificationHelper.sendErrorNotification(MainApplication.instance, conversation)
+						}
 				}
 			} else if(event is TapbackUpdate) {
 				Single.fromCallable {

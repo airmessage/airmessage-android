@@ -41,6 +41,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				.filterIsInstance<ConversationsDetailPage.Messaging>()
 				.collect { page ->
 					ShortcutHelper.reportShortcutUsed(getApplication(), page.conversationID)
+					ConversationActionTask.unreadConversations(listOf(page.conversationID), 0).await()
 				}
 		}
 		
@@ -150,7 +151,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			}
 			is ReduxEventMessaging.ConversationUnread -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
-					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
+					val index = list.indexOfFirst { it.localID == event.conversationID }
 					if(index == -1) return
 					list[index] = list[index].copy(
 						unreadMessageCount = event.unreadCount
@@ -159,14 +160,14 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			}
 			is ReduxEventMessaging.ConversationMember -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
-					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
+					val index = list.indexOfFirst { it.localID == event.conversationID }
 					if(index == -1) return
 					list[index] = list[index].copy(
-						members = list[index].members.toMutableList().also { list ->
+						members = list[index].members.toMutableList().also { memberList ->
 							if(event.isJoin) {
-								list.add(event.member)
+								memberList.add(event.member)
 							} else {
-								list.removeAll { it.address == event.member.address }
+								memberList.removeAll { it.address == event.member.address }
 							}
 						}
 					)
@@ -174,27 +175,27 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			}
 			is ReduxEventMessaging.ConversationMute -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
-					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
+					val index = list.indexOfFirst { it.localID == event.conversationID }
 					if(index == -1) return
 					list[index] = list[index].copy(isMuted = event.isMuted)
 				})
 			}
 			is ReduxEventMessaging.ConversationArchive -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
-					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
+					val index = list.indexOfFirst { it.localID == event.conversationID }
 					if(index == -1) return
 					list[index] = list[index].copy(isArchived = event.isArchived)
 				})
 			}
 			is ReduxEventMessaging.ConversationDelete -> {
-				conversations = Result.success(conversationList.filter { it.localID != event.conversationInfo.localID })
+				conversations = Result.success(conversationList.filter { it.localID != event.conversationID })
 			}
 			is ReduxEventMessaging.ConversationServiceHandlerDelete -> {
 				conversations = Result.success(conversationList.filter { it.serviceHandler != event.serviceHandler })
 			}
 			is ReduxEventMessaging.ConversationTitle -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
-					val index = list.indexOfFirst { it.localID == event.conversationInfo.localID }
+					val index = list.indexOfFirst { it.localID == event.conversationID }
 					if(index == -1) return
 					list[index] = list[index].copy(title = event.title)
 				})
@@ -202,7 +203,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			is ReduxEventMessaging.ConversationDraftMessageUpdate -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					//Find the conversation
-					val conversation = list.firstOrNull { it.localID == event.conversationInfo.localID } ?: return@also
+					val conversation = list.firstOrNull { it.localID == event.conversationID } ?: return@also
 					
 					//Update and re-sort the conversation
 					list.remove(conversation)
@@ -219,7 +220,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			is ReduxEventMessaging.ConversationDraftFileUpdate -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					//Find the conversation
-					val conversation = list.firstOrNull { it.localID == event.conversationInfo.localID } ?: return@also
+					val conversation = list.firstOrNull { it.localID == event.conversationID } ?: return@also
 					
 					//Update and re-sort the conversation
 					list.remove(conversation)
@@ -242,7 +243,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			is ReduxEventMessaging.ConversationDraftFileClear -> {
 				conversations = Result.success(conversationList.toMutableList().also { list ->
 					//Find the conversation
-					val conversation = list.firstOrNull { it.localID == event.conversationInfo.localID } ?: return@also
+					val conversation = list.firstOrNull { it.localID == event.conversationID } ?: return@also
 					
 					//Update and re-sort the conversation
 					list.remove(conversation)
@@ -269,7 +270,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		val conversations = conversations?.getOrNull() ?: return
 		
 		//Search for unread conversations
-		val unreadConversations = conversations.filter { it.unreadMessageCount > 0 }
+		val unreadConversations = conversations.filter { it.unreadMessageCount > 0 }.map { it.localID }
 		
 		//Mark the conversations as read
 		GlobalScope.launch {

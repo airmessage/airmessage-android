@@ -359,7 +359,7 @@ class MessagingViewModel(
 			}
 			is ReduxEventMessaging.ConversationMember -> {
 				//Ignore if the event is not relevant to this conversation
-				if(event.conversationInfo.localID != conversationID) return
+				if(event.conversationID != conversationID) return
 				
 				//Ignore if the conversation isn't loaded
 				val loadedConversation = conversation ?: return
@@ -377,7 +377,7 @@ class MessagingViewModel(
 			}
 			is ReduxEventMessaging.ConversationTitle -> {
 				//Ignore if the event is not relevant to this conversation
-				if(event.conversationInfo.localID != conversationID) return
+				if(event.conversationID != conversationID) return
 				
 				//Ignore if the conversation isn't loaded
 				val loadedConversation = conversation ?: return
@@ -489,7 +489,7 @@ class MessagingViewModel(
 		
 		//Remove the file from memory
 		queuedFiles.remove(queuedFile)
-		ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileUpdate(conversation, queuedFile.toFileDraft(), false, updateTime))
+		ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileUpdate(conversation.localID, queuedFile.toFileDraft(), false, updateTime))
 		
 		//Remove the file from disk
 		@OptIn(DelicateCoroutinesApi::class)
@@ -550,7 +550,7 @@ class MessagingViewModel(
 				DatabaseManager.getInstance().updateConversationDraftMessage(conversation.localID, null, -1)
 			}
 			
-			ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation))
+			ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation.localID))
 		}
 		
 		//Clear input
@@ -564,7 +564,7 @@ class MessagingViewModel(
 		if(conversation.isArchived) {
 			GlobalScope.launch {
 				ConversationActionTask.archiveConversations(
-					setOf(conversation),
+					setOf(conversation.localID),
 					false
 				).await()
 			}
@@ -699,7 +699,7 @@ class MessagingViewModel(
 		
 		GlobalScope.launch {
 			val text = inputText.ifBlank { null }
-			ConversationActionTask.setConversationDraft(conversation, text, System.currentTimeMillis()).await()
+			ConversationActionTask.setConversationDraft(conversation.localID, text, System.currentTimeMillis()).await()
 		}
 	}
 	

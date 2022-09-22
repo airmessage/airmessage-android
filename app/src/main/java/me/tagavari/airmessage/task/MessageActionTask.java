@@ -71,7 +71,7 @@ public class MessageActionTask {
 		return Completable.fromAction(() -> DatabaseManager.getInstance().updateMessageErrorCode(message.getLocalID(), errorCode, errorDetail))
 				.subscribeOn(Schedulers.single()).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
 			//Notify the emitter
-			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageError(conversationInfo, message, errorCode, errorDetail));
+			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageError(conversationInfo.getLocalID(), message, errorCode, errorDetail));
 		});
 	}
 	
@@ -86,7 +86,7 @@ public class MessageActionTask {
 					DatabaseManager.getInstance().deleteMessage(context, message.getLocalID());
 				}).observeOn(AndroidSchedulers.mainThread()).doOnNext(message -> {
 					//Notify the emitter
-					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageDelete(conversationInfo, message));
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.MessageDelete(conversationInfo.getLocalID(), message));
 				}).ignoreElements();
 	}
 	

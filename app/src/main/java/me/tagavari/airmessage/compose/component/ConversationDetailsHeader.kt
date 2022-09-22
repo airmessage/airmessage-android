@@ -123,7 +123,7 @@ fun ConversationDetailsHeader(
 						//Update the title
 						@OptIn(DelicateCoroutinesApi::class)
 						GlobalScope.launch {
-							ConversationActionTask.setConversationTitle(conversation, title).await()
+							ConversationActionTask.setConversationTitle(conversation.localID, title).await()
 						}
 					}
 				) {

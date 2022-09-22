@@ -74,10 +74,10 @@ public class MessageUpdateTask {
 								
 								if(groupActionInfo.getActionType() == GroupAction.join) {
 									DatabaseManager.getInstance().addConversationMember(conversationInfo.getLocalID(), groupActionInfo.getOther(), otherMember.getColor());
-									events.add(new ReduxEventMessaging.ConversationMember(conversationInfo, otherMember, true));
+									events.add(new ReduxEventMessaging.ConversationMember(conversationInfo.getLocalID(), otherMember, true));
 								} else if(groupActionInfo.getActionType() == GroupAction.leave) {
 									DatabaseManager.getInstance().removeConversationMember(conversationInfo.getLocalID(), groupActionInfo.getOther());
-									events.add(new ReduxEventMessaging.ConversationMember(conversationInfo, otherMember, false));
+									events.add(new ReduxEventMessaging.ConversationMember(conversationInfo.getLocalID(), otherMember, false));
 								}
 							}
 						} else if(targetItem.getItemType() == ConversationItemType.chatRename) {
@@ -87,7 +87,7 @@ public class MessageUpdateTask {
 							DatabaseManager.getInstance().updateConversationTitle(conversationInfo.getLocalID(), title);
 							
 							//Adding the event
-							events.add(new ReduxEventMessaging.ConversationTitle(conversationInfo, title));
+							events.add(new ReduxEventMessaging.ConversationTitle(conversationInfo.getLocalID(), title));
 						}
 					}
 					

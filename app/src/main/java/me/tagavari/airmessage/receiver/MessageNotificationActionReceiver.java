@@ -105,7 +105,7 @@ public class MessageNotificationActionReceiver extends BroadcastReceiver {
 						NotificationManager notificationManager = context.getSystemService(NotificationManager.class);
 						Notification existingNotification = NotificationHelper.getNotification(notificationManager, NotificationHelper.notificationTagMessage, (int) conversationInfo.getLocalID());
 						if(existingNotification != null) notificationManager.notify(NotificationHelper.notificationTagMessage, (int) conversationInfo.getLocalID(), existingNotification);
-					}).andThen(ConversationActionTask.unreadConversations(Collections.singleton(conversationInfo), 0)); //Marking the conversation as read
+					}).andThen(ConversationActionTask.unreadConversations(Collections.singleton(conversationInfo.getLocalID()), 0)); //Marking the conversation as read
 				}).doOnError((error) -> Log.w(TAG, "Failed to send message from notification", error)).onErrorComplete().subscribe();
 	}
 	
@@ -166,7 +166,7 @@ public class MessageNotificationActionReceiver extends BroadcastReceiver {
 	private void markConversationRead(Context context, long conversationID) {
 		//Updating the conversation
 		Single.create((SingleEmitter<ConversationInfo> emitter) -> emitter.onSuccess(DatabaseManager.getInstance().fetchConversationInfo(context, conversationID)))
-				.subscribeOn(Schedulers.single()).flatMapCompletable(conversation -> ConversationActionTask.unreadConversations(Collections.singleton(conversation), 0)).subscribe();
+				.subscribeOn(Schedulers.single()).flatMapCompletable(conversation -> ConversationActionTask.unreadConversations(Collections.singleton(conversation.getLocalID()), 0)).subscribe();
 	}
 	
 	/**

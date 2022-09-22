@@ -30,11 +30,17 @@ class ReduxReceiverShortcut(private val context: Context) {
 					event.newConversations.keys.sortedWith(ConversationHelper.conversationComparator)
 				)
 			}
-			is ReduxEventMessaging.ReduxConversationAction -> {
-				ShortcutHelper.updateShortcut(context, event.conversationInfo)
-			}
 			is ReduxEventMessaging.ConversationDelete -> {
-				ShortcutHelper.disableShortcuts(context, listOf(event.conversationInfo.localID))
+				ShortcutHelper.disableShortcuts(context, listOf(event.conversationID))
+			}
+			is ReduxEventMessaging.ReduxConversationAction -> {
+				val conversation = withContext(Dispatchers.IO) {
+					DatabaseManager.getInstance().fetchConversationInfo(context, event.conversationID)
+				}
+				
+				if(conversation != null) {
+					ShortcutHelper.updateShortcut(context, conversation)
+				}
 			}
 			is ReduxEventMessaging.ConversationServiceHandlerDelete -> {
 				ShortcutHelper.disableShortcuts(context, event.deletedIDs)

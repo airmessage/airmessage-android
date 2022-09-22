@@ -13,11 +13,11 @@ typealias MessageStateEnum = me.tagavari.airmessage.enums.MessageState
 //An event to represent updates to messages and conversations
 sealed class ReduxEventMessaging {
 	//An abstract class for an action performed on a conversation
-	abstract class ReduxConversationAction(val conversationInfo: ConversationInfo) : ReduxEventMessaging()
+	abstract class ReduxConversationAction(val conversationID: Long) : ReduxEventMessaging()
 	
 	//An abstract class for an action performed on a message
-	abstract class ReduxMessageAction(conversationInfo: ConversationInfo, val messageInfo: MessageInfo) :
-		ReduxConversationAction(conversationInfo)
+	abstract class ReduxMessageAction(conversationID: Long, val messageInfo: MessageInfo) :
+		ReduxConversationAction(conversationID)
 	
 	//When new conversation items are received
 	class Message(
@@ -34,15 +34,15 @@ sealed class ReduxEventMessaging {
 	
 	//When a message's error changes
 	class MessageError(
-		conversationInfo: ConversationInfo,
+		conversationID: Long,
 		messageInfo: MessageInfo,
 		@param:MessageSendErrorCode @get:MessageSendErrorCode val errorCode: Int,
 		val errorDetails: String?
-	) : ReduxMessageAction(conversationInfo, messageInfo)
+	) : ReduxMessageAction(conversationID, messageInfo)
 	
 	//When a message is deleted
-	class MessageDelete(conversationInfo: ConversationInfo, messageInfo: MessageInfo) :
-		ReduxMessageAction(conversationInfo, messageInfo)
+	class MessageDelete(conversationID: Long, messageInfo: MessageInfo) :
+		ReduxMessageAction(conversationID, messageInfo)
 	
 	//When an attachment's file is updated
 	class AttachmentFile(val messageID: Long, val attachmentID: Long, val file: File?, val downloadName: String?, val downloadType: String?) : ReduxEventMessaging()
@@ -76,23 +76,23 @@ sealed class ReduxEventMessaging {
 	class Sync(val serverInstallationID: String, val serverName: String) : ReduxEventMessaging()
 	
 	//When a conversation's unread count changes
-	class ConversationUnread(conversationInfo: ConversationInfo, val unreadCount: Int) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationUnread(conversationID: Long, val unreadCount: Int) :
+		ReduxConversationAction(conversationID)
 	
 	//When a conversation member joins or leaves
-	class ConversationMember(conversationInfo: ConversationInfo, val member: MemberInfo, val isJoin: Boolean) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationMember(conversationID: Long, val member: MemberInfo, val isJoin: Boolean) :
+		ReduxConversationAction(conversationID)
 	
 	//When a conversation is muted or unmuted
-	class ConversationMute(conversationInfo: ConversationInfo, val isMuted: Boolean) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationMute(conversationID: Long, val isMuted: Boolean) :
+		ReduxConversationAction(conversationID)
 	
 	//When a conversation is archived or unarchived
-	class ConversationArchive(conversationInfo: ConversationInfo, val isArchived: Boolean) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationArchive(conversationID: Long, val isArchived: Boolean) :
+		ReduxConversationAction(conversationID)
 	
 	//When a conversation is deleted
-	class ConversationDelete(conversationInfo: ConversationInfo) : ReduxConversationAction(conversationInfo)
+	class ConversationDelete(conversationID: Long) : ReduxConversationAction(conversationID)
 	
 	/**
 	 * When a bunch of conversations are deleted by service handler
@@ -105,32 +105,32 @@ sealed class ReduxEventMessaging {
 	) : ReduxEventMessaging()
 	
 	//When a conversation's title changes
-	class ConversationTitle(conversationInfo: ConversationInfo, val title: String?) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationTitle(conversationID: Long, val title: String?) :
+		ReduxConversationAction(conversationID)
 	
 	//When a conversation's draft message changes
 	class ConversationDraftMessageUpdate(
-		conversationInfo: ConversationInfo,
+		conversationID: Long,
 		val draftMessage: String?,
 		val updateTime: Long
-	) : ReduxConversationAction(conversationInfo)
+	) : ReduxConversationAction(conversationID)
 	
 	//When a conversation's draft files changes
 	class ConversationDraftFileUpdate(
-		conversationInfo: ConversationInfo,
+		conversationID: Long,
 		val draft: FileDraft,
 		val isAddition: Boolean,
 		val updateTime: Long
-	) : ReduxConversationAction(conversationInfo)
+	) : ReduxConversationAction(conversationID)
 	
 	//When a conversation's draft files are cleared
-	class ConversationDraftFileClear(conversationInfo: ConversationInfo) : ReduxConversationAction(conversationInfo)
+	class ConversationDraftFileClear(conversationID: Long) : ReduxConversationAction(conversationID)
 	
 	//When a conversation's color changes
-	class ConversationColor(conversationInfo: ConversationInfo, val color: Int) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationColor(conversationID: Long, val color: Int) :
+		ReduxConversationAction(conversationID)
 	
 	//When a conversation member's color changes
-	class ConversationMemberColor(conversationInfo: ConversationInfo, val memberInfo: MemberInfo, val color: Int) :
-		ReduxConversationAction(conversationInfo)
+	class ConversationMemberColor(conversationID: Long, val memberInfo: MemberInfo, val color: Int) :
+		ReduxConversationAction(conversationID)
 }

@@ -98,7 +98,6 @@ fun ConversationPane(
 			.collect {
 				if(connectionManager == null) return@collect
 				
-				println("Is connected, is pending sync: ${connectionManager.isPendingSync}")
 				if(connectionManager.isPendingSync) {
 					val deleteMessages = viewModel.conversations?.getOrNull()?.any { it.serviceHandler == ServiceHandler.appleBridge } ?: true
 					currentOnShowSyncDialog(connectionManager, deleteMessages)
@@ -293,11 +292,13 @@ private fun ConversationPaneLayout(
 							)
 						}
 						
+						val conversationIDs = conversationsSequence.map { it.localID }.toSet()
+						
 						@OptIn(DelicateCoroutinesApi::class)
 						fun setConversationsMuted(muted: Boolean) {
 							GlobalScope.launch {
 								ConversationActionTask.muteConversations(
-									conversationsSequence.toSet(),
+									conversationIDs,
 									muted
 								).await()
 							}
@@ -305,11 +306,9 @@ private fun ConversationPaneLayout(
 						
 						@OptIn(DelicateCoroutinesApi::class)
 						fun setConversationsArchived(archived: Boolean) {
-							val targetConversations = conversationsSequence.toSet()
-							
 							GlobalScope.launch {
 								ConversationActionTask.archiveConversations(
-									targetConversations,
+									conversationIDs,
 									archived
 								).await()
 							}
@@ -319,8 +318,8 @@ private fun ConversationPaneLayout(
 									message = context.resources.getQuantityString(
 										if(archived) R.plurals.message_conversationarchived
 										else R.plurals.message_conversationunarchived,
-										targetConversations.size,
-										targetConversations.size
+										conversationIDs.size,
+										conversationIDs.size
 									),
 									actionLabel = context.resources.getString(R.string.action_undo),
 									duration = SnackbarDuration.Short
@@ -330,7 +329,7 @@ private fun ConversationPaneLayout(
 									GlobalScope.launch {
 										//Reverse the action
 										ConversationActionTask.muteConversations(
-											targetConversations,
+											conversationIDs,
 											!archived
 										).await()
 									}
