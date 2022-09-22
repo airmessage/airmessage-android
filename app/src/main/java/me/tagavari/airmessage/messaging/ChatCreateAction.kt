@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.messaging
 
 import android.content.Context
+import androidx.compose.ui.text.AnnotatedString
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationItemType
 
@@ -12,9 +13,8 @@ class ChatCreateAction(localID: Long, date: Long) : ConversationAction(localID, 
 	override val itemType: Int
 		get() = ConversationItemType.chatCreate
 	
-	override fun getMessageDirect(context: Context): String {
-		return context.resources.getString(R.string.message_conversationcreated)
-	}
+	override fun getMessageDirect(context: Context) =
+		context.resources.getString(R.string.message_conversationcreated)
 	
 	override val supportsBuildMessageAsync = false
 	

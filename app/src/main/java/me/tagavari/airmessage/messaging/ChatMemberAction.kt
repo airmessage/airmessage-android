@@ -1,12 +1,11 @@
 package me.tagavari.airmessage.messaging
 
 import android.content.Context
-import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.rx3.awaitSingleOrNull
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationItemType
 import me.tagavari.airmessage.enums.GroupAction
 import me.tagavari.airmessage.helper.ContactHelper
-import java.util.*
 
 class ChatMemberAction(
 	localID: Long,
@@ -19,17 +18,16 @@ class ChatMemberAction(
 ) : ConversationAction(localID, serverID, guid, date) {
 	override val itemType = ConversationItemType.member
 	
-	override fun getMessageDirect(context: Context): String {
-		return buildMessage(context, agent, other, actionType)
-	}
+	override fun getMessageDirect(context: Context) =
+		buildMessage(context, agent, other, actionType)
 	
 	override val supportsBuildMessageAsync = true
 	
-	override fun buildMessageAsync(context: Context): Single<String> {
-		return Single.zip(
-			ContactHelper.getUserDisplayName(context, agent).map { Optional.of(it) }.defaultIfEmpty(Optional.empty()),
-			ContactHelper.getUserDisplayName(context, other).map { Optional.of(it) }.defaultIfEmpty(Optional.empty())
-		) { agentName, otherName -> buildMessage(context, agentName.orElse(null), otherName.orElse(null), actionType) }
+	override suspend fun buildMessageAsync(context: Context): String {
+		val agentName = ContactHelper.getUserDisplayName(context, agent).awaitSingleOrNull()
+		val otherName = ContactHelper.getUserDisplayName(context, other).awaitSingleOrNull()
+		
+		return buildMessage(context, agentName, otherName, actionType)
 	}
 	
 	override fun clone(): ChatMemberAction {

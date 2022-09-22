@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.messaging
 
 import android.content.Context
-import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.enums.MessageViewType
 
 /**
@@ -29,7 +28,7 @@ abstract class ConversationAction(localID: Long, serverID: Long, guid: String?, 
 	 *
 	 * If this function does not [.supportsBuildMessageAsync], do not call this method.
 	 */
-	open fun buildMessageAsync(context: Context): Single<String> {
+	open suspend fun buildMessageAsync(context: Context): String {
 		throw UnsupportedOperationException("This action does not support asynchronous message creation")
 	}
 }

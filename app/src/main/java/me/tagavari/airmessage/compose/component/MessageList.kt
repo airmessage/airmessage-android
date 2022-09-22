@@ -15,10 +15,7 @@ import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.compose.state.MessageLazyLoadState
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.constants.TimingConstants
-import me.tagavari.airmessage.messaging.AMConversationAction
-import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.ConversationItem
-import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.util.MessageFlow
 import me.tagavari.airmessage.util.MessageFlowSpacing
 
@@ -138,6 +135,10 @@ fun MessageList(
 					showStatus = messageStateIndices.contains(adjustedIndex),
 					spacing = spacing,
 					scrollProgress = scrollProgress
+				)
+			} else if(conversationItem is ConversationAction) {
+				ConversationActionListEntry(
+					conversationAction = conversationItem
 				)
 			}
 		}

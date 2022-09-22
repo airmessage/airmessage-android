@@ -1,11 +1,10 @@
 package me.tagavari.airmessage.messaging
 
 import android.content.Context
-import io.reactivex.rxjava3.core.Single
+import kotlinx.coroutines.rx3.awaitSingleOrNull
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.enums.ConversationItemType
-import me.tagavari.airmessage.helper.ContactHelper.getUserDisplayName
-import java.util.*
+import me.tagavari.airmessage.helper.ContactHelper
 
 class ChatRenameAction(
 	localID: Long,
@@ -17,17 +16,14 @@ class ChatRenameAction(
 ) : ConversationAction(localID, serverID, guid, date) {
 	override val itemType = ConversationItemType.chatRename
 	
-	override fun getMessageDirect(context: Context): String {
-		return buildMessage(context, agent, title)
-	}
+	override fun getMessageDirect(context: Context) =
+		buildMessage(context, agent, title)
 	
 	override val supportsBuildMessageAsync = true
 	
-	override fun buildMessageAsync(context: Context): Single<String> {
-		return getUserDisplayName(context, agent)
-			.map { Optional.of(it) }
-			.defaultIfEmpty(Optional.empty())
-			.map { userName: Optional<String> -> buildMessage(context, userName.orElse(null), title) }
+	override suspend fun buildMessageAsync(context: Context): String {
+		val agentName = ContactHelper.getUserDisplayName(context, agent).awaitSingleOrNull()
+		return buildMessage(context, agentName, title)
 	}
 	
 	override fun clone(): ChatRenameAction {
