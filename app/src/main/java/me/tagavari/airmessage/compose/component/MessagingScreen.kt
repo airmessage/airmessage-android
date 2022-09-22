@@ -52,6 +52,7 @@ import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlobUri
+import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.helper.AttachmentStorageHelper
 import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.helper.LanguageHelper
@@ -149,6 +150,15 @@ fun MessagingScreen(
 	DisposableEffect(Unit) {
 		onDispose {
 			viewModel.saveInputDraft()
+		}
+	}
+	
+	//Register this as a foreground conversation
+	DisposableEffect(conversationID) {
+		ForegroundState.loadedConversationIDs.add(conversationID)
+		
+		onDispose {
+			ForegroundState.loadedConversationIDs.remove(conversationID)
 		}
 	}
 	

@@ -142,17 +142,11 @@ class MessagingViewModel(
 		viewModelScope.launch {
 			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(this@MessagingViewModel::applyMessageUpdate)
 		}
-		
-		//Register this as a foreground conversation
-		ForegroundState.loadedConversationIDs.add(conversationID)
 	}
 	
 	override fun onCleared() {
 		//Release sounds
 		soundPool.release()
-		
-		//Unregister this as a foreground conversation
-		ForegroundState.loadedConversationIDs.remove(conversationID)
 	}
 	
 	/**
