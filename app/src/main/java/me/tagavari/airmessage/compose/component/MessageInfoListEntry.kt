@@ -25,7 +25,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 import kotlinx.coroutines.rx3.await
@@ -71,6 +76,7 @@ fun MessageInfoListEntry(
 		anchorBottom = false
 	),
 	selectionState: MessageSelectionState = MessageSelectionState(),
+	showTimeDivider: Boolean = false,
 	showStatus: Boolean = false,
 	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
 	scrollProgress: Float = 0F
@@ -103,6 +109,18 @@ fun MessageInfoListEntry(
 			.fillMaxWidth()
 			.padding(top = spacing.padding)
 	) {
+		//Time divider
+		if(showTimeDivider) {
+			Text(
+				modifier = Modifier
+					.align(Alignment.CenterHorizontally)
+					.padding(horizontal = 16.dp, vertical = 8.dp),
+				text = LanguageHelper.generateTimeDividerString(context, messageInfo.date),
+				style = MaterialTheme.typography.bodySmall,
+				color = MaterialTheme.colorScheme.onSurfaceVariant
+			)
+		}
+		
 		//Sender name
 		if(displaySender) {
 			(userInfo?.contactName ?: messageInfo.sender)?.let { sender ->
@@ -316,15 +334,20 @@ fun MessageInfoListEntry(
 						modifier = Modifier.padding(horizontal = 2.dp),
 						text = when(messageInfo.messageState) {
 							MessageState.delivered ->
-								stringResource(R.string.state_delivered)
-							MessageState.read ->
-								stringResource(R.string.state_read) +
-										LanguageHelper.bulletSeparator +
-										LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead)
+								AnnotatedString(stringResource(R.string.state_delivered))
+							MessageState.read -> buildAnnotatedString {
+								withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+									append(stringResource(R.string.state_read))
+								}
+								
+								append(' ')
+								
+								append(LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead))
+							}
 							else ->
-								stringResource(R.string.part_unknown)
+								AnnotatedString(stringResource(R.string.part_unknown))
 						},
-						style = MaterialTheme.typography.bodyMedium,
+						style = MaterialTheme.typography.bodySmall,
 						color = MaterialTheme.colorScheme.onSurfaceVariant
 					)
 				}

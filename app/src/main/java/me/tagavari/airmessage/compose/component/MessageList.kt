@@ -123,7 +123,10 @@ fun MessageList(
 					flow.anchorTop -> MessageFlowSpacing.RELATED
 					else -> MessageFlowSpacing.GAP
 				}
-				
+				val showTimeDivider = remember(conversationItem, messageAbove) {
+					messageAbove is MessageInfo
+							&& (conversationItem.date - messageAbove.date) > TimingConstants.conversationSessionTimeMillis
+				}
 				val scrollProgress = scrollOffsetMap[conversationItem.localID] ?: 1F
 				
 				MessageInfoListEntry(
@@ -131,6 +134,7 @@ fun MessageList(
 					messageInfo = conversationItem,
 					flow = flow,
 					selectionState = messageSelectionState,
+					showTimeDivider = showTimeDivider,
 					showStatus = messageStateIndices.contains(adjustedIndex),
 					spacing = spacing,
 					scrollProgress = scrollProgress

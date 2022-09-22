@@ -5,6 +5,11 @@ import android.content.res.Resources
 import android.os.Build
 import android.text.format.DateFormat
 import androidx.annotation.StringRes
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.withStyle
 import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
@@ -159,7 +164,7 @@ object LanguageHelper {
 	 * @return A human-readable string for this update time
 	 */
 	@JvmStatic
-	fun generateTimeDividerString(context: Context, date: Long): String {
+	fun generateTimeDividerString(context: Context, date: Long): AnnotatedString {
 		//Getting the calendars
 		val sentCal = Calendar.getInstance()
 		sentCal.timeInMillis = date
@@ -170,40 +175,47 @@ object LanguageHelper {
 		
 		//If the message was sent today
 		if(sentCal[Calendar.ERA] == nowCal[Calendar.ERA] &&
-				sentCal[Calendar.YEAR] == nowCal[Calendar.YEAR] &&
-				nowCal[Calendar.DAY_OF_YEAR] == sentCal[Calendar.DAY_OF_YEAR]) {
-					return DateFormat.getTimeFormat(context).format(sentDate)
+			sentCal[Calendar.YEAR] == nowCal[Calendar.YEAR] &&
+			nowCal[Calendar.DAY_OF_YEAR] == sentCal[Calendar.DAY_OF_YEAR]) {
+			return AnnotatedString(DateFormat.getTimeFormat(context).format(sentDate))
 		}
 		
-		//If the message was sent yesterday
-		if((nowCal.clone() as Calendar)
+		return buildAnnotatedString {
+			withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+				//If the message was sent yesterday
+				if((nowCal.clone() as Calendar)
 						//Today (now) -> Yesterday
 						.apply { add(Calendar.DAY_OF_YEAR, -1) }
 						.let { compareCal ->
 							sentCal[Calendar.ERA] == compareCal[Calendar.ERA] &&
 									sentCal[Calendar.YEAR] == compareCal[Calendar.YEAR] &&
 									sentCal[Calendar.DAY_OF_YEAR] == compareCal[Calendar.DAY_OF_YEAR] }) {
-			return context.resources.getString(R.string.time_yesterday) + bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate)
-		}
-		
-		//If the days are within the same 7-day period (Sunday)
-		if((nowCal.clone() as Calendar)
+					append(context.resources.getString(R.string.time_yesterday))
+				}
+				//If the days are within the same 7-day period (Sunday)
+				else if((nowCal.clone() as Calendar)
 						//Today (now) -> One week ago
 						.apply { add(Calendar.DAY_OF_YEAR, -7) }
 						.let { compareCal -> compareCalendarDates(sentCal, compareCal) > 0 }) {
-			return DateFormat.format("EEEE", sentCal).toString() + bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate)
-		}
-		
-		//If the days are within the same year period (Sunday, Dec 9)
-		if((nowCal.clone() as Calendar)
+					append(DateFormat.format("EEEE", sentCal).toString())
+				}
+				//If the days are within the same year period (Sunday, Dec 9)
+				else if((nowCal.clone() as Calendar)
 						//Today (now) -> One year ago
 						.apply { add(Calendar.YEAR, -1) }
 						.let { compareCal -> compareCalendarDates(sentCal, compareCal) > 0 }) {
-			return DateFormat.format(context.getString(R.string.dateformat_withinyear_weekday), sentCal).toString() + bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate)
+					append(DateFormat.format(context.getString(R.string.dateformat_withinyear_weekday), sentCal).toString())
+				}
+				//Different years (Dec 9, 2018)
+				else {
+					append(DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal).toString())
+				}
+			}
+			
+			append(' ')
+			
+			append(DateFormat.getTimeFormat(context).format(sentDate))
 		}
-		
-		//Different years (Dec 9, 2018)
-		return DateFormat.format(context.getString(R.string.dateformat_outsideyear), sentCal).toString() + bulletSeparator + DateFormat.getTimeFormat(context).format(sentDate)
 	}
 	
 	/**
