@@ -2,7 +2,6 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
-import androidx.compose.runtime.Immutable
 import androidx.core.os.ParcelCompat
 import java.io.File
 
@@ -50,6 +49,34 @@ class AttachmentInfo : MessageComponent {
 		this.shouldAutoDownload = shouldAutoDownload
 	}
 	
+	constructor(
+		localID: Long,
+		guid: String?,
+		stickers: MutableList<StickerInfo>,
+		tapbacks: MutableList<TapbackInfo>,
+		previewState: Int,
+		previewID: Long,
+		fileName: String?,
+		contentType: String?,
+		fileSize: Long,
+		sort: Long = -1,
+		file: File? = null,
+		fileChecksum: ByteArray? = null,
+		downloadFileName: String? = null,
+		downloadFileType: String? = null,
+		shouldAutoDownload: Boolean
+	) : super(localID, guid, stickers, tapbacks, previewState, previewID) {
+		this.fileName = fileName
+		this.contentType = contentType
+		this.fileSize = fileSize
+		this.sort = sort
+		this.file = file
+		this.fileChecksum = fileChecksum
+		this.downloadFileName = downloadFileName
+		this.downloadFileType = downloadFileType
+		this.shouldAutoDownload = shouldAutoDownload
+	}
+	
 	override fun copy(
 		localID: Long,
 		guid: String?,
@@ -60,6 +87,10 @@ class AttachmentInfo : MessageComponent {
 	) = AttachmentInfo(
 		localID,
 		guid,
+		stickers,
+		tapbacks,
+		previewState,
+		previewID,
 		fileName,
 		contentType,
 		fileSize,
