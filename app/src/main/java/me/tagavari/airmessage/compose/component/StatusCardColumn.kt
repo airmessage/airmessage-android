@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.widget.Toast
@@ -9,7 +11,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Contacts
 import androidx.compose.material.icons.outlined.NotificationImportant
+import androidx.compose.material.icons.outlined.Update
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,14 +26,20 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.activity.ServerUpdate
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
+import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
+import me.tagavari.airmessage.util.ServerUpdateData
 import java.io.IOException
 import java.security.GeneralSecurityException
+import java.util.*
+import kotlin.jvm.optionals.getOrNull
 
+@OptIn(ExperimentalStdlibApi::class)
 @Composable
 fun StatusCardColumn() {
 	val context = LocalContext.current
@@ -61,7 +71,7 @@ fun StatusCardColumn() {
 			}
 			val requestPermissionLauncher = rememberLauncherForActivityResult(
 				ActivityResultContracts.RequestPermission()
-			) { notificationPermissionGranted = it}
+			) { notificationPermissionGranted = it }
 			
 			if(!notificationPermissionGranted) {
 				AlertCard(
@@ -79,6 +89,68 @@ fun StatusCardColumn() {
 							requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
 						}) {
 							Text(stringResource(R.string.action_enable))
+						}
+					}
+				)
+			}
+		}
+		
+		//Contacts
+		run {
+			var contactsPermissionGranted by remember {
+				mutableStateOf(
+					ContextCompat.checkSelfPermission(context, android.Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED
+				)
+			}
+			val requestPermissionLauncher = rememberLauncherForActivityResult(
+				ActivityResultContracts.RequestPermission()
+			) { contactsPermissionGranted = it }
+			
+			if(!contactsPermissionGranted) {
+				AlertCard(
+					icon = {
+						Icon(
+							imageVector = Icons.Outlined.Contacts,
+							contentDescription = null
+						)
+					},
+					message = {
+						Text(stringResource(R.string.message_permissiondetails_contacts_listing))
+					},
+					button = {
+						TextButton(onClick = {
+							requestPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+						}) {
+							Text(stringResource(R.string.action_enable))
+						}
+					}
+				)
+			}
+		}
+		
+		//Server update
+		run {
+			val serverUpdateData = ReduxEmitterNetwork.remoteUpdateSubject.subscribeAsState(Optional.empty())
+				.value.getOrNull()
+			
+			if(serverUpdateData != null) {
+				val connectionManager = LocalConnectionManager.current
+				
+				AlertCard(
+					icon = {
+						Icon(
+							imageVector = Icons.Outlined.Update,
+							contentDescription = null
+						)
+					},
+					message = {
+						Text(stringResource(R.string.message_serverupdate))
+					},
+					button = {
+						TextButton(onClick = {
+							startUpdateActivity(serverUpdateData, context, connectionManager)
+						}) {
+							Text(stringResource(R.string.action_details))
 						}
 					}
 				)
@@ -109,4 +181,24 @@ fun StatusCardColumn() {
 			}
 		)
 	}
+}
+
+private fun startUpdateActivity(
+	updateData: ServerUpdateData,
+	context: Context,
+	connectionManager: ConnectionManager?
+) {
+	val intent = Intent(context, ServerUpdate::class.java)
+	intent.putExtra(ServerUpdate.PARAM_UPDATE, updateData)
+	if(connectionManager != null) {
+		intent.putExtra(
+			ServerUpdate.PARAM_SERVERVERSION,
+			connectionManager.serverSoftwareVersion
+		)
+		intent.putExtra(
+			ServerUpdate.PARAM_SERVERNAME,
+			connectionManager.serverDeviceName
+		)
+	}
+	context.startActivity(intent)
 }
