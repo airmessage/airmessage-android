@@ -108,6 +108,7 @@
 	<string name="screen_manualconfiguration">Manual configuration</string>
 	<string name="screen_licenses">Open source licenses</string>
 	<string name="screen_serverupdate">Server update</string>
+	<string name="screen_helpandfeedback">Help and feedback</string>
 	
 	<string name="title_conversation_name">Group name</string>
 	<string name="title_conversation_members">People in this conversation</string>
