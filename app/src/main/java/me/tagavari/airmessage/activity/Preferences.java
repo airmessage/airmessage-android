@@ -79,6 +79,7 @@ import me.tagavari.airmessage.data.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.flavor.FirebaseAuthBridge;
+import me.tagavari.airmessage.helper.ConfigurationHelper;
 import me.tagavari.airmessage.helper.LanguageHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.NotificationHelper;
@@ -384,7 +385,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					.setNegativeButton(android.R.string.cancel, null)
 					//Setting the positive button
 					.setPositiveButton(R.string.action_switchtoaccount, (DialogInterface dialogInterface, int which) -> {
-						resetConfiguration();
+						ConfigurationHelper.INSTANCE.resetConfiguration(requireContext());
 					})
 					//Creating the dialog
 					.create();
@@ -404,7 +405,7 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 					.setNegativeButton(android.R.string.cancel, null)
 					//Setting the positive button
 					.setPositiveButton(R.string.action_signout, (DialogInterface dialogInterface, int which) -> {
-						resetConfiguration();
+						ConfigurationHelper.INSTANCE.resetConfiguration(requireContext());
 					})
 					//Creating the dialog
 					.create();
@@ -999,18 +1000,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			
 			//Returning the ringtone title
 			return title;
-		}
-		
-		private void resetConfiguration() {
-			//Setting the server as not confirmed
-			SharedPreferencesManager.setConnectionConfigured(getContext(), false);
-			
-			//Stopping the connection service
-			getContext().stopService(new Intent(getContext(), ConnectionService.class));
-			
-			//Opening the onboarding activity
-			startActivity(new Intent(getActivity(), OnboardingCompose.class)
-				.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK | Intent.FLAG_ACTIVITY_NO_ANIMATION));
 		}
 		
 		private void requestSyncMessages(MassRetrievalParams params) {
