@@ -76,7 +76,7 @@
 		<activity
 			android:exported="false"
 			android:name=".activity.ServerUpdate"
-			android:theme="@style/DayNight.NoActionBar.Protected"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:parentActivityName=".compose.ConversationsCompose"
 			android:label="@string/screen_serverupdate">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />

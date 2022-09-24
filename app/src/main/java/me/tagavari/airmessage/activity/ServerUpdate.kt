@@ -19,6 +19,7 @@ import android.widget.Button
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.viewModels
+import androidx.core.view.*
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -31,6 +32,7 @@ import me.tagavari.airmessage.compositeplugin.PluginRXDisposable
 import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException
 import me.tagavari.airmessage.constants.VersionConstants
 import me.tagavari.airmessage.helper.VersionHelper
+import me.tagavari.airmessage.helper.getParcelableExtraCompat
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
 import me.tagavari.airmessage.redux.ReduxEventRemoteUpdate
@@ -71,7 +73,7 @@ class ServerUpdate : AppCompatCompositeActivity() {
         setContentView(R.layout.activity_serverupdate)
 
         //Getting the parameter data
-        updateData = intent.getParcelableExtra(PARAM_UPDATE)!!
+        updateData = intent.getParcelableExtraCompat(PARAM_UPDATE)!!
         serverVersion = intent.getStringExtra(PARAM_SERVERVERSION) ?: resources.getString(R.string.part_unknown)
         serverName = intent.getStringExtra(PARAM_SERVERNAME) ?: resources.getString(R.string.part_unknown)
 
@@ -82,7 +84,22 @@ class ServerUpdate : AppCompatCompositeActivity() {
         labelNotice = findViewById(R.id.label_notice)
         buttonInstall = findViewById(R.id.button_install)
         viewGroupProgress = findViewById(R.id.group_progress)
-
+    
+        //Rendering edge-to-edge
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        
+        //Handling UI insets
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.scrollview)) { view, windowInsets ->
+            val insets = windowInsets.getInsets(WindowInsetsCompat.Type.systemBars())
+            view.updatePadding(
+                left = insets.left,
+                bottom = insets.bottom,
+                right = insets.right
+            )
+            
+            WindowInsetsCompat.CONSUMED
+        }
+    
         //Configuring the toolbar
         setSupportActionBar(findViewById(R.id.toolbar))
         supportActionBar!!.setDisplayHomeAsUpEnabled(true)
