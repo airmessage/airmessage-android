@@ -29,6 +29,7 @@ fun MessageList(
 	messageStateIndices: Collection<Int>,
 	messageSelectionState: MessageSelectionState,
 	scrollState: LazyListState = rememberLazyListState(),
+	onDownloadAttachment: (MessageInfo, AttachmentInfo) -> Unit,
 	onLoadPastMessages: () -> Unit,
 	lazyLoadState: MessageLazyLoadState,
 	actionSuggestions: List<AMConversationAction>,
@@ -134,7 +135,8 @@ fun MessageList(
 					showTimeDivider = showTimeDivider,
 					showStatus = messageStateIndices.contains(adjustedIndex),
 					spacing = spacing,
-					scrollProgress = scrollProgress
+					scrollProgress = scrollProgress,
+					onDownloadAttachment = onDownloadAttachment
 				)
 			} else if(conversationItem is ConversationAction) {
 				ConversationActionListEntry(

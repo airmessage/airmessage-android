@@ -53,6 +53,7 @@ import me.tagavari.airmessage.helper.FileHelper.compareMimeTypes
 import me.tagavari.airmessage.helper.IntentHelper
 import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.helper.MessageSendHelperCoroutine
+import me.tagavari.airmessage.messaging.AttachmentInfo
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload
@@ -80,7 +81,8 @@ fun MessageInfoListEntry(
 	showTimeDivider: Boolean = false,
 	showStatus: Boolean = false,
 	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
-	scrollProgress: Float = 0F
+	scrollProgress: Float = 0F,
+	onDownloadAttachment: (MessageInfo, AttachmentInfo) -> Unit
 ) {
 	val context = LocalContext.current
 	
@@ -226,24 +228,16 @@ fun MessageInfoListEntry(
 								}
 							}
 							
-							val connectionManager = LocalConnectionManager.current
+							val isDownloading = downloadState?.value?.isSuccess == true
+							
 							MessageBubbleDownload(
 								flow = attachmentFlow,
 								name = attachment.fileName,
 								bytesTotal = bytesTotal,
 								bytesDownloaded = bytesDownloaded,
-								isDownloading = downloadState != null,
-								onClick = {
-									//Make sure we have a connection manager
-									if(connectionManager == null) {
-										Toast.makeText(context, R.string.message_connectionerror, Toast.LENGTH_SHORT).show()
-										return@MessageBubbleDownload
-									}
-									
-									//Download the attachment
-									NetworkState.downloadAttachment(connectionManager, messageInfo, attachment)
-								},
-								enabled = downloadState == null,
+								isDownloading = isDownloading,
+								onClick = { onDownloadAttachment(messageInfo, attachment) },
+								enabled = !isDownloading,
 								onSetSelected = { selected ->
 									selectionState.setSelectionAttachmentID(attachment.localID, selected)
 								}

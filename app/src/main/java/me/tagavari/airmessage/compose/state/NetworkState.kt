@@ -17,13 +17,16 @@ object NetworkState {
 	/**
 	 * Downloads an attachment, and adds it to the request map
 	 */
-	fun downloadAttachment(connectionManager: ConnectionManager, message: MessageInfo, attachment: AttachmentInfo): Boolean {
-		val attachmentGUID = attachment.guid ?: return false
-		val attachmentName = attachment.fileName ?: return false
+	fun downloadAttachment(connectionManager: ConnectionManager, message: MessageInfo, attachment: AttachmentInfo): StateFlow<Result<ReduxEventAttachmentDownload?>?>? {
+		val attachmentGUID = attachment.guid ?: return null
+		val attachmentName = attachment.fileName ?: return null
 		
-		//Ignore if there's already a matching request
-		if(attachmentRequests.containsKey(attachment.localID)) {
-			return true
+		//Ignore if there's already a matching request, and the request
+		//isn't failed
+		attachmentRequests[attachment.localID]?.let { existingRequest ->
+			if(existingRequest.value?.isFailure != true) {
+				return null
+			}
 		}
 		
 		//Make the request
@@ -45,6 +48,6 @@ object NetworkState {
 		//Record the request
 		attachmentRequests[attachment.localID] = responseFlow
 		
-		return true
+		return responseFlow
 	}
 }

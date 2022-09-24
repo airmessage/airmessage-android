@@ -360,6 +360,9 @@ fun MessagingScreen(
 					messages = viewModel.messages,
 					messageStateIndices = viewModel.messageStateIndices,
 					scrollState = scrollState,
+					onDownloadAttachment = { messageInfo, attachmentInfo ->
+						viewModel.downloadAttachment(connectionManager, messageInfo, attachmentInfo)
+					},
 					messageSelectionState = viewModel.messageSelectionState,
 					onLoadPastMessages = { viewModel.loadPastMessages() },
 					lazyLoadState = viewModel.lazyLoadState,

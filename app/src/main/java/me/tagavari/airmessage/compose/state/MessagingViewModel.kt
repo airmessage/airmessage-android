@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.state
 
 import android.app.Application
 import android.util.Log
+import android.widget.Toast
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModel
@@ -14,22 +15,20 @@ import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.connection.ConnectionManager
+import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlob
 import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.data.DatabaseManager
-import me.tagavari.airmessage.data.ForegroundState
+import me.tagavari.airmessage.enums.AttachmentReqErrorCode
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.*
-import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.ConversationItem
-import me.tagavari.airmessage.messaging.MessageInfo
-import me.tagavari.airmessage.messaging.QueuedFile
+import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileClear
@@ -39,6 +38,7 @@ import me.tagavari.airmessage.task.DraftActionTaskCoroutine
 import me.tagavari.airmessage.util.LatLngInfo
 import me.tagavari.airmessage.util.ReplaceInsertResult
 import java.io.IOException
+
 
 class MessagingViewModel(
 	application: Application,
@@ -694,6 +694,46 @@ class MessagingViewModel(
 		GlobalScope.launch {
 			val text = inputText.ifBlank { null }
 			ConversationActionTask.setConversationDraft(conversation.localID, text, System.currentTimeMillis()).await()
+		}
+	}
+	
+	/**
+	 * Downloads an attachment file, and subscribes to updates
+	 */
+	fun downloadAttachment(connectionManager: ConnectionManager?, message: MessageInfo, attachment: AttachmentInfo) {
+		//Make sure we have a connection manager
+		if(connectionManager == null) {
+			Toast.makeText(getApplication(), R.string.message_connectionerror, Toast.LENGTH_SHORT).show()
+			return
+		}
+		
+		//Download the attachment
+		val downloadFlow = NetworkState.downloadAttachment(connectionManager, message, attachment)
+			?: return
+		viewModelScope.launch {
+			//Wait for a failure
+			val error = downloadFlow.map { it?.exceptionOrNull() }.filterNotNull().firstOrNull() ?: return@launch
+			
+			//Show a toast
+			val toastText = if(error is AMRequestException) {
+				when(error.errorCode) {
+					AttachmentReqErrorCode.localTimeout -> getApplication<Application>().getString(R.string.message_attachmentreqerror_timeout)
+					AttachmentReqErrorCode.localBadResponse -> getApplication<Application>().getString(R.string.message_attachmentreqerror_badresponse)
+					AttachmentReqErrorCode.localReferencesLost -> getApplication<Application>().getString(R.string.message_attachmentreqerror_referenceslost)
+					AttachmentReqErrorCode.localIO -> getApplication<Application>().getString(R.string.message_attachmentreqerror_io)
+					AttachmentReqErrorCode.serverNotFound -> getApplication<Application>().getString(R.string.message_attachmentreqerror_server_notfound)
+					AttachmentReqErrorCode.serverNotSaved -> getApplication<Application>().getString(R.string.message_attachmentreqerror_server_notsaved)
+					AttachmentReqErrorCode.serverUnreadable -> getApplication<Application>().getString(R.string.message_attachmentreqerror_server_unreadable)
+					AttachmentReqErrorCode.serverIO -> getApplication<Application>().getString(R.string.message_attachmentreqerror_server_io)
+					else -> error.message
+				}
+			} else {
+				error.message
+			}
+			
+			if(toastText != null) {
+				Toast.makeText(getApplication(), getApplication<Application>().getString(R.string.message_attachmentreqerror_desc, toastText), Toast.LENGTH_SHORT).show();
+			}
 		}
 	}
 	
