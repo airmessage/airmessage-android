@@ -5,7 +5,6 @@ import android.os.Build
 import android.text.SpannableString
 import android.text.util.Linkify
 import android.view.textclassifier.TextClassificationManager
-import android.view.textclassifier.TextClassifier
 import android.view.textclassifier.TextLinks
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext

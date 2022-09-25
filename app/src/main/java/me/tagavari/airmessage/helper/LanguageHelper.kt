@@ -421,14 +421,14 @@ object LanguageHelper {
 	 * @throws URISyntaxException If the URL could not be correctly parsed
 	 */
 	@JvmStatic
-	fun getDomainName(url: String?): String? {
+	fun getDomainName(url: String): String? {
 		try {
 			val uri = URI(url)
 			val domain = uri.host ?: return null
 			return if(domain.startsWith("www.")) domain.substring(4) else domain
 		} catch(exception: URISyntaxException) {
-			exception.printStackTrace();
-			return null;
+			exception.printStackTrace()
+			return null
 		}
 	}
 	

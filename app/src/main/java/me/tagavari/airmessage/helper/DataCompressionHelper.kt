@@ -80,11 +80,11 @@ object DataCompressionHelper {
 	 * @return The bitmap in an upright position
 	 */
 	@Throws(IOException::class)
-	private fun loadCorrectBitmap(file: ReadableBlob): Bitmap? {
+	private fun loadCorrectBitmap(file: ReadableBlob): Bitmap {
 		//Get the bitmap from the image
 		val bitmap = file.openInputStream().use { fileStream ->
 			BitmapFactory.decodeStream(fileStream)
-		} ?: return null
+		} ?: throw IOException("Failed to load bitmap")
 		
 		//Read the image's EXIF data
 		val exif = try {
@@ -113,9 +113,7 @@ object DataCompressionHelper {
 	 * @param maxBytes The upper limit to compress to
 	 */
 	@Throws(IOException::class)
-	private fun compressBitmapLossy(bitmap: Bitmap?, compressFormat: CompressFormat, maxBytes: Int): ByteArray? {
-		if(bitmap == null) return null
-		
+	private fun compressBitmapLossy(bitmap: Bitmap, compressFormat: CompressFormat, maxBytes: Int): ByteArray {
 		//Getting the bitmap dimensions
 		val width = bitmap.width
 		val height = bitmap.height
@@ -149,9 +147,7 @@ object DataCompressionHelper {
 	 * @return The bytes of the compressed bitmap
 	 */
 	@Throws(IOException::class)
-	private fun compressBitmapLossless(bitmap: Bitmap?, maxBytes: Int): ByteArray? {
-		if(bitmap == null) return null
-		
+	private fun compressBitmapLossless(bitmap: Bitmap, maxBytes: Int): ByteArray {
 		//Getting the bitmap dimensions
 		val width = bitmap.width
 		val height = bitmap.height
@@ -248,9 +244,13 @@ object DataCompressionHelper {
 		}.transcode().get()
 	}
 	
-	//JAVA HELPERS
-	@JvmStatic
-	fun compressBitmap(bytes: ByteArray, mimeType: String, maxBytes: Int): ByteArray? {
+	/**
+	 * Compresses a bitmap in memory
+	 * @param bytes The bytes of the image file to compress
+	 * @param mimeType The image format to convert to
+	 * @param maxBytes The maximum size to output
+	 */
+	fun compressBitmap(bytes: ByteArray, mimeType: String, maxBytes: Int): ByteArray {
 		val blob = ReadableBlobByteArray(bytes, type = mimeType)
 		return when(mimeType) {
 			"image/jpeg", "image/webp" -> compressBitmapLossy(

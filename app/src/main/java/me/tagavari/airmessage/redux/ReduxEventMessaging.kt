@@ -133,4 +133,7 @@ sealed class ReduxEventMessaging {
 	//When a conversation member's color changes
 	class ConversationMemberColor(conversationID: Long, val memberInfo: MemberInfo, val color: Int) :
 		ReduxConversationAction(conversationID)
+	
+	//When a message's preview updates
+	class PreviewUpdate(val messageID: Long, val preview: Result<MessagePreviewInfo>) : ReduxEventMessaging()
 }

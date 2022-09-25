@@ -1346,6 +1346,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		}
 	}
 	
+	@Nullable
 	public MessagePreviewInfo loadMessagePreview(long previewID) {
 		//Querying for the preview
 		SQLiteDatabase database = getReadableDatabase();
@@ -3582,7 +3583,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 		database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 	}
 	
-	public void setMessagePreviewData(long messageID, MessagePreviewInfo messagePreview) {
+	public long setMessagePreviewData(long messageID, MessagePreviewInfo messagePreview) {
 		//Getting the database
 		SQLiteDatabase database = getWritableDatabase();
 		
@@ -3609,6 +3610,9 @@ public class DatabaseManager extends SQLiteOpenHelper {
 			
 			database.update(Contract.MessageEntry.TABLE_NAME, contentValues, Contract.MessageEntry._ID + " = ?", new String[]{Long.toString(messageID)});
 		}
+		
+		//Returning the preview ID
+		return previewID;
 	}
 	
 	private static String getConversationSortByDesc(ConversationInfo conversationInfo) {

@@ -23,6 +23,7 @@ import me.tagavari.airmessage.container.ReadableBlob
 import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.enums.AttachmentReqErrorCode
+import me.tagavari.airmessage.enums.MessagePreviewState
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
@@ -380,6 +381,35 @@ class MessagingViewModel(
 				conversation = loadedConversation.copy(
 					title = event.title
 				)
+			}
+			is ReduxEventMessaging.PreviewUpdate -> {
+				//Find the message
+				val messageIndex = messages.indexOfFirst { it.localID == event.messageID }
+				if(messageIndex == -1) return
+				val messageInfo = messages[messageIndex] as? MessageInfo ?: return
+				
+				//Find the component
+				val component = messageInfo.messageTextComponent ?: return
+				
+				//Set the preview
+				val updatedComponent = event.preview.fold(
+					onSuccess = { preview ->
+						component.copy(
+							previewState = MessagePreviewState.available,
+							previewID = preview.localID
+						)
+					},
+					onFailure = {
+						component.copy(
+							previewState = MessagePreviewState.unavailable
+						)
+					}
+				)
+				
+				//Update the message
+				messages[messageIndex] = messageInfo.clone().apply {
+					messageTextComponent = updatedComponent
+				}
 			}
 			else -> {}
 		}
