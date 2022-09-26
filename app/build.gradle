@@ -149,9 +149,9 @@ dependencies {
 	androidTestImplementation "androidx.test:rules:1.4.0"
 
 	//Android extensions
-	implementation "androidx.core:core-ktx:1.8.0"
-	implementation "androidx.activity:activity-ktx:1.5.1"
-	implementation "androidx.fragment:fragment-ktx:1.5.2"
+	implementation "androidx.core:core-ktx:1.9.0"
+	implementation "androidx.activity:activity-ktx:1.6.0"
+	implementation "androidx.fragment:fragment-ktx:1.5.3"
 	implementation "androidx.preference:preference-ktx:1.2.0"
 	implementation "androidx.browser:browser:1.4.0"
 	implementation "androidx.exifinterface:exifinterface:1.3.3"
@@ -162,9 +162,9 @@ dependencies {
 	implementation "com.google.android.material:material:1.6.1"
 	
 	//Jetpack Compose
-	implementation "androidx.activity:activity-compose:1.5.1"
-	implementation "androidx.compose.material3:material3:1.0.0-beta02"
-	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-beta02"
+	implementation "androidx.activity:activity-compose:1.6.0"
+	implementation "androidx.compose.material3:material3:1.0.0-beta03"
+	implementation "androidx.compose.material3:material3-window-size-class:1.0.0-beta03"
 	implementation "androidx.compose.material:material-icons-core:1.2.1"
 	implementation "androidx.compose.material:material-icons-extended:1.2.1"
 	implementation "androidx.compose.animation:animation:1.2.1"
@@ -175,13 +175,13 @@ dependencies {
 	androidTestImplementation "androidx.compose.ui:ui-test-junit4:1.2.1"
 	
 	//Accompanist
-	implementation "com.google.accompanist:accompanist-flowlayout:0.26.3-beta"
+	implementation "com.google.accompanist:accompanist-flowlayout:0.26.4-beta"
 	
 	//Material motion
 	implementation "io.github.fornewid:material-motion-compose-core:0.10.2-beta"
 	
 	//Coil
-	implementation "io.coil-kt:coil-bom:2.2.0"
+	implementation "io.coil-kt:coil-bom:2.2.1"
 	implementation "io.coil-kt:coil"
 	implementation "io.coil-kt:coil-compose"
 	implementation "io.coil-kt:coil-gif"
@@ -224,9 +224,7 @@ dependencies {
 	fullImplementation "com.google.mlkit:smart-reply:17.0.2"
 
 	//Firebase
-	fullImplementation platform("com.google.firebase:firebase-bom:30.2.0")
-
-	fullImplementation "com.google.firebase:firebase-core"
+	fullImplementation platform("com.google.firebase:firebase-bom:30.5.0")
 	fullImplementation "com.google.firebase:firebase-messaging-ktx"
 	fullImplementation "com.google.firebase:firebase-auth-ktx"
 	fullImplementation "com.google.firebase:firebase-analytics-ktx"
@@ -235,7 +233,7 @@ dependencies {
 	//GMS
 	fullImplementation "com.google.android.gms:play-services-maps:18.1.0"
 	fullImplementation "com.google.android.gms:play-services-location:20.0.0"
-	fullImplementation "com.google.android.gms:play-services-auth:20.2.0"
+	fullImplementation "com.google.android.gms:play-services-auth:20.3.0"
 	fullImplementation "com.google.maps.android:maps-ktx:3.2.1"
 	
 	//CameraX
