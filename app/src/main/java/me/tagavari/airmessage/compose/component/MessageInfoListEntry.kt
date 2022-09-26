@@ -40,6 +40,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
+import me.tagavari.airmessage.compose.remember.deriveMessagePreview
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.compose.state.NetworkState
 import me.tagavari.airmessage.constants.MIMEConstants
@@ -170,6 +171,7 @@ fun MessageInfoListEntry(
 						contentAlignment = if(isOutgoing) Alignment.TopEnd else Alignment.TopStart
 					) {
 						val isSelected = selectionState.selectedMessageIDs.contains(textComponent.localID)
+						val messagePreview by deriveMessagePreview(messageInfo)
 						
 						MessageBubbleWrapper(
 							isOutgoing = isOutgoing,
@@ -177,21 +179,36 @@ fun MessageInfoListEntry(
 							tapbacks = textComponent.tapbacks,
 							hideStickers = isSelected
 						) {
-							MessageBubbleText(
-								flow = MessagePartFlow(
-									isOutgoing = isOutgoing,
-									isSelected = isSelected,
-									anchorTop = flow.anchorTop,
-									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
-									tintRatio = scrollProgress
-								),
-								subject = textComponent.subject,
-								text = textComponent.text,
-								sendStyle = messageInfo.sendStyle,
-								onSetSelected = { selected ->
-									selectionState.setSelectionMessageID(textComponent.localID, selected)
-								}
+							val textFlow = MessagePartFlow(
+								isOutgoing = isOutgoing,
+								isSelected = isSelected,
+								anchorTop = flow.anchorTop,
+								anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
+								tintRatio = scrollProgress
 							)
+							val onSetSelected = { selected: Boolean ->
+								selectionState.setSelectionMessageID(textComponent.localID, selected)
+							}
+							
+							messagePreview?.also { messagePreview ->
+								MessageBubbleLinkPreview(
+									flow = textFlow,
+									preview = messagePreview,
+									onClick = {
+										//Open the URL
+										IntentHelper.launchUri(context, Uri.parse(messagePreview.target))
+									},
+									onSetSelected = onSetSelected
+								)
+							} ?: run {
+								MessageBubbleText(
+									flow = textFlow,
+									subject = textComponent.subject,
+									text = textComponent.text,
+									sendStyle = messageInfo.sendStyle,
+									onSetSelected = onSetSelected
+								)
+							}
 						}
 					}
 				}
