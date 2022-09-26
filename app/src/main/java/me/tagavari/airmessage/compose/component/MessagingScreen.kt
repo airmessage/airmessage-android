@@ -7,6 +7,7 @@ import android.content.ClipboardManager
 import android.content.Intent
 import android.os.Build
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
@@ -162,6 +163,16 @@ fun MessagingScreen(
 		}
 	}
 	
+	val isActionMode = !viewModel.messageSelectionState.isEmpty()
+	fun stopActionMode() {
+		viewModel.messageSelectionState.clear()
+	}
+	
+	//Stop action mode when back is pressed
+	BackHandler(isActionMode) {
+		stopActionMode()
+	}
+	
 	CompositionLocalProvider(
 		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
@@ -171,7 +182,7 @@ fun MessagingScreen(
 				else Modifier
 			)
 		) {
-			Crossfade(targetState = !viewModel.messageSelectionState.isEmpty()) { isActionMode ->
+			Crossfade(targetState = isActionMode) { isActionMode ->
 				if(!isActionMode) {
 					CenterAlignedTopAppBar(
 						title = {
@@ -235,9 +246,6 @@ fun MessagingScreen(
 					)
 				} else {
 					val selectionCount = viewModel.messageSelectionState.size
-					fun stopActionMode() {
-						viewModel.messageSelectionState.clear()
-					}
 					
 					TopAppBar(
 						title = {
