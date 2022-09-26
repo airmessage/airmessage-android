@@ -263,9 +263,7 @@ dependencies {
 	implementation "com.google.android.exoplayer:exoplayer-ui:2.18.1"
 	
 	implementation "me.saket.unfurl:unfurl:1.7.0"
-
-	implementation "org.jsoup:jsoup:1.15.2"
-
+	
 	implementation project(":android-smsmms")
 
 	implementation "org.java-websocket:Java-WebSocket:1.5.3"
