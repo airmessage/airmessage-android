@@ -49,28 +49,26 @@ fun MessageBubbleAudio(
 		LocalMinimumTouchTargetEnforcement provides false
 	) {
 		Surface(
-			modifier = Modifier
-				.width(200.dp)
-				.combinedClickable(
-					onClick = {
-						if(flow.isSelected) {
-							onSetSelected(false)
-						} else {
-							onTogglePlayback()
-						}
-					},
-					onLongClick = {
-						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-						onSetSelected(!flow.isSelected)
-					}
-				),
 			color = colors.background,
 			shape = flow.bubbleShape,
 			contentColor = colors.foreground
 		) {
 			Row(
 				modifier = Modifier
-					.height(40.dp),
+					.combinedClickable(
+						onClick = {
+							if(flow.isSelected) {
+								onSetSelected(false)
+							} else {
+								onTogglePlayback()
+							}
+						},
+						onLongClick = {
+							haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+							onSetSelected(!flow.isSelected)
+						}
+					)
+					.size(width = 200.dp, height = 40.dp),
 				verticalAlignment = Alignment.CenterVertically
 			) {
 				val isPlaying =

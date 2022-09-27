@@ -46,26 +46,26 @@ fun MessageBubbleLocation(
 	val colors = flow.colors
 	
 	Surface(
-		modifier = Modifier
-			.combinedClickable(
-				onClick = {
-					if(flow.isSelected) {
-						onSetSelected(false)
-					} else {
-						locationData?.let { onClick(it) }
-					}
-				},
-				onLongClick = {
-					haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-					onSetSelected(!flow.isSelected)
-				}
-			),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground
 	) {
 		Column(
-			modifier = Modifier.width(256.dp),
+			modifier = Modifier
+				.combinedClickable(
+					onClick = {
+						if(flow.isSelected) {
+							onSetSelected(false)
+						} else {
+							locationData?.let { onClick(it) }
+						}
+					},
+					onLongClick = {
+						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+						onSetSelected(!flow.isSelected)
+					}
+				)
+				.width(256.dp),
 		) {
 			Box(modifier = Modifier.height(200.dp)) {
 				locationData?.let { data ->

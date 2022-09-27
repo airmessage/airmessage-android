@@ -39,27 +39,27 @@ fun MessageBubbleDownload(
 	val colors = flow.colors
 	
 	Surface(
-		modifier = Modifier
-			.widthIn(max = 256.dp)
-			.combinedClickable(
-				onClick = {
-					if(flow.isSelected) {
-						onSetSelected(false)
-					} else if(enabled) {
-						onClick()
-					}
-				},
-				onLongClick = {
-					haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-					onSetSelected(!flow.isSelected)
-				}
-			),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground
 	) {
 		Column(
-			modifier = Modifier.padding(all = 12.dp),
+			modifier = Modifier
+				.combinedClickable(
+					onClick = {
+						if(flow.isSelected) {
+							onSetSelected(false)
+						} else if(enabled) {
+							onClick()
+						}
+					},
+					onLongClick = {
+						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+						onSetSelected(!flow.isSelected)
+					}
+				)
+				.widthIn(max = 256.dp)
+				.padding(all = 12.dp),
 			horizontalAlignment = Alignment.CenterHorizontally
 		) {
 			Box(

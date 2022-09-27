@@ -54,27 +54,27 @@ fun MessageBubbleContact(
 	}
 	
 	Surface(
-		modifier = Modifier
-			.width(200.dp)
-			.combinedClickable(
-				onClick = {
-					if(flow.isSelected) {
-						onSetSelected(false)
-					} else {
-						onClick()
-					}
-				},
-				onLongClick = {
-					haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-					onSetSelected(!flow.isSelected)
-				}
-			),
 		color = colors.background,
 		shape = flow.bubbleShape,
 		contentColor = colors.foreground
 	) {
 		Row(
-			modifier = Modifier.padding(16.dp),
+			modifier = Modifier
+				.combinedClickable(
+					onClick = {
+						if(flow.isSelected) {
+							onSetSelected(false)
+						} else {
+							onClick()
+						}
+					},
+					onLongClick = {
+						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+						onSetSelected(!flow.isSelected)
+					}
+				)
+				.width(200.dp)
+				.padding(16.dp),
 			verticalAlignment = Alignment.CenterVertically
 		) {
 			Text(
