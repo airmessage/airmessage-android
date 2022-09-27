@@ -246,7 +246,7 @@ fun MessageInfoListEntry(
 								}
 							}
 							
-							val isDownloading = downloadState?.value?.isSuccess == true
+							val isDownloading = downloadState != null && downloadState.value?.isFailure != true
 							
 							MessageBubbleDownload(
 								flow = attachmentFlow,
