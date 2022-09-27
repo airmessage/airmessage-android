@@ -86,6 +86,24 @@ fun MessageInputBar(
 			val context = LocalContext.current
 			val scope = rememberCoroutineScope()
 			
+			fun discardRecording() {
+				//Stop recording if we're recording
+				if(audioCapture.isRecording.value) {
+					audioCapture.stopRecording(true)
+				}
+				
+				//Delete the recording file
+				recordingData?.file?.also { file ->
+					playbackManager.stop(key = file)
+					file.deleteFile()
+				}
+				recordingData = null
+			}
+			DisposableEffect(Unit) {
+				//Clean up recording files when we go out of scope
+				onDispose(::discardRecording)
+			}
+			
 			if(!showRecording) {
 				MessageInputBarText(
 					messageText = messageText,
@@ -157,19 +175,7 @@ fun MessageInputBar(
 					}
 					recordingData = null
 				},
-				onDiscard = {
-					//Stop recording if we're recording
-					if(audioCapture.isRecording.value) {
-						audioCapture.stopRecording(true)
-					}
-					
-					//Delete the recording file
-					recordingData?.file?.also { file ->
-						playbackManager.stop(key = file)
-						file.deleteFile()
-					}
-					recordingData = null
-				},
+				onDiscard = ::discardRecording,
 				onTogglePlay = {
 					val file = recordingData?.file ?: return@MessageInputBarAudio
 					val state: AudioPlaybackState = playbackState
