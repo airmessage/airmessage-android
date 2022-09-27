@@ -52,7 +52,6 @@ fun MessageBubbleAudio(
 					onClick = {
 						if(flow.isSelected) {
 							onSetSelected(false)
-							
 						} else {
 							onTogglePlayback()
 						}
