@@ -51,7 +51,7 @@ private data class Positioning(
 fun MessageInputBarAudio(
 	duration: Int,
 	isRecording: Boolean,
-	onStopRecording: () -> Unit,
+	onStopRecording: (sendImmediately: Boolean) -> Unit,
 	onSend: () -> Unit,
 	onDiscard: () -> Unit,
 	onTogglePlay: () -> Unit,
@@ -94,11 +94,7 @@ fun MessageInputBarAudio(
 					}
 					MotionEvent.ACTION_UP -> {
 						//Stop recording when the user releases
-						onStopRecording()
-						
-						if(currentSendButtonHover) {
-							onSend()
-						}
+						onStopRecording(currentSendButtonHover)
 						
 						true
 					}

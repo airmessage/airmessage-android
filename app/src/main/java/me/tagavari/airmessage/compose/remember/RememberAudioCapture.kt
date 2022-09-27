@@ -25,7 +25,7 @@ import kotlin.time.Duration.Companion.seconds
 private const val TAG = "rememberAudioCapture"
 
 @Composable
-fun rememberAudioCapture(): AudioCaptureState {
+fun <Payload> rememberAudioCapture(): AudioCaptureState<Payload> {
 	if(LocalInspectionMode.current) {
 		return NoOpAudioCaptureState()
 	}
@@ -58,7 +58,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 	}
 	
 	val isRecording = remember { mutableStateOf(false) }
-	val recordingStopFlow = remember { MutableSharedFlow<Boolean>(
+	val recordingStopFlow = remember { MutableSharedFlow<AudioRecordResult<Payload>>(
 		extraBufferCapacity = 1,
 		onBufferOverflow = BufferOverflow.DROP_OLDEST
 	) }
@@ -77,7 +77,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		}
 	}
 	
-	fun stopAudioRecording(forceDiscard: Boolean = false): Boolean {
+	fun stopAudioRecording(forceDiscard: Boolean = false, payload: Payload? = null): Boolean {
 		if(BuildConfig.DEBUG && !isRecording.value) {
 			Log.w(TAG, "Tried to stop audio recording while no recording is present!")
 		}
@@ -97,11 +97,14 @@ fun rememberAudioCapture(): AudioCaptureState {
 		
 		//Return the result
 		val recordingOK = cleanStop && !forceDiscard
-		recordingStopFlow.tryEmit(recordingOK)
+		recordingStopFlow.tryEmit(AudioRecordResult(
+			success = recordingOK,
+			payload = payload
+		))
 		return recordingOK
 	}
 	
-	suspend fun startAudioRecording(targetFile: File): Boolean {
+	suspend fun startAudioRecording(targetFile: File): AudioRecordResult<Payload> {
 		if(BuildConfig.DEBUG && isRecording.value) {
 			Log.w(TAG, "Tried to start audio recording while already recording!")
 		}
@@ -109,7 +112,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 		//Check if we have permission
 		if(!audioPermissionGranted) {
 			requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-			return false
+			return AudioRecordResult(false, null)
 		}
 		
 		//Configure the media recorder
@@ -143,7 +146,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 				}
 			} catch(exception: IOException) {
 				exception.printStackTrace()
-				return false
+				return AudioRecordResult(false, null)
 			}
 		}
 		
@@ -169,7 +172,7 @@ fun rememberAudioCapture(): AudioCaptureState {
 	)
 }
 
-abstract class AudioCaptureState {
+abstract class AudioCaptureState<Payload> {
 	abstract val mediaRecorder: MediaRecorder
 	abstract val isRecording: State<Boolean>
 	abstract val duration: State<Int>
@@ -179,7 +182,7 @@ abstract class AudioCaptureState {
 	 * @param file The file to write to
 	 * @return Whether the recording succeeded or not
 	 */
-	abstract suspend fun startRecording(file: File): Boolean
+	abstract suspend fun startRecording(file: File): AudioRecordResult<Payload>
 	
 	/**
 	 * Stops audio recording. If recording was successful, a reference to the
@@ -187,26 +190,33 @@ abstract class AudioCaptureState {
 	 * @param forceDiscard Whether to deliberately fail this recording
 	 * @return Whether the recording succeeded or not
 	 */
-	abstract fun stopRecording(forceDiscard: Boolean = false): Boolean
+	abstract fun stopRecording(forceDiscard: Boolean = false, payload: Payload?): Boolean
 }
 
-private class AudioCaptureStateImpl(
+data class AudioRecordResult<Payload>(
+	val success: Boolean,
+	val payload: Payload?
+)
+
+private class AudioCaptureStateImpl<Payload>(
 	override val mediaRecorder: MediaRecorder,
 	override val isRecording: State<Boolean>,
 	override val duration: State<Int>,
-	private val startRecordingCallback: suspend (file: File) -> Boolean,
-	private val stopRecordingCallback: (forceDiscard: Boolean) -> Boolean
-) : AudioCaptureState() {
-	override suspend fun startRecording(file: File): Boolean = startRecordingCallback(file)
-	override fun stopRecording(forceDiscard: Boolean): Boolean = stopRecordingCallback(forceDiscard)
+	private val startRecordingCallback: suspend (file: File) -> AudioRecordResult<Payload>,
+	private val stopRecordingCallback: (forceDiscard: Boolean, payload: Payload?) -> Boolean
+) : AudioCaptureState<Payload>() {
+	override suspend fun startRecording(file: File) = startRecordingCallback(file)
+	override fun stopRecording(forceDiscard: Boolean, payload: Payload?) = stopRecordingCallback(forceDiscard, payload)
 }
 
-private class NoOpAudioCaptureState : AudioCaptureState() {
+private class NoOpAudioCaptureState<Payload> : AudioCaptureState<Payload>() {
 	override val mediaRecorder: MediaRecorder
 		get() = throw IllegalStateException()
 	override val isRecording: State<Boolean> = mutableStateOf(false)
 	override val duration: State<Int> = mutableStateOf(0)
 	
-	override suspend fun startRecording(file: File): Boolean = true
-	override fun stopRecording(forceDiscard: Boolean): Boolean = true
+	private val payloadFlow = MutableSharedFlow<Payload?>()
+	
+	override suspend fun startRecording(file: File) = AudioRecordResult(true, payloadFlow.first())
+	override fun stopRecording(forceDiscard: Boolean, payload: Payload?): Boolean = payloadFlow.tryEmit(payload)
 }

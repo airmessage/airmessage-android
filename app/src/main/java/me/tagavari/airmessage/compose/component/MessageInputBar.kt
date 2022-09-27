@@ -75,21 +75,37 @@ fun MessageInputBar(
 				.padding(8.dp)
 				.then(modifier)
 		) {
+			//Audio file data, set once the user has finished recording and the UI
+			//prompts the user with what to do with the file
 			var recordingData by remember { mutableStateOf<RecordingData?>(null) }
-			val audioCapture = rememberAudioCapture()
 			
+			//The audio capture session
+			val audioCapture = rememberAudioCapture<Boolean>()
+			
+			//Whether a recording session is in progress or a recording is being
+			//previewed before being sent
 			val showRecording = audioCapture.isRecording.value || recordingData != null
 			
+			//Audio playback state
 			val playbackManager = LocalAudioPlayback.current
 			val playbackState by playbackManager.stateForKey(key = recordingData?.file)
 			
 			val context = LocalContext.current
 			val scope = rememberCoroutineScope()
 			
+			fun sendRecording() {
+				//Send the file
+				recordingData?.file?.let { file ->
+					playbackManager.stop(key = file)
+					onSendFile(ReadableBlobLocalFile(file, deleteOnInvalidate = true))
+				}
+				recordingData = null
+			}
+			
 			fun discardRecording() {
 				//Stop recording if we're recording
 				if(audioCapture.isRecording.value) {
-					audioCapture.stopRecording(true)
+					audioCapture.stopRecording(forceDiscard = true, payload = false)
 				}
 				
 				//Delete the recording file
@@ -99,8 +115,9 @@ fun MessageInputBar(
 				}
 				recordingData = null
 			}
+			
+			//Clean up recording files when we go out of scope
 			DisposableEffect(Unit) {
-				//Clean up recording files when we go out of scope
 				onDispose(::discardRecording)
 			}
 			
@@ -127,10 +144,10 @@ fun MessageInputBar(
 								)
 							}
 							
-							val recordingOK = audioCapture.startRecording(targetFile)
+							val recordingResult = audioCapture.startRecording(targetFile)
 							
 							//If the recording failed, clean up the file
-							if(!recordingOK) {
+							if(!recordingResult.success) {
 								AttachmentStorageHelper.deleteContentFile(
 									AttachmentStorageHelper.dirNameDraftPrepare,
 									targetFile
@@ -138,19 +155,25 @@ fun MessageInputBar(
 								return@launch
 							}
 							
-							val recordingDuration = audioCapture.duration.value
-							
-							//Set the recording data
-							recordingData = RecordingData(
-								file = LocalFile(
-									file = targetFile,
-									fileName = targetFile.name,
-									fileType = ContentType.AUDIO_AMR,
-									fileSize = targetFile.length(),
-									directoryID = AttachmentStorageHelper.dirNameDraftPrepare
-								),
-								duration = recordingDuration
+							val localFile = LocalFile(
+								file = targetFile,
+								fileName = targetFile.name,
+								fileType = ContentType.AUDIO_AMR,
+								fileSize = targetFile.length(),
+								directoryID = AttachmentStorageHelper.dirNameDraftPrepare
 							)
+							
+							//The payload is whether we should send this recording immediately
+							if(recordingResult.payload == true) {
+								//Send the file right away
+								onSendFile(ReadableBlobLocalFile(localFile, deleteOnInvalidate = true))
+							} else {
+								//Set the recording data
+								recordingData = RecordingData(
+									file = localFile,
+									duration = audioCapture.duration.value
+								)
+							}
 						}
 					},
 					serviceHandler = serviceHandler,
@@ -162,25 +185,21 @@ fun MessageInputBar(
 			MessageInputBarAudio(
 				duration = audioCapture.duration.value,
 				isRecording = audioCapture.isRecording.value,
-				onStopRecording = {
-					if(audioCapture.isRecording.value) {
-						audioCapture.stopRecording()
-					}
+				onStopRecording = { sendImmediately ->
+					//Ignore if we're not recording
+					if(!audioCapture.isRecording.value) return@MessageInputBarAudio
+					
+					//Stop recording
+					audioCapture.stopRecording(forceDiscard = false, payload = sendImmediately)
 				},
-				onSend = {
-					//Send the file
-					recordingData?.file?.let { file ->
-						playbackManager.stop(key = file)
-						onSendFile(ReadableBlobLocalFile(file, deleteOnInvalidate = true))
-					}
-					recordingData = null
-				},
+				onSend = ::sendRecording,
 				onDiscard = ::discardRecording,
 				onTogglePlay = {
 					val file = recordingData?.file ?: return@MessageInputBarAudio
 					val state: AudioPlaybackState = playbackState
 					
 					scope.launch {
+						//Toggle playback if we're playing
 						if(state is AudioPlaybackState.Playing) {
 							if(state.playing) {
 								playbackManager.pause()
@@ -188,6 +207,7 @@ fun MessageInputBar(
 								playbackManager.resume()
 							}
 						} else {
+							//Start a new playback session
 							playbackManager.play(key = file, uri = Uri.fromFile(file.file))
 						}
 					}
