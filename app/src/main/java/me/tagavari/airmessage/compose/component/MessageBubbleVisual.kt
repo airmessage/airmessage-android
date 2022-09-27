@@ -18,10 +18,12 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
@@ -51,6 +53,8 @@ fun MessageBubbleVisual(
 	onSetSelected: (Boolean) -> Unit,
 	sendStyle: String?
 ) {
+	val haptic = LocalHapticFeedback.current
+	
 	val isInvisibleInk = sendStyle == SendStyleHelper.appleSendStyleBubbleInvisibleInk
 	val invisibleInkState = rememberInvisibleInkState(isInvisibleInk)
 	
@@ -89,6 +93,7 @@ fun MessageBubbleVisual(
 								}
 							},
 							onLongClick = {
+								haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 								onSetSelected(!flow.isSelected)
 							}
 						),

@@ -10,6 +10,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,6 +35,7 @@ fun MessageBubbleDownload(
 	enabled: Boolean = true,
 	onSetSelected: (Boolean) -> Unit
 ) {
+	val haptic = LocalHapticFeedback.current
 	val colors = flow.colors
 	
 	Surface(
@@ -47,6 +50,7 @@ fun MessageBubbleDownload(
 					}
 				},
 				onLongClick = {
+					haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 					onSetSelected(!flow.isSelected)
 				}
 			),

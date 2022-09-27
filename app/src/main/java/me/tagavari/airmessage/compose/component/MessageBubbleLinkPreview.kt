@@ -8,6 +8,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -27,6 +29,7 @@ fun MessageBubbleLinkPreview(
 	onClick: () -> Unit,
 	onSetSelected: (Boolean) -> Unit
 ) {
+	val haptic = LocalHapticFeedback.current
 	val colors = flow.colors
 	
 	Surface(
@@ -40,6 +43,7 @@ fun MessageBubbleLinkPreview(
 					}
 				},
 				onLongClick = {
+					haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 					onSetSelected(!flow.isSelected)
 				}
 			),

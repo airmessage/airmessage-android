@@ -9,6 +9,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -40,6 +42,7 @@ fun MessageBubbleAudio(
 	onTogglePlayback: () -> Unit,
 	onSetSelected: (Boolean) -> Unit
 ) {
+	val haptic = LocalHapticFeedback.current
 	val colors = flow.colors
 	
 	CompositionLocalProvider(
@@ -57,6 +60,7 @@ fun MessageBubbleAudio(
 						}
 					},
 					onLongClick = {
+						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 						onSetSelected(!flow.isSelected)
 					}
 				),

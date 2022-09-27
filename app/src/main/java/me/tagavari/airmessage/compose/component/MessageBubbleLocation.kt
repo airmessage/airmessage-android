@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.compose.component
 
-import android.net.Uri
 import android.text.format.DateFormat
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -13,7 +12,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
@@ -32,6 +33,7 @@ fun MessageBubbleLocation(
 	onClick: (LocationAttachmentData) -> Unit,
 	onSetSelected: (Boolean) -> Unit
 ) {
+	val haptic = LocalHapticFeedback.current
 	val context = LocalContext.current
 	val dateFormatted = remember(date) {
 		DateFormat.getDateFormat(context).format(date)
@@ -54,6 +56,7 @@ fun MessageBubbleLocation(
 					}
 				},
 				onLongClick = {
+					haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 					onSetSelected(!flow.isSelected)
 				}
 			),
