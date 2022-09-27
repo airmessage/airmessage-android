@@ -56,7 +56,8 @@ fun ConversationPane(
 	onShowSyncDialog: (connectionManager: ConnectionManager, deleteMessages: Boolean) -> Unit,
 	onSelectConversation: (Long) -> Unit,
 	onNavigateSettings: () -> Unit,
-	onNewConversation: () -> Unit
+	onNavigateHelp: () -> Unit,
+	onNewConversation: () -> Unit,
 ) {
 	val syncEvent by remember {
 		ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
@@ -114,6 +115,7 @@ fun ConversationPane(
 		onReloadConversations = {
 			viewModel.loadConversations()
 		},
+		onNavigateHelp = onNavigateHelp,
 		onNavigateSettings = onNavigateSettings,
 		onNewConversation = onNewConversation,
 		syncState = syncEvent.let { event ->
@@ -140,6 +142,7 @@ private fun ConversationPaneLayout(
 	onSelectConversation: (Long) -> Unit = {},
 	onReloadConversations: () -> Unit = {},
 	onNavigateSettings: () -> Unit = {},
+	onNavigateHelp: () -> Unit = {},
 	onNewConversation: () -> Unit = {},
 	syncState: ProgressState? = null,
 	hasUnreadConversations: Boolean = false,
@@ -215,6 +218,14 @@ private fun ConversationPaneLayout(
 								onClick = {
 									menuOpen = false
 									onNavigateSettings()
+								}
+							)
+							
+							DropdownMenuItem(
+								text = { Text(stringResource(id = R.string.screen_helpandfeedback)) },
+								onClick = {
+									menuOpen = false
+									onNavigateHelp()
 								}
 							)
 						}

@@ -31,6 +31,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
 	var detailPage by mutableStateOf<ConversationsDetailPage?>(null)
 	private val pendingReceivedContent = MutableStateFlow<PendingConversationReceivedContent?>(null)
+	var showHelpPane by mutableStateOf(false)
 	
 	init {
 		loadConversations()

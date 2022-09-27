@@ -44,6 +44,7 @@ import kotlinx.coroutines.flow.stateIn
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.ConversationPane
+import me.tagavari.airmessage.compose.component.HelpPane
 import me.tagavari.airmessage.compose.component.MessagingScreen
 import me.tagavari.airmessage.compose.component.NewConversationPane
 import me.tagavari.airmessage.compose.interop.GestureTrackable
@@ -140,6 +141,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 									viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
 								},
 								onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
+								onNavigateHelp = { viewModel.showHelpPane = true },
 								onNewConversation = {
 									viewModel.detailPage = ConversationsDetailPage.NewConversation
 								}
@@ -248,6 +250,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 											viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
 										},
 										onNavigateSettings = { startActivity(Intent(this@ConversationsCompose, Preferences::class.java)) },
+										onNavigateHelp = { viewModel.showHelpPane = true },
 										onNewConversation = {
 											viewModel.detailPage = ConversationsDetailPage.NewConversation
 										}
@@ -255,6 +258,13 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								}
 							}
 						}
+					}
+					
+					//Help dialog
+					if(viewModel.showHelpPane) {
+						HelpPane(
+							onDismissRequest = { viewModel.showHelpPane = false }
+						)
 					}
 				}
 			}

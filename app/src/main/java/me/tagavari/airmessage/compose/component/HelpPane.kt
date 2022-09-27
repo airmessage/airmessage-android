@@ -9,11 +9,13 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Mail
-import androidx.compose.material3.*
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -30,39 +32,27 @@ import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ProxyType
 
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HelpPane(
-	modifier: Modifier = Modifier,
-	navigationIcon: @Composable () -> Unit = {}
+	onDismissRequest: () -> Unit
 ) {
-	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-	
 	val connectionManager = LocalConnectionManager.current
 	val context = LocalContext.current
 	
-	Scaffold(
-		modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-		topBar = {
-			TopAppBar(
-				title = { Text(stringResource(R.string.screen_helpandfeedback)) },
-				navigationIcon = navigationIcon,
-				scrollBehavior = scrollBehavior
-			)
-		}
-	) { innerPadding ->
+	ContentAlertDialog(
+		onDismissRequest = onDismissRequest,
+		title = { Text(stringResource(R.string.screen_helpandfeedback)) }
+	) {
 		Column(
-			modifier = Modifier
-				.fillMaxSize()
-				.padding(innerPadding)
-				.padding(16.dp),
-			verticalArrangement = Arrangement.spacedBy(16.dp)
+			modifier = Modifier.padding(horizontal = 24.dp),
 		) {
 			//Message
 			Text(stringResource(R.string.dialog_feedback_message))
 			
+			Spacer(modifier = Modifier.height(32.dp))
+			
 			//E-Mail button
-			Button(
+			OutlinedButton(
 				modifier = Modifier.fillMaxWidth(),
 				onClick = { sendEmail(context, connectionManager) }
 			) {
@@ -77,12 +67,11 @@ fun HelpPane(
 			}
 			
 			//Discord button
-			Button(
+			OutlinedButton(
 				modifier = Modifier.fillMaxWidth(),
 				onClick = { openDiscord(context) },
-				colors = ButtonDefaults.buttonColors(
-					containerColor = Color(0xFF5865F2),
-					contentColor = Color.White
+				colors = ButtonDefaults.textButtonColors(
+					contentColor = Color(0xFF5865F2)
 				)
 			) {
 				Icon(
@@ -96,12 +85,11 @@ fun HelpPane(
 			}
 			
 			//Reddit button
-			Button(
+			OutlinedButton(
 				modifier = Modifier.fillMaxWidth(),
 				onClick = { openReddit(context) },
-				colors = ButtonDefaults.buttonColors(
-					containerColor = Color(0xFFFF5700),
-					contentColor = Color.White
+				colors = ButtonDefaults.textButtonColors(
+					contentColor = Color(0xFFFF5700)
 				)
 			) {
 				Icon(
@@ -198,6 +186,6 @@ private fun openReddit(context: Context) {
 @Preview
 private fun HelpPanePreview() {
 	AirMessageAndroidTheme {
-		HelpPane()
+		HelpPane(onDismissRequest = {})
 	}
 }
