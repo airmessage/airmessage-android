@@ -77,13 +77,12 @@ fun HelpPane(
 			}
 			
 			//Discord button
-			val discordButtonColor = Color(0xFF5865F2)
 			Button(
 				modifier = Modifier.fillMaxWidth(),
 				onClick = { openDiscord(context) },
 				colors = ButtonDefaults.buttonColors(
-					containerColor = discordButtonColor,
-					contentColor = contentColorFor(discordButtonColor)
+					containerColor = Color(0xFF5865F2),
+					contentColor = Color.White
 				)
 			) {
 				Icon(
@@ -97,13 +96,12 @@ fun HelpPane(
 			}
 			
 			//Reddit button
-			val redditButtonColor = Color(0xFFFF5700)
 			Button(
 				modifier = Modifier.fillMaxWidth(),
 				onClick = { openReddit(context) },
 				colors = ButtonDefaults.buttonColors(
-					containerColor = redditButtonColor,
-					contentColor = contentColorFor(redditButtonColor)
+					containerColor = Color(0xFFFF5700),
+					contentColor = Color.White
 				)
 			) {
 				Icon(
