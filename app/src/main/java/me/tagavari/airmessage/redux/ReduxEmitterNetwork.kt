@@ -2,6 +2,7 @@ package me.tagavari.airmessage.redux
 
 import io.reactivex.rxjava3.subjects.BehaviorSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
+import kotlinx.coroutines.flow.MutableSharedFlow
 import me.tagavari.airmessage.util.ServerUpdateData
 import java.util.*
 
@@ -35,4 +36,6 @@ object ReduxEmitterNetwork {
 	
 	@JvmStatic
 	val faceTimeIncomingCallerSubject: BehaviorSubject<Optional<String>> = BehaviorSubject.create()
+	
+	val contactUpdates = MutableSharedFlow<Long>()
 }

@@ -19,6 +19,7 @@ import androidx.compose.ui.window.PopupPositionProvider
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -65,7 +66,7 @@ private fun UserChipLayout(
 	onRemove: () -> Unit
 ) {
 	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, recipient) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, recipient.address, deriveContactUpdates()) {
 		//Get the user
 		try {
 			value = MainApplication.instance.userCacheHelper

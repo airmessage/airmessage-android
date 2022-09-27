@@ -86,7 +86,7 @@ fun NewConversationPane(
 			//Reload contacts after the user grants permission
 			if(permissionGranted) {
 				viewModel.loadContacts()
-				MainApplication.instance.registerContactsListener()
+				MainApplication.instance.registerContactsListener(triggerImmediate = true)
 			}
 		}
 		

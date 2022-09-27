@@ -16,7 +16,8 @@ fun produceConversationTitle(conversation: ConversationInfo): State<String> {
 	val context = LocalContext.current
 	return produceState(
 		initialValue = ConversationBuildHelper.buildConversationTitleDirect(context, conversation),
-		conversation
+		conversation,
+		deriveContactUpdates()
 	) {
 		value = ConversationBuildHelper.buildConversationTitle(context, conversation).await()
 	}

@@ -17,6 +17,7 @@ import coil.compose.SubcomposeAsyncImage
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
@@ -31,7 +32,7 @@ fun MemberImage(
 ) {
 	//Get the user
 	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member.address) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member.address, deriveContactUpdates()) {
 		value = try {
 			MainApplication.instance.userCacheHelper
 				.getUserInfo(context, member.address).await()

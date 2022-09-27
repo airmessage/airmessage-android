@@ -15,6 +15,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
+import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.messaging.MemberInfo
@@ -30,7 +31,7 @@ fun ConversationDetailsMember(
 ) {
 	//Load the message contact
 	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, member.address) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, member.address, deriveContactUpdates()) {
 		//Get the user
 		try {
 			value = MainApplication.instance.userCacheHelper.getUserInfo(context, member.address).await()

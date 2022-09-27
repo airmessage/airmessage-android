@@ -12,7 +12,6 @@ import android.os.Process
 import android.provider.ContactsContract
 import android.webkit.WebView
 import androidx.core.content.ContextCompat
-import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.preference.PreferenceManager
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequest
@@ -24,6 +23,9 @@ import coil.decode.GifDecoder
 import coil.decode.ImageDecoderDecoder
 import coil.decode.VideoFrameDecoder
 import com.google.android.material.color.DynamicColors
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.launch
 import me.tagavari.airmessage.activity.CrashReport
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.coil.IconFetcher
@@ -56,8 +58,7 @@ class MainApplication : Application(), ImageLoaderFactory {
 			
 			Handler(mainLooper).post {
 				userCacheHelper.clearCache()
-				LocalBroadcastManager.getInstance(this@MainApplication)
-					.sendBroadcast(Intent(localBCContactUpdate))
+				triggerContactsUpdate()
 			}
 		}
 		
@@ -179,8 +180,23 @@ class MainApplication : Application(), ImageLoaderFactory {
 		}
 	}
 	
-	fun registerContactsListener() {
+	/**
+	 * Registers for updates to contacts
+	 * @param triggerImmediate Whether to trigger an update immediately
+	 */
+	fun registerContactsListener(triggerImmediate: Boolean = false) {
 		contentResolver.registerContentObserver(ContactsContract.Contacts.CONTENT_URI, true, contentObserver)
+		
+		if(triggerImmediate) {
+			triggerContactsUpdate()
+		}
+	}
+	
+	@OptIn(DelicateCoroutinesApi::class)
+	private fun triggerContactsUpdate() {
+		GlobalScope.launch {
+			ReduxEmitterNetwork.contactUpdates.emit(System.currentTimeMillis())
+		}
 	}
 	
 	override fun onTrimMemory(level: Int) {
@@ -213,8 +229,6 @@ class MainApplication : Application(), ImageLoaderFactory {
 		.build()
 	
 	companion object {
-		const val localBCContactUpdate = "LocalMSG-Main-ContactUpdate"
-		
 		@get:JvmStatic
 		@get:JvmName("getInstance")
 		lateinit var instance: MainApplication

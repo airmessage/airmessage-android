@@ -25,6 +25,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.ServerUpdate
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -104,7 +105,12 @@ fun StatusCardColumn() {
 			}
 			val requestPermissionLauncher = rememberLauncherForActivityResult(
 				ActivityResultContracts.RequestPermission()
-			) { contactsPermissionGranted = it }
+			) { permissionGranted ->
+				if(permissionGranted) {
+					contactsPermissionGranted = true
+					MainApplication.instance.registerContactsListener(triggerImmediate = true)
+				}
+			}
 			
 			if(!contactsPermissionGranted) {
 				AlertCard(

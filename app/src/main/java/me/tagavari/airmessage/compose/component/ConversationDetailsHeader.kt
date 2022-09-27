@@ -20,6 +20,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
@@ -41,7 +42,7 @@ fun ConversationDetailsHeader(
 	val fallbackTitle = remember(conversation) {
 		ConversationBuildHelper.buildConversationTitleDirect(context, conversation)
 	}
-	val generatedTitle by produceState<String?>(initialValue = null, conversation) {
+	val generatedTitle by produceState<String?>(initialValue = null, conversation, deriveContactUpdates()) {
 		value = ConversationBuildHelper.buildConversationTitle(context, conversation).await()
 	}
 	val title: String = generatedTitle ?: fallbackTitle

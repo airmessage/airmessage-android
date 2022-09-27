@@ -40,6 +40,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
+import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.remember.deriveMessagePreview
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.compose.state.NetworkState
@@ -97,7 +98,7 @@ fun MessageInfoListEntry(
 	val isUnconfirmed = messageInfo.messageState == MessageState.ghost
 	
 	//Load the message contact
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, messageInfo) {
+	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, messageInfo.sender, deriveContactUpdates()) {
 		messageInfo.sender?.let { sender ->
 			//Get the user
 			try {
