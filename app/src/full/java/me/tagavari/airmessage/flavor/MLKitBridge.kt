@@ -10,6 +10,7 @@ import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.core.SingleEmitter
 import io.reactivex.rxjava3.schedulers.Schedulers
 import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.data.loadConversationForMLKit
 import me.tagavari.airmessage.messaging.MessageInfo
 
 object MLKitBridge {

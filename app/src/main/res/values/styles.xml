@@ -1,122 +1,13 @@
 <resources>
-	<!-- <style name="AppTheme" parent="@android:style/Theme.Material.Light.DarkActionBar">
-		<item name="android:colorPrimary">@color/colorPrimary</item>
-		<item name="android:colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="android:colorAccent">@color/colorAccent</item>
-		<item name="android:actionModeBackground">@color/colorPrimary</item>
-		<item name="android:actionModeCloseDrawable">@drawable/arrow_back</item>
-		<item name="android:actionBarTheme">@style/SolidActionBar</item>
-		<item name="android:windowBackground">@color/colorBackgroundLight</item>
-	</style> -->
-	
 	<style name="Theme.AirMessage.Compose" parent="Theme.Material3.Light.NoActionBar">
 		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
 	</style>
 	
-	<style name="Base.DayNight" parent="@style/Theme.MaterialComponents.DayNight">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorBackground">@color/colorBackground</item>
-		<item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
-	</style>
-
-	<style name="Base.DayNight.NoActionBar" parent="@style/Theme.MaterialComponents.DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorPrimary</item>
-		<item name="colorPrimaryDark">@color/colorPrimaryDark</item>
-		<item name="colorAccent">@color/colorPrimary</item>
-		<item name="android:colorBackground">@color/colorBackground</item>
-		<item name="bottomSheetDialogTheme">@style/BottomSheetDialogTheme</item>
-	</style>
-	
-	<style name="Pass.DayNight" parent="@style/Base.DayNight" />
-	<style name="Pass.DayNight.NoActionBar" parent="@style/Base.DayNight.NoActionBar" />
-	
-	<style name="DayNight" parent="@style/Pass.DayNight">
-		<!-- <item name="android:statusBarColor">@color/colorBackgroundSurface</item>
-		<item name="android:windowLightStatusBar">true</item> -->
-		
-		<!--<item name="dialogTheme">@style/ThemeOverlay.MaterialComponents.Dialog</item>-->
-	</style>
-	
-	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:windowTranslucentStatus">true</item>
-		<item name="android:windowTranslucentNavigation">true</item>
-	</style>
-
-	<style name="DayNight.Transparent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:statusBarColor">@android:color/transparent</item>
-		<!-- <item name="android:navigationBarColor">@android:color/transparent</item> -->
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-	</style>
-
 	<style name="ThemeBlack" parent="@style/Theme.MaterialComponents.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
-	</style>
-
-	<style name="ThemeFaceTime" parent="ThemeBlack">
-		<item name="colorPrimary">@color/colorFaceTime</item>
-		<item name="android:colorBackground">@android:color/black</item>
-	</style>
-	
-	<style name="DayNight.NoActionBar.Protected.FaceTime" parent="@style/DayNight.NoActionBar">
-		<item name="colorPrimary">@color/colorFaceTime</item>
-	</style>
-	
-	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="windowActionModeOverlay">true</item>
-		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/close_control</item>
-		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
-		<!--<item name="android:statusBarColor">@color/colorBackgroundSurface</item>-->
-		<item name="android:statusBarColor">@color/colorToolbar</item>
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-	</style>
-
-	<style name="DayNight.NoActionBar.Protected" parent="@style/DayNight.NoActionBar">
-		<!--<item name="android:windowBackground">@color/colorBackgroundClean</item>-->
-		<!--<item name="android:navigationBarColor">@color/colorBackgroundClean</item>-->
-	</style>
-
-	<style name="SolidActionBar" parent="@style/ThemeOverlay.AppCompat.ActionBar">
-		<item name="android:colorControlNormal">@android:color/white</item>
-		<item name="android:textColorPrimary">@android:color/white</item>
-		<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>
-	</style>
-
-	<style name="SolidActionBarClear" parent="@style/ThemeOverlay.MaterialComponents.ActionBar">
-		<!--<item name="android:background">?android:attr/colorBackgroundFloating</item>-->
-		<item name="android:colorControlNormal">?android:attr/textColorSecondary</item>
-		<!--<item name="android:textColorPrimary">@color/colorPrimary</item>-->
-		<!--<item name="popupTheme">@style/ThemeOverlay.AppCompat.Light</item>-->
-
-		<item name="actionModeStyle">@style/ActionModeStyle</item>
-	</style>
-
-	<style name="ActionModeStyle" parent="@style/Widget.AppCompat.ActionMode">
-		<!--<item name="background">@android:color/transparent</item>-->
-		<item name="titleTextStyle">@style/ActionModeTitleTextStyle</item>
-	</style>
-
-	<style name="ActionModeTitleTextStyle" parent="@style/TextAppearance.AppCompat.Widget.ActionMode.Title">
-		<item name="android:textColor">?android:attr/textColorPrimary</item>
-		<item name="android:fontFamily">sans-serif"</item>
-	</style>
-	
-	<style name="LightToolbarText" parent="@style/TextAppearance.AppCompat.Widget.ActionBar.Title">
-		<item name="android:fontFamily">sans-serif</item>
-	</style>
-
-	<style name="AppTheme.Onboarding" parent="@style/DayNight.NoActionBar">
-		<item name="android:statusBarColor">?android:attr/colorBackground</item>
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-	</style>
-	
-	<style name="ActionModeOverflowMenu" parent="Widget.AppCompat.ListPopupWindow">
-		<item name="android:textColor">@android:color/primary_text_light</item>
 	</style>
 	
 	<style name="ActivityDialogTheme" parent="Theme.MaterialComponents.DayNight.Dialog">
@@ -125,11 +16,6 @@
 		<item name="colorAccent">@color/colorPrimary</item>
 		<item name="android:colorBackground">@color/colorBackground</item>
 		<item name="windowNoTitle">true</item>
-		
-		<!-- <item name="android:statusBarColor">@android:color/transparent</item>
-		<item name="android:navigationBarColor">@android:color/transparent</item>
-		<item name="android:windowTranslucentStatus">true</item>
-		<item name="android:windowTranslucentNavigation">true</item> -->
 	</style>
 
 	<style name="CrashReport" parent="Theme.MaterialComponents.NoActionBar">
@@ -138,35 +24,16 @@
 		<item name="android:navigationBarColor">@color/colorError</item>
 	</style>
 	
-	<style name="OverscrollNeutralizer" parent="@style/Base.DayNight">
+	<style name="OverscrollNeutralizer" parent="Theme.Material3.DayNight">
 		<item name="android:colorPrimary">@android:color/darker_gray</item>
 	</style>
 	
-	<style name="AppTheme.ImageDraw" parent="@android:style/Theme.Material.NoActionBar">
-		<item name="android:windowTranslucentStatus">true</item>
-		<item name="android:windowTranslucentNavigation">true</item>
-		<item name="android:fitsSystemWindows">true</item>
-	</style>
-
 	<style name="Divider">
 		<item name="android:layout_width">match_parent</item>
 		<item name="android:layout_height">1dp</item>
 		<item name="android:background">@color/colorDivider</item>
 	</style>
-
-	<style name="SelectableItemPrimary">
-		<item name="colorControlHighlight">@color/colorPrimary</item>
-	</style>
-
-	<style name="CardViewFeature" parent="@style/Widget.MaterialComponents.CardView">
-		<item name="shapeAppearance">@style/ShapeAppearanceFeature</item>
-	</style>
-
-	<style name="ShapeAppearanceFeature" parent="@style/ShapeAppearance.MaterialComponents.MediumComponent">
-		<item name="cornerFamily">rounded</item>
-		<item name="cornerSize">16dp</item>
-	</style>
-
+	
 	<style name="BottomSheetDialogTheme" parent="@style/ThemeOverlay.MaterialComponents.BottomSheetDialog">
 		<item name="android:windowIsFloating">false</item>
 		<item name="android:statusBarColor">@android:color/transparent</item>
@@ -190,10 +57,5 @@
 	<style name="ShapeAppearanceCircle" parent="">
 		<!-- <item name="cornerFamily">rounded</item> -->
 		<item name="cornerSize">50%</item>
-	</style>
-
-	<style name="ShapeAppearanceQueueTile" parent="">
-		<item name="cornerFamily">rounded</item>
-		<item name="cornerSize">4dp</item>
 	</style>
 </resources>

@@ -2,93 +2,26 @@
 <resources>
     <color name="colorPrimary">#448AFF</color>
     <color name="colorPrimaryDark">#366FCC</color>
-    <color name="colorPrimaryLight">#52A7FF</color>
-    <color name="colorAccent">@color/colorPrimary</color>
-	<color name="colorAccentDark">@color/colorPrimaryDark</color>
-
-	<color name="colorFaceTime">#00E676</color>
-
-	<color name="colorSelectionOverlay">#26448AFF</color>
-
-	<color name="colorWarning">#FF6D00</color>
-	<color name="colorSuccess">#00c853</color>
-
+	<color name="colorAccent">@color/colorPrimary</color>
+	
 	<color name="colorMessageTextMessageForwarding">#1ABC9C</color>
 	<color name="colorMessageTextMessage">#2ECC71</color>
 	<color name="colorMessageRCS">#FFAB00</color>
 	<color name="colorMessageDefault">#607D8B</color>
 
 	<color name="colorBackground">#FAFAFA</color>
-	<color name="colorToolbar">#FFFFFF</color>
-
-	<color name="colorTextPrimary">#DE000000</color>
-	
-	<color name="colorExperimental">#651FFF</color>
-	
-	<color name="colorAppIcon">#FAFAFA</color>
 	
 	<color name="colorDivider">#1F000000</color>
 	
 	<color name="colorSubBackground">#EEEEEE</color>
 	
-	<color name="navbarDivider">#E0E0E0</color>
-	<color name="navbarBackground">#FFF</color>
-	<color name="navbarBackgroundProtected">#F5F5F5</color>
 	<color name="colorBackgroundSurface">#F5F5F5</color>
 	<color name="colorBackgroundClean">#FFF</color>
-
-	<color name="colorCleanScrim">#66FFFFFF</color>
 	
-	<color name="colorBGChip">#F5F5F5</color>
-
-    <color name="colorMessageOutgoing">#EDEDED</color> <!-- E0E0E0 (darker) / F2F2F2 (lighter) -->
-	<color name="colorMessageOutgoingAccent">#9E9E9E</color>
-	
-	<color name="colorImageUnloaded">#E0E0E0</color>
-	
-	<color name="colorArchived">#607D8B</color>
-	<color name="colorArchivedDark">#455A64</color>
-
 	<color name="colorError">#FF5252</color>
 	<color name="colorErrorDark">#D50000</color>
-
-	<color name="colorContextualAppBar">#212121</color>
-	<color name="colorContextualAppBarDark">#000000</color>
 	
-	<color name="colorActionArchive">#FF6D00</color>
-	<color name="colorActionDelete">#FF1744</color>
-	
-    <!-- <color name="colorSendingFailed">#F44336</color>
-    <color name="colorSendingFailedLight">#E57373</color>
-    <color name="colorSendingFailedDark">#D32F2F</color>
-    <color name="colorSendingSucceeded">#4CAF50</color>
-    <color name="colorSendingSucceededLight">#81C784</color>
-    <color name="colorSending">#03A9F4</color>
-    <color name="colorSendingLight">#4FC3F7</color>
-    <color name="bottomBar">#424242</color> -->
-    
-    <color name="colorNotification">#2196F3</color>
 	<color name="colorServerDisconnected">#F44336</color>
-	
-	<color name="colorAcceptCall">#69F0AE</color>
-	<color name="colorEndCall">#FF5252</color>
-	
-	<color name="colorRecording">#FF5252</color>
-	<color name="colorContact">#8C9EFF</color>
-	<color name="colorLocation">#FFE57F</color>
-	
-	<color name="colorTextWhite">#FFFFFF</color>
-	<color name="colorTextWhiteSecondary">#B3FFFFFF</color>
-	<color name="colorTextBlack">#000000</color>
-
-	<color name="imageDrawDrawer">#80212121</color>
-	<color name="drawColor_red">#F44336</color>
-	<color name="drawColor_orange">#FF9800</color>
-	<color name="drawColor_yellow">#FFEB3B</color>
-	<color name="drawColor_green">#4CAF50</color>
-	<color name="drawColor_blue">#2196F3</color>
-	<color name="drawColor_purple">#9C27B0</color>
-	<color name="imageDrawTextBarBG">#80000000</color>
 	
 	<color name="tapback_love">#F50057</color>
 	<color name="tapback_like">#FFEA00</color>
@@ -96,33 +29,4 @@
 	<color name="tapback_laugh">#00E676</color>
 	<color name="tapback_exclamation">#2979FF</color>
 	<color name="tapback_question">#D500F9</color>
-	
-	<color name="tile_red_bg">#FFCDD2</color>
-	<color name="tile_red_fg">#D32F2F</color>
-	<color name="tile_deeporange_bg">#FFCCBC</color>
-	<color name="tile_deeporange_fg">#E64A19</color>
-	<color name="tile_orange_bg">#FFE0B2</color>
-	<color name="tile_orange_fg">#F57C00</color>
-	<color name="tile_yellow_bg">#FFF9C4</color>
-	<color name="tile_yellow_fg">#FBC02D</color>
-	<color name="tile_green_bg">#C8E6C9</color>
-	<color name="tile_green_fg">#388E3C</color>
-	<color name="tile_teal_bg">#B2DFDB</color>
-	<color name="tile_teal_fg">#00796B</color>
-	<color name="tile_cyan_bg">#B2EBF2</color>
-	<color name="tile_cyan_fg">#0097A7</color>
-	<color name="tile_blue_bg">#B3E5FC</color>
-	<color name="tile_blue_fg">#0288D1</color>
-	<color name="tile_indigo_bg">#C5CAE9</color>
-	<color name="tile_indigo_fg">#303F9F</color>
-	<color name="tile_deeppurple_bg">#D1C4E9</color>
-	<color name="tile_deeppurple_fg">#512DA8</color>
-	<color name="tile_purple_bg">#E1BEE7</color>
-	<color name="tile_purple_fg">#7B1FA2</color>
-	<color name="tile_pink_bg">#F8BBD0</color>
-	<color name="tile_pink_fg">#C2185B</color>
-	<color name="tile_brown_bg">#D7CCC8</color>
-	<color name="tile_brown_fg">#5D4037</color>
-	<color name="tile_grey_bg">#CFD8DC</color>
-	<color name="tile_grey_fg">#455A64</color>
 </resources>

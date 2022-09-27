@@ -1,6 +1,0 @@
-<shape
-	xmlns:android="http://schemas.android.com/apk/res/android"
-	android:innerRadiusRatio="2.5"
-	android:shape="ring"
-	android:thickness="4dp"
-	android:useLevel="false" />

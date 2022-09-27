@@ -1,16 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-	
 	<application>
-		<!-- Location picker -->
-		<activity
-			android:exported="false"
-			android:name=".activity.LocationPicker"
-			android:parentActivityName=".activity.Messaging"
-			android:theme="@style/DayNight.Transparent"
-			android:windowSoftInputMode="adjustResize">
-			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
-		</activity>
-		
 		<!-- FCM listener service -->
 		<service
 			android:name=".service.FCMService"

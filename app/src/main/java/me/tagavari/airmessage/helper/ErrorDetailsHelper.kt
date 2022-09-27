@@ -1,18 +1,8 @@
 package me.tagavari.airmessage.helper
 
-import android.app.Activity
-import android.content.Intent
-import android.net.Uri
 import androidx.annotation.StringRes
-import androidx.fragment.app.FragmentManager
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.ServerConfigStandalone
-import me.tagavari.airmessage.connection.ConnectionManager
-import me.tagavari.airmessage.constants.ExternalLinkConstants
-import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
-import me.tagavari.airmessage.enums.ProxyType
-import me.tagavari.airmessage.fragment.FragmentDialogConnectAuth
 
 object ErrorDetailsHelper {
 	/**
@@ -92,32 +82,7 @@ object ErrorDetailsHelper {
 	 * Represents error details to show to the user, including a description label and an optional button action
 	 */
 	data class ErrorDetails(@StringRes val label: Int, val button: Button?) {
-		data class Button(@StringRes val label: Int, val action: ErrorDetailsAction) {
-			fun performActionActivity(activity: Activity, fragmentManager: FragmentManager, connectionManager: ConnectionManager?) {
-				when(action) {
-					ErrorDetailsAction.RECONNECT -> {
-						if(connectionManager == null) {
-							ConnectionServiceLaunchHelper.launchAutomatic(activity)
-						} else {
-							connectionManager.connect()
-						}
-					}
-					ErrorDetailsAction.UPDATE_APP -> {
-						activity.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + activity.packageName)))
-					}
-					ErrorDetailsAction.UPDATE_SERVER -> {
-						activity.startActivity(Intent(Intent.ACTION_VIEW, ExternalLinkConstants.serverUpdateAddress))
-					}
-					ErrorDetailsAction.CHANGE_PASSWORD -> {
-						if(SharedPreferencesManager.getProxyType(activity) == ProxyType.direct) {
-							activity.startActivity(Intent(activity, ServerConfigStandalone::class.java))
-						} else {
-							FragmentDialogConnectAuth().show(fragmentManager, null)
-						}
-					}
-				}
-			}
-		}
+		data class Button(@StringRes val label: Int, val action: ErrorDetailsAction)
 	}
 }
 

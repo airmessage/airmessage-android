@@ -7,29 +7,4 @@
 		<item name="android:navigationBarColor">@android:color/transparent</item>
 		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 	</style>
-	
-	<style name="DayNight.NoActionBar" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="windowActionModeOverlay">true</item>
-		<item name="android:actionModeBackground">@android:color/transparent</item>
-		<item name="android:actionModeCloseDrawable">@drawable/close_control</item>
-		<item name="actionBarPopupTheme">@style/ActionModeOverflowMenu</item>
-		<!--<item name="android:statusBarColor">@color/colorBackgroundSurface</item>-->
-		<item name="android:statusBarColor">@color/colorToolbar</item>
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-
-		<item name="android:navigationBarColor">@android:color/transparent</item>
-	</style>
-
-	<style name="DayNight.NoActionBar.Protected" parent="@style/DayNight.NoActionBar">
-		<!--<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>-->
-		<!--<item name="android:navigationBarDividerColor">@color/navbarDivider</item>-->
-		<!--<item name="android:navigationBarColor">@color/navbarBackground</item>-->
-
-		<item name="android:navigationBarColor">@android:color/transparent</item>
-	</style>
-	
-	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:windowTranslucentStatus">true</item>
-		<item name="android:navigationBarColor">@android:color/transparent</item>
-	</style>
 </resources>

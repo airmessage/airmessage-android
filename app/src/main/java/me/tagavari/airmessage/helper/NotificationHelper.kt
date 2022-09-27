@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.helper
 
+import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
@@ -27,7 +28,6 @@ import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.activity.FaceTimeCall
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.ConversationsCompose
 import me.tagavari.airmessage.compose.MessagingCompose
@@ -49,6 +49,7 @@ import me.tagavari.airmessage.service.ConnectionService
 import me.tagavari.airmessage.util.NotificationSummaryMessage
 import java.util.*
 
+@SuppressLint("MissingPermission")
 object NotificationHelper {
 	private val TAG = NotificationHelper::class.simpleName!!
 	const val notificationChannelMessage = "message"
@@ -914,7 +915,7 @@ object NotificationHelper {
 	
 	@JvmStatic
 	fun showFaceTimeCallNotification(context: Context, callerName: String) {
-		val fullScreenIntent = Intent(context, FaceTimeCall::class.java).apply {
+		/* val fullScreenIntent = Intent(context, FaceTimeCall::class.java).apply {
 			putExtra(FaceTimeCall.PARAM_TYPE, FaceTimeCall.Type.incoming)
 			putExtra(FaceTimeCall.PARAM_PARTICIPANTS_RAW, callerName)
 		}
@@ -933,7 +934,7 @@ object NotificationHelper {
 			.build()
 		
 		NotificationManagerCompat.from(context)
-			.notify(notificationIDIncomingCall, notification)
+			.notify(notificationIDIncomingCall, notification) */
 	}
 	
 	@JvmStatic

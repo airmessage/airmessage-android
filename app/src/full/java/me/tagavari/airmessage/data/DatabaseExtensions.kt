@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.flavor
+package me.tagavari.airmessage.data
 
 import com.google.mlkit.nl.smartreply.TextMessage
 import me.tagavari.airmessage.data.DatabaseManager

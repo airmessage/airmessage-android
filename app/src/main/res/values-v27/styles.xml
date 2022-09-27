@@ -1,43 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-	<style name="Pass.DayNight" parent="Base.DayNight">
-		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarColor">@color/navbarBackground</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
-	</style>
-	
-	<style name="Pass.DayNight.NoActionBar" parent="Base.DayNight.NoActionBar">
-		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarColor">?android:attr/colorBackground</item>
-	</style>
-
-	<style name="DayNight.NoActionBar.Protected" parent="@style/DayNight.NoActionBar">
-		<!--<item name="android:windowBackground">@color/colorBackgroundClean</item>-->
-		<!--<item name="android:navigationBarColor">@color/colorBackgroundClean</item>-->
-
-		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
-		<item name="android:navigationBarDividerColor">@color/navbarDivider</item>
-		<item name="android:navigationBarColor">@color/navbarBackground</item>
-	</style>
-
 	<style name="ThemeBlack" parent="@style/Theme.MaterialComponents.NoActionBar">
 		<item name="colorPrimary">@color/colorPrimary</item>
 		<item name="android:statusBarColor">@android:color/transparent</item>
 		<item name="android:navigationBarColor">@android:color/transparent</item>
-		<item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-	</style>
-
-	<style name="DayNight.Translucent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:windowTranslucentStatus">true</item>
-		<item name="android:windowTranslucentNavigation">true</item>
-		<item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
-	</style>
-	
-	<style name="DayNight.Transparent" parent="@style/Pass.DayNight.NoActionBar">
-		<item name="android:statusBarColor">@android:color/transparent</item>
-		<item name="android:navigationBarColor">@android:color/transparent</item>
-		<item name="android:windowLightStatusBar">@bool/is_theme_light</item>
-		<item name="android:windowLightNavigationBar">@bool/is_theme_light</item>
 		<item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
 	</style>
 </resources>
