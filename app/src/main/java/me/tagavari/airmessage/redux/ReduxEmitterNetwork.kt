@@ -19,7 +19,7 @@ object ReduxEmitterNetwork {
 	val massRetrievalUpdateSubject: BehaviorSubject<ReduxEventMassRetrieval> = BehaviorSubject.create()
 	
 	@JvmStatic
-	val textImportUpdateSubject: BehaviorSubject<ReduxEventTextImport> = BehaviorSubject.create()
+	val textImportUpdateSubject: PublishSubject<ReduxEventTextImport> = PublishSubject.create()
 
 	@JvmStatic
 	val remoteUpdateSubject: BehaviorSubject<Optional<ServerUpdateData>> = BehaviorSubject.create()

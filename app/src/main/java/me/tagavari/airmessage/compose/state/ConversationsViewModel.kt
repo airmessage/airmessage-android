@@ -23,6 +23,7 @@ import me.tagavari.airmessage.helper.ShortcutHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.redux.ReduxEventTextImport
 import me.tagavari.airmessage.task.ConversationActionTask
 
 class ConversationsViewModel(application: Application) : AndroidViewModel(application) {
@@ -34,7 +35,14 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	var showHelpPane by mutableStateOf(false)
 	
 	init {
+		//Load conversations
 		loadConversations()
+		
+		//Subscribe to text message import updates
+		viewModelScope.launch {
+			ReduxEmitterNetwork.textImportUpdateSubject.asFlow()
+				.collect(this@ConversationsViewModel::applyTextMessageUpdate)
+		}
 		
 		//Record conversation shortcut usages
 		viewModelScope.launch {
@@ -259,6 +267,20 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				})
 			}
 			else -> {}
+		}
+	}
+	
+	private fun applyTextMessageUpdate(event: ReduxEventTextImport) {
+		if(event is ReduxEventTextImport.Complete) {
+			//Add the imported conversations
+			conversations?.onSuccess { conversationList ->
+				conversations = Result.success(conversationList.toMutableList().also { list ->
+					for(conversationInfo in event.conversations) {
+						val insertIndex = ConversationHelper.findInsertionIndex(conversationInfo, list)
+						list.add(insertIndex, conversationInfo)
+					}
+				})
+			}
 		}
 	}
 	
