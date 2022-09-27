@@ -309,6 +309,22 @@ fun MessageInfoListEntry(
 										}
 									)
 								}
+								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVCard) -> {
+									MessageBubbleContact(
+										flow = attachmentFlow,
+										file = attachmentFile,
+										onClick = {
+											IntentHelper.openAttachmentFile(
+												context,
+												attachmentFile,
+												attachment.computedContentType
+											)
+										},
+										onSetSelected = { selected ->
+											selectionState.setSelectionAttachmentID(attachment.localID, selected)
+										}
+									)
+								}
 								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation) -> {
 									MessageBubbleLocation(
 										flow = attachmentFlow,

@@ -27,6 +27,7 @@ import com.google.android.material.color.DynamicColors
 import me.tagavari.airmessage.activity.CrashReport
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.coil.IconFetcher
+import me.tagavari.airmessage.coil.VCardFetcher
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.data.SharedPreferencesManager.getTextMessageConversationsInstalled
@@ -205,6 +206,9 @@ class MainApplication : Application(), ImageLoaderFactory {
 			
 			//Decode icons
 			add(IconFetcher.Factory())
+			
+			//Decode vcard thumbnails
+			add(VCardFetcher.Factory())
 		}
 		.build()
 	
