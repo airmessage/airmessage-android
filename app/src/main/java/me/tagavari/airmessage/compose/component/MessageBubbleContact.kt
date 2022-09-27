@@ -33,6 +33,7 @@ import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.util.MessagePartFlow
 import java.io.File
+import java.io.IOException
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -47,7 +48,12 @@ fun MessageBubbleContact(
 	
 	val vcard by produceState<VCard?>(null, file) {
 		withContext(Dispatchers.IO) {
-			Ezvcard.parse(file).first()
+			try {
+				Ezvcard.parse(file).first()
+			} catch(exception: IOException) {
+				exception.printStackTrace()
+				null
+			}
 		}?.let {
 			value = it
 		}
