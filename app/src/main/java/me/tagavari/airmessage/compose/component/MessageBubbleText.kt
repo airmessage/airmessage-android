@@ -3,7 +3,12 @@ package me.tagavari.airmessage.compose.component
 import android.text.SpannableString
 import android.text.method.LinkMovementMethod
 import android.view.MotionEvent
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -15,8 +20,10 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInteropFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -28,12 +35,13 @@ import me.tagavari.airmessage.helper.LinkifyHelper
 import me.tagavari.airmessage.helper.SendStyleHelper
 import me.tagavari.airmessage.helper.StringHelper
 import me.tagavari.airmessage.util.CustomTabsLinkTransformationMethod
+import me.tagavari.airmessage.util.MessageFlowRadius
 import me.tagavari.airmessage.util.MessagePartFlow
 
 /**
  * A message bubble that displays a text message
  */
-@OptIn(ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun MessageBubbleText(
 	flow: MessagePartFlow,
@@ -42,6 +50,7 @@ fun MessageBubbleText(
 	sendStyle: String? = null,
 	onSetSelected: (Boolean) -> Unit
 ) {
+	val haptic = LocalHapticFeedback.current
 	val colors = flow.colors
 	
 	fun onClick() {
@@ -64,6 +73,20 @@ fun MessageBubbleText(
 	
 	if(isSingleEmoji) {
 		Text(
+			modifier = if(flow.isSelected) {
+				Modifier.background(colors.background, RoundedCornerShape(MessageFlowRadius.large))
+			} else {
+				Modifier
+			}
+				.combinedClickable(
+					interactionSource = remember { MutableInteractionSource() },
+					indication = null,
+					onClick = ::onClick,
+					onLongClick = {
+						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+						onLongClick()
+					}
+				),
 			text = text!!,
 			fontSize = 48.sp
 		)
