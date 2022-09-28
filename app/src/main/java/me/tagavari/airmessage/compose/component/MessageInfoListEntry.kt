@@ -4,6 +4,7 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.net.Uri
+import android.text.format.DateFormat
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
@@ -20,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -84,6 +86,7 @@ fun MessageInfoListEntry(
 	showStatus: Boolean = false,
 	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
 	scrollProgress: Float = 0F,
+	horizontalDragProgress: Float = 0F,
 	onDownloadAttachment: (MessageInfo, AttachmentInfo) -> Unit
 ) {
 	val context = LocalContext.current
@@ -127,12 +130,18 @@ fun MessageInfoListEntry(
 			)
 		}
 		
+		//Calculate values for horizontal drag response
+		val userInfoOffset = (avatarSize + MessageList.innerPadding) * -horizontalDragProgress
+		val timeIndicatorWidth = targetTimeIndicatorWidth * horizontalDragProgress
+		
 		//Sender name
 		if(displaySender) {
 			(userInfo?.contactName ?: messageInfo.sender)?.let { sender ->
 				Text(
+					modifier = Modifier
+						.padding(start = 60.dp, bottom = 2.5.dp)
+						.offset(x = userInfoOffset),
 					text = sender,
-					modifier = Modifier.padding(start = 60.dp, bottom = 2.5.dp),
 					style = MaterialTheme.typography.bodyMedium,
 					color = MaterialTheme.colorScheme.onSurfaceVariant
 				)
@@ -140,382 +149,424 @@ fun MessageInfoListEntry(
 		}
 		
 		//Horizontal message split
-		Row(modifier = Modifier.fillMaxWidth()) {
-			//User indicator
-			if(!isOutgoing && conversationInfo.isGroupChat) {
-				Box(modifier = Modifier.size(40.dp, 40.dp)) {
-					if(!flow.anchorTop) {
-						MemberImage(
-							modifier = Modifier.fillMaxSize(),
-							color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
-							thumbnailURI = userInfo?.thumbnailURI
-						)
+		Box(modifier = Modifier.fillMaxWidth()) {
+			Row(
+				modifier = Modifier
+					.fillMaxWidth()
+					.offset(when {
+						//Shift everything 1-1 for outgoing content
+						isOutgoing -> -timeIndicatorWidth
+						//Hide the sender for incoming content
+						displaySender -> userInfoOffset
+						else -> 0.dp
+					})
+			) {
+				//User indicator
+				if(!isOutgoing && conversationInfo.isGroupChat) {
+					Box(modifier = Modifier.size(avatarSize)) {
+						if(!flow.anchorTop) {
+							MemberImage(
+								modifier = Modifier.fillMaxSize(),
+								color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
+								thumbnailURI = userInfo?.thumbnailURI
+							)
+						}
 					}
+					
+					Spacer(modifier = Modifier.width(8.dp))
 				}
 				
-				Spacer(modifier = Modifier.width(8.dp))
-			}
-			
-			//Message contents
-			val messageContentsAlpha by animateFloatAsState(if(isUnconfirmed) 0.5F else 1F)
-			Column(
-				modifier = Modifier
-					.weight(1F)
-					.alpha(messageContentsAlpha),
-				horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start,
-				verticalArrangement = Arrangement.spacedBy(MessageFlowSpacing.RELATED.padding)
-			) {
-				messageInfo.messageTextComponent?.let { textComponent ->
-					//Maximum 70% width
-					Box(
-						modifier = Modifier.fillMaxWidth(0.7F),
-						contentAlignment = if(isOutgoing) Alignment.TopEnd else Alignment.TopStart
-					) {
-						val isSelected = selectionState.selectedMessageIDs.contains(textComponent.localID)
-						val messagePreview by deriveMessagePreview(messageInfo)
+				//Message contents
+				val messageContentsAlpha by animateFloatAsState(if(isUnconfirmed) 0.5F else 1F)
+				Column(
+					modifier = Modifier
+						.weight(1F)
+						.alpha(messageContentsAlpha),
+					horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start,
+					verticalArrangement = Arrangement.spacedBy(MessageFlowSpacing.RELATED.padding)
+				) {
+					messageInfo.messageTextComponent?.let { textComponent ->
+						//Maximum 70% width
+						Box(
+							modifier = Modifier.fillMaxWidth(0.7F),
+							contentAlignment = if(isOutgoing) Alignment.TopEnd else Alignment.TopStart
+						) {
+							val isSelected = selectionState.selectedMessageIDs.contains(textComponent.localID)
+							val messagePreview by deriveMessagePreview(messageInfo)
+							
+							MessageBubbleWrapper(
+								isOutgoing = isOutgoing,
+								stickers = textComponent.stickers,
+								tapbacks = textComponent.tapbacks,
+								hideStickers = isSelected
+							) {
+								val textFlow = MessagePartFlow(
+									isOutgoing = isOutgoing,
+									isSelected = isSelected,
+									anchorTop = flow.anchorTop,
+									anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
+									tintRatio = scrollProgress
+								)
+								val onSetSelected = { selected: Boolean ->
+									selectionState.setSelectionMessageID(textComponent.localID, selected)
+								}
+								
+								messagePreview?.also { messagePreview ->
+									MessageBubbleLinkPreview(
+										flow = textFlow,
+										preview = messagePreview,
+										onClick = {
+											//Open the URL
+											IntentHelper.launchUri(context, Uri.parse(messagePreview.target))
+										},
+										onSetSelected = onSetSelected
+									)
+								} ?: run {
+									MessageBubbleText(
+										flow = textFlow,
+										subject = textComponent.subject,
+										text = textComponent.text,
+										sendStyle = messageInfo.sendStyle,
+										onSetSelected = onSetSelected
+									)
+								}
+							}
+						}
+					}
+					
+					val attachmentsCount = messageInfo.attachments.size
+					messageInfo.attachments.forEachIndexed { index, attachment ->
+						val isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID)
 						
 						MessageBubbleWrapper(
 							isOutgoing = isOutgoing,
-							stickers = textComponent.stickers,
-							tapbacks = textComponent.tapbacks,
+							stickers = attachment.stickers,
+							tapbacks = attachment.tapbacks,
 							hideStickers = isSelected
 						) {
-							val textFlow = MessagePartFlow(
+							val attachmentFlow = MessagePartFlow(
 								isOutgoing = isOutgoing,
 								isSelected = isSelected,
-								anchorTop = flow.anchorTop,
-								anchorBottom = flow.anchorBottom || messageInfo.attachments.isNotEmpty(),
+								anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
+								anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
 								tintRatio = scrollProgress
 							)
-							val onSetSelected = { selected: Boolean ->
-								selectionState.setSelectionMessageID(textComponent.localID, selected)
-							}
 							
-							messagePreview?.also { messagePreview ->
-								MessageBubbleLinkPreview(
-									flow = textFlow,
-									preview = messagePreview,
-									onClick = {
-										//Open the URL
-										IntentHelper.launchUri(context, Uri.parse(messagePreview.target))
-									},
-									onSetSelected = onSetSelected
+							val attachmentFile = attachment.file
+							if(attachmentFile == null) {
+								//Get the current download state
+								val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()
+								
+								val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let<ReduxEventAttachmentDownload?, Pair<Long, Long?>> { event ->
+									when(event) {
+										null -> Pair(attachment.fileSize, null)
+										is ReduxEventAttachmentDownload.Start -> Pair(event.fileLength, 0)
+										is ReduxEventAttachmentDownload.Progress -> Pair(event.bytesTotal, event.bytesProgress)
+										is ReduxEventAttachmentDownload.Complete -> Pair(attachment.fileSize, attachment.fileSize)
+									}
+								}
+								
+								val isDownloading = downloadState != null && downloadState.value?.isFailure != true
+								
+								MessageBubbleDownload(
+									flow = attachmentFlow,
+									name = attachment.fileName,
+									bytesTotal = bytesTotal,
+									bytesDownloaded = bytesDownloaded,
+									isDownloading = isDownloading,
+									onClick = { onDownloadAttachment(messageInfo, attachment) },
+									enabled = !isDownloading,
+									onSetSelected = { selected ->
+										selectionState.setSelectionAttachmentID(attachment.localID, selected)
+									}
 								)
-							} ?: run {
-								MessageBubbleText(
-									flow = textFlow,
-									subject = textComponent.subject,
-									text = textComponent.text,
-									sendStyle = messageInfo.sendStyle,
-									onSetSelected = onSetSelected
-								)
-							}
-						}
-					}
-				}
-				
-				val attachmentsCount = messageInfo.attachments.size
-				messageInfo.attachments.forEachIndexed { index, attachment ->
-					val isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID)
-					
-					MessageBubbleWrapper(
-						isOutgoing = isOutgoing,
-						stickers = attachment.stickers,
-						tapbacks = attachment.tapbacks,
-						hideStickers = isSelected
-					) {
-						val attachmentFlow = MessagePartFlow(
-							isOutgoing = isOutgoing,
-							isSelected = isSelected,
-							anchorTop = flow.anchorTop || messageInfo.messageTextComponent != null,
-							anchorBottom = flow.anchorBottom || (index + 1) < attachmentsCount,
-							tintRatio = scrollProgress
-						)
-						
-						val attachmentFile = attachment.file
-						if(attachmentFile == null) {
-							//Get the current download state
-							val downloadState = NetworkState.attachmentRequests[attachment.localID]?.collectAsState()
-							
-							val (bytesTotal, bytesDownloaded) = downloadState?.value?.getOrNull().let<ReduxEventAttachmentDownload?, Pair<Long, Long?>> { event ->
-								when(event) {
-									null -> Pair(attachment.fileSize, null)
-									is ReduxEventAttachmentDownload.Start -> Pair(event.fileLength, 0)
-									is ReduxEventAttachmentDownload.Progress -> Pair(event.bytesTotal, event.bytesProgress)
-									is ReduxEventAttachmentDownload.Complete -> Pair(attachment.fileSize, attachment.fileSize)
-								}
-							}
-							
-							val isDownloading = downloadState != null && downloadState.value?.isFailure != true
-							
-							MessageBubbleDownload(
-								flow = attachmentFlow,
-								name = attachment.fileName,
-								bytesTotal = bytesTotal,
-								bytesDownloaded = bytesDownloaded,
-								isDownloading = isDownloading,
-								onClick = { onDownloadAttachment(messageInfo, attachment) },
-								enabled = !isDownloading,
-								onSetSelected = { selected ->
-									selectionState.setSelectionAttachmentID(attachment.localID, selected)
-								}
-							)
-						} else {
-							when {
-								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
-										|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo) -> {
-									MessageBubbleVisual(
-										flow = attachmentFlow,
-										file = attachmentFile,
-										type = attachment.contentType,
-										onClick = {
-											IntentHelper.openAttachmentFile(
-												context,
-												attachmentFile,
-												attachment.computedContentType
-											)
-										},
-										onSetSelected = { selected ->
-											selectionState.setSelectionAttachmentID(attachment.localID, selected)
-										},
-										sendStyle = messageInfo.sendStyle
-									)
-								}
-								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio) -> {
-									val playbackManager = LocalAudioPlayback.current
-									val playbackState by playbackManager.stateForKey(key = attachmentFile)
-									val scope = rememberCoroutineScope()
-									
-									MessageBubbleAudio(
-										flow = attachmentFlow,
-										file = attachmentFile,
-										audioPlaybackState = playbackState,
-										onTogglePlayback = {
-											scope.launch {
-												val state: AudioPlaybackState = playbackState
-												
-												if(state is AudioPlaybackState.Playing) {
-													if(state.playing) {
-														playbackManager.pause()
+							} else {
+								when {
+									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
+											|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo) -> {
+										MessageBubbleVisual(
+											flow = attachmentFlow,
+											file = attachmentFile,
+											type = attachment.contentType,
+											onClick = {
+												IntentHelper.openAttachmentFile(
+													context,
+													attachmentFile,
+													attachment.computedContentType
+												)
+											},
+											onSetSelected = { selected ->
+												selectionState.setSelectionAttachmentID(attachment.localID, selected)
+											},
+											sendStyle = messageInfo.sendStyle
+										)
+									}
+									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio) -> {
+										val playbackManager = LocalAudioPlayback.current
+										val playbackState by playbackManager.stateForKey(key = attachmentFile)
+										val scope = rememberCoroutineScope()
+										
+										MessageBubbleAudio(
+											flow = attachmentFlow,
+											file = attachmentFile,
+											audioPlaybackState = playbackState,
+											onTogglePlayback = {
+												scope.launch {
+													val state: AudioPlaybackState = playbackState
+													
+													if(state is AudioPlaybackState.Playing) {
+														if(state.playing) {
+															playbackManager.pause()
+														} else {
+															playbackManager.resume()
+														}
 													} else {
-														playbackManager.resume()
+														playbackManager.play(key = attachmentFile, Uri.fromFile(attachmentFile))
 													}
-												} else {
-													playbackManager.play(key = attachmentFile, Uri.fromFile(attachmentFile))
 												}
+											},
+											onSetSelected = { selected ->
+												selectionState.setSelectionAttachmentID(attachment.localID, selected)
 											}
-										},
-										onSetSelected = { selected ->
-											selectionState.setSelectionAttachmentID(attachment.localID, selected)
-										}
-									)
-								}
-								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVCard) -> {
-									MessageBubbleContact(
-										flow = attachmentFlow,
-										file = attachmentFile,
-										onClick = {
-											IntentHelper.openAttachmentFile(
-												context,
-												attachmentFile,
-												attachment.computedContentType
-											)
-										},
-										onSetSelected = { selected ->
-											selectionState.setSelectionAttachmentID(attachment.localID, selected)
-										}
-									)
-								}
-								compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation) -> {
-									MessageBubbleLocation(
-										flow = attachmentFlow,
-										file = attachmentFile,
-										date = Date(messageInfo.date),
-										onClick = { locationData ->
-											//Use Google Maps to open the Maps app on Android
-											Uri.parse(
-												"https://www.google.com/maps/search/?api=1&query=${locationData.coords.latitude},${locationData.coords.longitude}"
-											).let { IntentHelper.launchUri(context, it) }
-										},
-										onSetSelected = { selected ->
-											selectionState.setSelectionAttachmentID(attachment.localID, selected)
-										}
-									)
-								}
-								else -> {
-									MessageBubbleFile(
-										flow = attachmentFlow,
-										name = attachment.computedFileName ?: "",
-										onClick = {
-											IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
-										},
-										onSetSelected = { selected ->
-											selectionState.setSelectionAttachmentID(attachment.localID, selected)
-										}
-									)
+										)
+									}
+									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVCard) -> {
+										MessageBubbleContact(
+											flow = attachmentFlow,
+											file = attachmentFile,
+											onClick = {
+												IntentHelper.openAttachmentFile(
+													context,
+													attachmentFile,
+													attachment.computedContentType
+												)
+											},
+											onSetSelected = { selected ->
+												selectionState.setSelectionAttachmentID(attachment.localID, selected)
+											}
+										)
+									}
+									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation) -> {
+										MessageBubbleLocation(
+											flow = attachmentFlow,
+											file = attachmentFile,
+											date = Date(messageInfo.date),
+											onClick = { locationData ->
+												//Use Google Maps to open the Maps app on Android
+												Uri.parse(
+													"https://www.google.com/maps/search/?api=1&query=${locationData.coords.latitude},${locationData.coords.longitude}"
+												).let { IntentHelper.launchUri(context, it) }
+											},
+											onSetSelected = { selected ->
+												selectionState.setSelectionAttachmentID(attachment.localID, selected)
+											}
+										)
+									}
+									else -> {
+										MessageBubbleFile(
+											flow = attachmentFlow,
+											name = attachment.computedFileName ?: "",
+											onClick = {
+												IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+											},
+											onSetSelected = { selected ->
+												selectionState.setSelectionAttachmentID(attachment.localID, selected)
+											}
+										)
+									}
 								}
 							}
 						}
 					}
+					
+					AnimatedVisibility(visible = showStatus) {
+						Text(
+							modifier = Modifier.padding(horizontal = 2.dp),
+							text = when(messageInfo.messageState) {
+								MessageState.delivered ->
+									AnnotatedString(stringResource(R.string.state_delivered))
+								MessageState.read -> buildAnnotatedString {
+									withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+										append(stringResource(R.string.state_read))
+									}
+									
+									append(' ')
+									
+									append(LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead))
+								}
+								else ->
+									AnnotatedString(stringResource(R.string.part_unknown))
+							},
+							style = MaterialTheme.typography.bodySmall,
+							color = MaterialTheme.colorScheme.onSurfaceVariant
+						)
+					}
 				}
 				
-				AnimatedVisibility(visible = showStatus) {
-					Text(
-						modifier = Modifier.padding(horizontal = 2.dp),
-						text = when(messageInfo.messageState) {
-							MessageState.delivered ->
-								AnnotatedString(stringResource(R.string.state_delivered))
-							MessageState.read -> buildAnnotatedString {
-								withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
-									append(stringResource(R.string.state_read))
+				//Message error
+				if(messageInfo.hasError) {
+					val haptic = LocalHapticFeedback.current
+					val scope = rememberCoroutineScope()
+					
+					var showErrorDialog by remember { mutableStateOf(false) }
+					var showErrorDetailDialog by remember { mutableStateOf(false) }
+					var errorDetailDialogText by remember { mutableStateOf<String?>(null) }
+					fun openDetailDialog() {
+						scope.launch {
+							if(errorDetailDialogText == null) {
+								val errorDetails = withContext(Dispatchers.IO) {
+									DatabaseManager.getInstance().getMessageErrorDetails(messageInfo.localID)
 								}
 								
-								append(' ')
-								
-								append(LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead))
+								errorDetailDialogText = errorDetails ?: ""
 							}
-							else ->
-								AnnotatedString(stringResource(R.string.part_unknown))
-						},
-						style = MaterialTheme.typography.bodySmall,
-						color = MaterialTheme.colorScheme.onSurfaceVariant
-					)
+							
+							if(errorDetailDialogText!!.isEmpty()) {
+								Toast.makeText(context, R.string.message_messageerror_details_unavailable, Toast.LENGTH_SHORT).show()
+							} else {
+								showErrorDetailDialog = true
+							}
+						}
+					}
+					
+					CompositionLocalProvider(
+						LocalMinimumTouchTargetEnforcement provides false
+					) {
+						Icon(
+							modifier = Modifier
+								.clip(CircleShape)
+								.combinedClickable(
+									onClick = {
+										showErrorDialog = true
+									},
+									onLongClick = {
+										haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+										openDetailDialog()
+									},
+								)
+								.padding(8.dp),
+							imageVector = Icons.Outlined.ErrorOutline,
+							contentDescription = null,
+							tint = MaterialTheme.colorScheme.error
+						)
+					}
+					
+					if(showErrorDialog) {
+						val errorDisplay = remember(conversationInfo, messageInfo.errorCode) {
+							getErrorDisplay(context, conversationInfo, messageInfo.errorCode)
+						}
+						val connectionManager = LocalConnectionManager.current
+						
+						AlertDialog(
+							onDismissRequest = { showErrorDialog = false },
+							icon = { Icon(Icons.Outlined.Feedback, contentDescription = null) },
+							title = {
+								Text(stringResource(id = R.string.message_messageerror_title))
+							},
+							text = {
+								Text(errorDisplay.message)
+							},
+							dismissButton = {
+								TextButton(onClick = { showErrorDialog = false }) {
+									Text(stringResource(id = R.string.action_dismiss))
+								}
+							},
+							confirmButton = {
+								if(errorDisplay.isRecoverable) {
+									TextButton(onClick = {
+										//Dismiss the dialog
+										showErrorDialog = false
+										
+										//Re-send the message
+										@OptIn(DelicateCoroutinesApi::class)
+										GlobalScope.launch {
+											//Clear the message's error code
+											MessageActionTask.updateMessageErrorCode(conversationInfo, messageInfo, MessageSendErrorCode.none, null).await()
+											
+											//Send the message again
+											MessageSendHelperCoroutine.sendMessage(context, connectionManager, conversationInfo, messageInfo)
+										}
+									}) {
+										Text(stringResource(id = R.string.action_retry))
+									}
+								} else {
+									TextButton(onClick = {
+										//Dismiss the dialog
+										showErrorDialog = false
+										
+										//Remove the message
+										@OptIn(DelicateCoroutinesApi::class)
+										GlobalScope.launch {
+											MessageActionTask.deleteMessages(context, conversationInfo, listOf(messageInfo)).await()
+										}
+									}) {
+										Text(stringResource(id = R.string.action_deletemessage))
+									}
+								}
+							}
+						)
+					}
+					
+					if(showErrorDetailDialog && errorDetailDialogText != null) {
+						AlertDialog(
+							onDismissRequest = { showErrorDetailDialog = false },
+							title = {
+								Text(stringResource(id = R.string.message_messageerror_details_title))
+							},
+							text = {
+								Text(
+									text = errorDetailDialogText!!,
+									fontFamily = FontFamily.Monospace
+								)
+							},
+							dismissButton = {
+								TextButton(onClick = { showErrorDialog = false }) {
+									Text(stringResource(id = R.string.action_dismiss))
+								}
+							},
+							confirmButton = {
+								TextButton(onClick = {
+									showErrorDialog = false
+									
+									val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+									clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetailDialogText!!))
+								}) {
+									Text(stringResource(id = R.string.action_copy))
+								}
+							}
+						)
+					}
 				}
 			}
 			
-			if(messageInfo.hasError) {
-				val haptic = LocalHapticFeedback.current
-				val scope = rememberCoroutineScope()
-				
-				var showErrorDialog by remember { mutableStateOf(false) }
-				var showErrorDetailDialog by remember { mutableStateOf(false) }
-				var errorDetailDialogText by remember { mutableStateOf<String?>(null) }
-				fun openDetailDialog() {
-					scope.launch {
-						if(errorDetailDialogText == null) {
-							val errorDetails = withContext(Dispatchers.IO) {
-								DatabaseManager.getInstance().getMessageErrorDetails(messageInfo.localID)
-							}
-							
-							errorDetailDialogText = errorDetails ?: ""
-						}
-						
-						if(errorDetailDialogText!!.isEmpty()) {
-							Toast.makeText(context, R.string.message_messageerror_details_unavailable, Toast.LENGTH_SHORT).show()
-						} else {
-							showErrorDetailDialog = true
-						}
-					}
+			//Time indicator
+			if(horizontalDragProgress > 0F) {
+				val timeString = remember(messageInfo.date) {
+					DateFormat.getTimeFormat(context).format(messageInfo.date)
 				}
 				
-				CompositionLocalProvider(
-					LocalMinimumTouchTargetEnforcement provides false
+				Box(
+					modifier = Modifier
+						.offset(x = MessageList.innerPadding)
+						.align(Alignment.CenterEnd)
+						.width(timeIndicatorWidth)
+						.wrapContentSize(unbounded = true, align = Alignment.CenterStart)
+						.clipToBounds(),
+					contentAlignment = Alignment.Center
 				) {
-					Icon(
-						modifier = Modifier
-							.clip(CircleShape)
-							.combinedClickable(
-								onClick = {
-									showErrorDialog = true
-								},
-								onLongClick = {
-									haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-									openDetailDialog()
-								},
-							)
-							.padding(8.dp),
-						imageVector = Icons.Outlined.ErrorOutline,
-						contentDescription = null,
-						tint = MaterialTheme.colorScheme.error
-					)
-				}
-				
-				if(showErrorDialog) {
-					val errorDisplay = remember(conversationInfo, messageInfo.errorCode) {
-						getErrorDisplay(context, conversationInfo, messageInfo.errorCode)
-					}
-					val connectionManager = LocalConnectionManager.current
-					
-					AlertDialog(
-						onDismissRequest = { showErrorDialog = false },
-						icon = { Icon(Icons.Outlined.Feedback, contentDescription = null) },
-						title = {
-							Text(stringResource(id = R.string.message_messageerror_title))
-						},
-						text = {
-							Text(errorDisplay.message)
-						},
-						dismissButton = {
-							TextButton(onClick = { showErrorDialog = false }) {
-								Text(stringResource(id = R.string.action_dismiss))
-							}
-						},
-						confirmButton = {
-							if(errorDisplay.isRecoverable) {
-								TextButton(onClick = {
-									//Dismiss the dialog
-									showErrorDialog = false
-									
-									//Re-send the message
-									@OptIn(DelicateCoroutinesApi::class)
-									GlobalScope.launch {
-										//Clear the message's error code
-										MessageActionTask.updateMessageErrorCode(conversationInfo, messageInfo, MessageSendErrorCode.none, null).await()
-										
-										//Send the message again
-										MessageSendHelperCoroutine.sendMessage(context, connectionManager, conversationInfo, messageInfo)
-									}
-								}) {
-									Text(stringResource(id = R.string.action_retry))
-								}
-							} else {
-								TextButton(onClick = {
-									//Dismiss the dialog
-									showErrorDialog = false
-									
-									//Remove the message
-									@OptIn(DelicateCoroutinesApi::class)
-									GlobalScope.launch {
-										MessageActionTask.deleteMessages(context, conversationInfo, listOf(messageInfo)).await()
-									}
-								}) {
-									Text(stringResource(id = R.string.action_deletemessage))
-								}
-							}
-						}
-					)
-				}
-				
-				if(showErrorDetailDialog && errorDetailDialogText != null) {
-					AlertDialog(
-						onDismissRequest = { showErrorDetailDialog = false },
-						title = {
-							Text(stringResource(id = R.string.message_messageerror_details_title))
-						},
-						text = {
-							Text(
-								text = errorDetailDialogText!!,
-								fontFamily = FontFamily.Monospace
-							)
-						},
-						dismissButton = {
-							TextButton(onClick = { showErrorDialog = false }) {
-								Text(stringResource(id = R.string.action_dismiss))
-							}
-						},
-						confirmButton = {
-							TextButton(onClick = {
-								showErrorDialog = false
-								
-								val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-								clipboard.setPrimaryClip(ClipData.newPlainText("Error details", errorDetailDialogText!!))
-							}) {
-								Text(stringResource(id = R.string.action_copy))
-							}
-						}
+					Text(
+						modifier = Modifier.width(targetTimeIndicatorWidth - MessageList.innerPadding),
+						text = timeString,
+						style = MaterialTheme.typography.bodySmall,
+						color = MaterialTheme.colorScheme.onSurfaceVariant,
+						maxLines = 1,
+						textAlign = TextAlign.Center
 					)
 				}
 			}
 		}
 	}
 }
+
+private val targetTimeIndicatorWidth = 64.dp
+private val avatarSize = 40.dp

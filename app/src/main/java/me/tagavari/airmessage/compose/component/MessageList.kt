@@ -1,6 +1,12 @@
 package me.tagavari.airmessage.compose.component
 
 import android.os.SystemClock
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,7 +17,9 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import me.tagavari.airmessage.compose.state.MessageLazyLoadState
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.constants.TimingConstants
@@ -69,8 +77,40 @@ fun MessageList(
 		currentOnLoadPastMessages()
 	}
 	
+	//Remember the horizontal drag state
+	val dragX = remember { Animatable(0F) }
+	val dragXState by dragX.asState()
+	
+	//Track left drags with 50% friction
+	val density = LocalDensity.current
+	val dragProgress by remember {
+		derivedStateOf {
+			with(density) {
+				((dragXState * -0.5F) / MessageList.dragThreshold.toPx()).coerceIn(0F, 1F)
+			}
+		}
+	}
+	
+	val scope = rememberCoroutineScope()
+	
 	LazyColumn(
-		modifier = modifier,
+		modifier = modifier
+			.draggable(
+				orientation = Orientation.Horizontal,
+				state = rememberDraggableState { delta ->
+					scope.launch {
+						dragX.snapTo(dragX.value + delta)
+					}
+				},
+				onDragStopped = {
+					scope.launch {
+						dragX.animateTo(
+							targetValue = 0F,
+							animationSpec = spring(stiffness = Spring.StiffnessLow)
+						)
+					}
+				}
+			),
 		reverseLayout = true,
 		state = scrollState,
 		contentPadding = PaddingValues(8.dp)
@@ -136,6 +176,7 @@ fun MessageList(
 					showStatus = messageStateIndices.contains(adjustedIndex),
 					spacing = spacing,
 					scrollProgress = scrollProgress,
+					horizontalDragProgress = dragProgress,
 					onDownloadAttachment = onDownloadAttachment
 				)
 			} else if(conversationItem is ConversationAction) {
@@ -160,4 +201,12 @@ fun MessageList(
 			}
 		}
 	}
+}
+
+object MessageList {
+	//The padding to apply around list items
+	val innerPadding = 8.dp
+	
+	//The distance the user has to drag to fully reveal time indicators
+	val dragThreshold = 56.dp
 }
