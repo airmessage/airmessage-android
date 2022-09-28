@@ -167,9 +167,9 @@
 		<!-- Open source licenses -->
 		<activity
 			android:exported="false"
-			android:name=".activity.Licenses"
-			android:label="@string/screen_licenses"
-			android:theme="@style/Theme.AirMessage.M3.API">
+			android:name=".compose.LibrariesCompose"
+			android:theme="@style/Theme.AirMessage.Compose"
+			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
 
