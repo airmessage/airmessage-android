@@ -13,12 +13,11 @@ import androidx.activity.viewModels
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.*
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
@@ -66,11 +65,10 @@ import me.tagavari.airmessage.helper.getParcelableExtraCompat
 import soup.compose.material.motion.MaterialFadeThrough
 import soup.compose.material.motion.MaterialSharedAxisX
 
-@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	private val viewModel: ConversationsViewModel by viewModels()
 	
-	@OptIn(ExperimentalAnimationApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		
@@ -110,6 +108,12 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					val windowSizeClass = calculateWindowSizeClass(this)
 					val isExpandedScreen = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 					
+					val scrollStateMaster = rememberLazyListState()
+					val topAppBarStateMaster = rememberTopAppBarState()
+					val scrollStateDetail = key(viewModel.lastSelectedDetailPage.collectAsState()) {
+						rememberLazyListState()
+					}
+					
 					if(isExpandedScreen) {
 						val devicePosture by devicePostureFlow.collectAsState(initial = null)
 						val hingeBounds = devicePosture?.bounds
@@ -136,6 +140,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								modifier = Modifier.width(hingeOffset),
 								floatingPane = true,
 								viewModel = viewModel,
+								scrollState = scrollStateMaster,
+								topAppBarState = topAppBarStateMaster,
 								onShowSyncDialog = ::showSyncFragment,
 								onSelectConversation = { conversationID ->
 									viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
@@ -178,6 +184,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 													conversationID = activeConversationID,
 													floatingPane = useFloatingPane,
 													receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
+													scrollState = scrollStateDetail,
 													onProcessedReceivedContent = { viewModel.setPendingReceivedContent(null) }
 												)
 											}
@@ -222,6 +229,7 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 												}
 											},
 											receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
+											scrollState = scrollStateDetail,
 											onProcessedReceivedContent = { viewModel.setPendingReceivedContent(null) }
 										)
 									}
@@ -245,6 +253,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 								null -> {
 									ConversationPane(
 										viewModel = viewModel,
+										scrollState = scrollStateMaster,
+										topAppBarState = topAppBarStateMaster,
 										onShowSyncDialog = ::showSyncFragment,
 										onSelectConversation = { conversationID ->
 											viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)

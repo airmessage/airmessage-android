@@ -1,9 +1,13 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package me.tagavari.airmessage.compose.component
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
@@ -53,6 +57,8 @@ fun ConversationPane(
 	modifier: Modifier = Modifier,
 	floatingPane: Boolean = false,
 	viewModel: ConversationsViewModel,
+	scrollState: LazyListState,
+	topAppBarState: TopAppBarState,
 	onShowSyncDialog: (connectionManager: ConnectionManager, deleteMessages: Boolean) -> Unit,
 	onSelectConversation: (Long) -> Unit,
 	onNavigateSettings: () -> Unit,
@@ -109,6 +115,8 @@ fun ConversationPane(
 	ConversationPaneLayout(
 		modifier = modifier,
 		floatingPane = floatingPane,
+		scrollState = scrollState,
+		topAppBarState = topAppBarState,
 		conversations = viewModel.conversations,
 		activeConversationID = (viewModel.detailPage as? ConversationsDetailPage.Messaging)?.conversationID,
 		onSelectConversation = onSelectConversation,
@@ -132,11 +140,13 @@ fun ConversationPane(
 	)
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun ConversationPaneLayout(
 	modifier: Modifier = Modifier,
 	floatingPane: Boolean = false,
+	scrollState: LazyListState = rememberLazyListState(),
+	topAppBarState: TopAppBarState = rememberTopAppBarState(),
 	conversations: Result<List<ConversationInfo>>? = null,
 	activeConversationID: Long? = null,
 	onSelectConversation: (Long) -> Unit = {},
@@ -150,9 +160,9 @@ private fun ConversationPaneLayout(
 ) {
 	val snackbarHostState = remember { SnackbarHostState() }
 	val scrollBehavior = if(floatingPane) {
-		TopAppBarDefaults.pinnedScrollBehavior()
+		TopAppBarDefaults.pinnedScrollBehavior(state = topAppBarState)
 	} else {
-		TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+		TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state = topAppBarState)
 	}
 	val scope = rememberCoroutineScope()
 	
@@ -504,6 +514,7 @@ private fun ConversationPaneLayout(
 				conversations.onSuccess { conversations ->
 					ConversationList(
 						conversations = conversations,
+						scrollState = scrollState,
 						contentPadding = innerPadding,
 						activeConversationID = activeConversationID,
 						onClickConversation = onSelectConversation,

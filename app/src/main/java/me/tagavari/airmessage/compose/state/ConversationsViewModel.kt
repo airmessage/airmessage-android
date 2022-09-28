@@ -29,9 +29,18 @@ import me.tagavari.airmessage.task.ConversationActionTask
 class ConversationsViewModel(application: Application) : AndroidViewModel(application) {
 	var conversations by mutableStateOf<Result<List<ConversationInfo>>?>(null)
 		private set
+	
 	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
+	
 	var detailPage by mutableStateOf<ConversationsDetailPage?>(null)
+	val lastSelectedDetailPage by derivedStateOf {
+		snapshotFlow { detailPage }
+			.filterNotNull()
+			.stateIn(viewModelScope, SharingStarted.Eagerly, null)
+	}
+	
 	private val pendingReceivedContent = MutableStateFlow<PendingConversationReceivedContent?>(null)
+	
 	var showHelpPane by mutableStateOf(false)
 	
 	init {

@@ -13,6 +13,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -70,6 +71,7 @@ fun MessagingScreen(
 	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {},
 	receivedContentFlow: Flow<ConversationReceivedContent>,
+	scrollState: LazyListState = rememberLazyListState(),
 	onProcessedReceivedContent: () -> Unit
 ) {
 	val application = LocalContext.current.applicationContext as Application
@@ -79,7 +81,6 @@ fun MessagingScreen(
 		key = conversationID.toString()
 	)
 	
-	val scrollState = rememberLazyListState()
 	val isScrolledToBottom by remember {
 		derivedStateOf {
 			scrollState.firstVisibleItemIndex == 0 && scrollState.firstVisibleItemScrollOffset == 0

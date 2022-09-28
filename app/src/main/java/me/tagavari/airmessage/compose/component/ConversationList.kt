@@ -2,7 +2,9 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -15,6 +17,7 @@ import me.tagavari.airmessage.messaging.ConversationInfo
 @Composable
 fun ConversationList(
 	modifier: Modifier = Modifier,
+	scrollState: LazyListState = rememberLazyListState(),
 	conversations: List<ConversationInfo>,
 	activeConversationID: Long? = null,
 	contentPadding: PaddingValues = PaddingValues(0.dp),
@@ -24,7 +27,8 @@ fun ConversationList(
 ) {
 	LazyColumn(
 		modifier = modifier,
-		contentPadding = contentPadding
+		contentPadding = contentPadding,
+		state = scrollState
 	) {
 		item {
 			StatusCardColumn()
