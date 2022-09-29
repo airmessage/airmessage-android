@@ -96,8 +96,8 @@ fun MessageInfoListEntry(
 		messageInfo.sender?.let { sender -> conversationInfo.members.find { it.address == sender } }
 	}
 	val isOutgoing = messageInfo.isOutgoing
-	val displayAvatar = !isOutgoing && !flow.anchorTop
-	val displaySender = conversationInfo.isGroupChat && displayAvatar
+	val displaySenderSpace = !isOutgoing && conversationInfo.isGroupChat
+	val displaySender = displaySenderSpace && !flow.anchorTop
 	val isUnconfirmed = messageInfo.messageState == MessageState.ghost
 	
 	//Load the message contact
@@ -157,14 +157,14 @@ fun MessageInfoListEntry(
 						//Shift everything 1-1 for outgoing content
 						isOutgoing -> -timeIndicatorWidth
 						//Hide the sender for incoming content
-						displaySender -> userInfoOffset
+						displaySenderSpace -> userInfoOffset
 						else -> 0.dp
 					})
 			) {
 				//User indicator
-				if(!isOutgoing && conversationInfo.isGroupChat) {
+				if(displaySenderSpace) {
 					Box(modifier = Modifier.size(avatarSize)) {
-						if(!flow.anchorTop) {
+						if(displaySender) {
 							MemberImage(
 								modifier = Modifier.fillMaxSize(),
 								color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
