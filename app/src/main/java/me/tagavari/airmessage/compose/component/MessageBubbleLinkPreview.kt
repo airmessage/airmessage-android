@@ -9,10 +9,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.memory.MemoryCache
+import coil.request.ImageRequest
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.enums.MessagePreviewType
 import me.tagavari.airmessage.messaging.MessagePreviewInfo
@@ -56,7 +59,10 @@ fun MessageBubbleLinkPreview(
 		) {
 			preview.data?.let { imageBytes ->
 				AsyncImage(
-					model = imageBytes,
+					model = ImageRequest.Builder(LocalContext.current)
+						.data(imageBytes)
+						.memoryCacheKey(MemoryCache.Key(preview.localID.toString(), mapOf("type" to "preview")))
+						.build(),
 					contentDescription = null
 				)
 			}
