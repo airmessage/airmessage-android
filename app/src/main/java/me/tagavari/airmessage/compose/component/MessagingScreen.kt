@@ -362,35 +362,47 @@ fun MessagingScreen(
 				}
 			}
 			
-			viewModel.conversation?.let { conversation ->
-				MessageList(
-					modifier = Modifier.weight(1F),
-					conversation = conversation,
-					messages = viewModel.messages,
-					messageStateIndices = viewModel.messageStateIndices,
-					scrollState = scrollState,
-					onDownloadAttachment = { messageInfo, attachmentInfo ->
-						viewModel.downloadAttachment(connectionManager, messageInfo, attachmentInfo)
-					},
-					messageSelectionState = viewModel.messageSelectionState,
-					onLoadPastMessages = { viewModel.loadPastMessages() },
-					lazyLoadState = viewModel.lazyLoadState,
-					actionSuggestions = viewModel.conversationSuggestions.collectAsState(initial = listOf()).value,
-					onSelectActionSuggestion = { action ->
-						action.replyString?.let { message ->
-							viewModel.sendTextMessage(connectionManager, message)
-						}
-						
-						action.remoteAction?.let { remoteAction ->
-							try {
-								remoteAction.actionIntent.send()
-							} catch(exception: PendingIntent.CanceledException) {
-								exception.printStackTrace()
+			Box(modifier = Modifier.weight(1F)) {
+				val sendEffectState = rememberSendEffectPaneState()
+				
+				viewModel.conversation?.let { conversation ->
+					MessageList(
+						modifier = Modifier.fillMaxSize(),
+						conversation = conversation,
+						messages = viewModel.messages,
+						messageStateIndices = viewModel.messageStateIndices,
+						scrollState = scrollState,
+						onDownloadAttachment = { messageInfo, attachmentInfo ->
+							viewModel.downloadAttachment(connectionManager, messageInfo, attachmentInfo)
+						},
+						messageSelectionState = viewModel.messageSelectionState,
+						onLoadPastMessages = { viewModel.loadPastMessages() },
+						lazyLoadState = viewModel.lazyLoadState,
+						actionSuggestions = viewModel.conversationSuggestions.collectAsState(initial = listOf()).value,
+						onSelectActionSuggestion = { action ->
+							action.replyString?.let { message ->
+								viewModel.sendTextMessage(connectionManager, message)
 							}
-						}
-					}
+							
+							action.remoteAction?.let { remoteAction ->
+								try {
+									remoteAction.actionIntent.send()
+								} catch(exception: PendingIntent.CanceledException) {
+									exception.printStackTrace()
+								}
+							}
+						},
+						isPlayingEffect = sendEffectState.activeEffect != null,
+						onPlayEffect = sendEffectState.playEffect
+					)
+				}
+				
+				SendEffectPane(
+					modifier = Modifier.fillMaxSize(),
+					activeEffect = sendEffectState.activeEffect,
+					onFinishEffect = sendEffectState.clearEffect
 				)
-			} ?: Box(modifier = Modifier.weight(1F))
+			}
 			
 			val scope = rememberCoroutineScope()
 			val attachmentsScrollState = rememberScrollState()

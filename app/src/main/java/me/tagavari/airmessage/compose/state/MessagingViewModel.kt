@@ -411,6 +411,18 @@ class MessagingViewModel(
 					messageTextComponent = updatedComponent
 				}
 			}
+			is ReduxEventMessaging.SendStyleViewed -> {
+				//Find a matching message
+				val messageIndex = messages.indexOfLast { it.localID == event.messageID }
+				if(messageIndex == -1) return
+				
+				//Update the message
+				messages[messageIndex] = messages[messageIndex].clone().apply {
+					this as MessageInfo
+					
+					sendStyleViewed = true
+				}
+			}
 			else -> {}
 		}
 	}

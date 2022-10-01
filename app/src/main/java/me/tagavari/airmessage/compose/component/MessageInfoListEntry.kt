@@ -9,10 +9,12 @@ import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Feedback
 import androidx.compose.material3.*
@@ -60,7 +62,9 @@ import me.tagavari.airmessage.helper.MessageSendHelperCoroutine
 import me.tagavari.airmessage.messaging.AttachmentInfo
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventAttachmentDownload
+import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.task.MessageActionTask
 import me.tagavari.airmessage.util.MessageFlow
 import me.tagavari.airmessage.util.MessageFlowSpacing
@@ -87,7 +91,9 @@ fun MessageInfoListEntry(
 	spacing: MessageFlowSpacing = MessageFlowSpacing.NONE,
 	scrollProgress: Float = 0F,
 	horizontalDragProgress: Float = 0F,
-	onDownloadAttachment: (MessageInfo, AttachmentInfo) -> Unit
+	onDownloadAttachment: (MessageInfo, AttachmentInfo) -> Unit,
+	isPlayingEffect: Boolean,
+	onPlayEffect: (String) -> Unit
 ) {
 	val context = LocalContext.current
 	
@@ -153,13 +159,15 @@ fun MessageInfoListEntry(
 			Row(
 				modifier = Modifier
 					.fillMaxWidth()
-					.offset(when {
-						//Shift everything 1-1 for outgoing content
-						isOutgoing -> -timeIndicatorWidth
-						//Hide the sender for incoming content
-						displaySenderSpace -> userInfoOffset
-						else -> 0.dp
-					})
+					.offset(
+						when {
+							//Shift everything 1-1 for outgoing content
+							isOutgoing -> -timeIndicatorWidth
+							//Hide the sender for incoming content
+							displaySenderSpace -> userInfoOffset
+							else -> 0.dp
+						}
+					)
 			) {
 				//User indicator
 				if(displaySenderSpace) {
@@ -185,6 +193,7 @@ fun MessageInfoListEntry(
 					horizontalAlignment = if(isOutgoing) Alignment.End else Alignment.Start,
 					verticalArrangement = Arrangement.spacedBy(MessageFlowSpacing.RELATED.padding)
 				) {
+					//Message text
 					messageInfo.messageTextComponent?.let { textComponent ->
 						//Maximum 70% width
 						Box(
@@ -234,6 +243,7 @@ fun MessageInfoListEntry(
 						}
 					}
 					
+					//Message attachments
 					val attachmentsCount = messageInfo.attachments.size
 					messageInfo.attachments.forEachIndexed { index, attachment ->
 						val isSelected = selectionState.selectedAttachmentIDs.contains(attachment.localID)
@@ -379,27 +389,62 @@ fun MessageInfoListEntry(
 						}
 					}
 					
-					AnimatedVisibility(visible = showStatus) {
-						Text(
-							modifier = Modifier.padding(horizontal = 2.dp),
-							text = when(messageInfo.messageState) {
-								MessageState.delivered ->
-									AnnotatedString(stringResource(R.string.state_delivered))
-								MessageState.read -> buildAnnotatedString {
-									withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
-										append(stringResource(R.string.state_read))
+					val sendStyle = messageInfo.sendStyle
+					AnimatedVisibility(
+						visible = showStatus || sendStyle != null
+					) {
+						when {
+							showStatus -> {
+								//Read receipt
+								Text(
+									modifier = Modifier.padding(horizontal = 2.dp),
+									text = when(messageInfo.messageState) {
+										MessageState.delivered ->
+											AnnotatedString(stringResource(R.string.state_delivered))
+										MessageState.read -> buildAnnotatedString {
+											withStyle(SpanStyle(fontWeight = FontWeight.Medium)) {
+												append(stringResource(R.string.state_read))
+											}
+											
+											append(' ')
+											
+											append(LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead))
+										}
+										else ->
+											AnnotatedString(stringResource(R.string.part_unknown))
+									},
+									style = MaterialTheme.typography.bodySmall,
+									color = MaterialTheme.colorScheme.onSurfaceVariant
+								)
+							}
+							sendStyle != null -> {
+								//Replay send effect
+								CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
+									Row(
+										modifier = Modifier
+											.padding(horizontal = 2.dp)
+											.clip(MaterialTheme.shapes.extraSmall)
+											.clickable(
+												onClick = { onPlayEffect(sendStyle) },
+												enabled = !isPlayingEffect
+											)
+											.padding(all = 2.dp),
+										verticalAlignment = Alignment.CenterVertically
+									) {
+										Icon(
+											modifier = Modifier.size(16.dp),
+											imageVector = Icons.Default.Replay,
+											contentDescription = null
+										)
+										
+										Text(
+											text = stringResource(R.string.action_replay),
+											style = MaterialTheme.typography.labelSmall
+										)
 									}
-									
-									append(' ')
-									
-									append(LanguageHelper.getDeliveryStatusTime(LocalContext.current, messageInfo.dateRead))
 								}
-								else ->
-									AnnotatedString(stringResource(R.string.part_unknown))
-							},
-							style = MaterialTheme.typography.bodySmall,
-							color = MaterialTheme.colorScheme.onSurfaceVariant
-						)
+							}
+						}
 					}
 				}
 				
@@ -563,6 +608,29 @@ fun MessageInfoListEntry(
 						textAlign = TextAlign.Center
 					)
 				}
+			}
+		}
+	}
+	
+	@OptIn(DelicateCoroutinesApi::class)
+	LaunchedEffect(messageInfo.localID) {
+		val sendStyle = messageInfo.sendStyle
+		
+		//Check if the send effect hasn't been viewed yet
+		if(sendStyle != null && !messageInfo.sendStyleViewed) {
+			//Play the send effect
+			onPlayEffect(sendStyle)
+			
+			//Emit an update
+			GlobalScope.launch(Dispatchers.Main) {
+				ReduxEmitterNetwork.messageUpdateSubject.onNext(
+					ReduxEventMessaging.SendStyleViewed(messageInfo.localID)
+				)
+			}
+			
+			//Mark the send style as viewed in the database
+			GlobalScope.launch(Dispatchers.IO) {
+				DatabaseManager.getInstance().markSendStyleViewed(messageInfo.localID)
 			}
 		}
 	}

@@ -217,7 +217,7 @@ dependencies {
 	implementation "androidx.viewpager2:viewpager2:1.0.0"
 	implementation "com.google.android.flexbox:flexbox:3.0.0"
 	
-	implementation "nl.dionsegijn:konfetti-xml:2.0.2"
+	implementation "nl.dionsegijn:konfetti-compose:2.0.2"
 	implementation "com.github.chrisbanes:PhotoView:2.3.0"
 
 	//ML Kit

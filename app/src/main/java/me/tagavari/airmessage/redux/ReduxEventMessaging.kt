@@ -136,4 +136,7 @@ sealed class ReduxEventMessaging {
 	
 	//When a message's preview updates
 	class PreviewUpdate(val messageID: Long, val preview: Result<MessagePreviewInfo>) : ReduxEventMessaging()
+	
+	//When a message's send style is viewed
+	class SendStyleViewed(val messageID: Long) : ReduxEventMessaging()
 }

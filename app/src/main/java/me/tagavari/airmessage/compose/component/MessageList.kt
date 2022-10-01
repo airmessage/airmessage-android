@@ -41,7 +41,9 @@ fun MessageList(
 	onLoadPastMessages: () -> Unit,
 	lazyLoadState: MessageLazyLoadState,
 	actionSuggestions: List<AMConversationAction>,
-	onSelectActionSuggestion: (AMConversationAction) -> Unit
+	onSelectActionSuggestion: (AMConversationAction) -> Unit,
+	isPlayingEffect: Boolean,
+	onPlayEffect: (String) -> Unit
 ) {
 	val scrollOffsetMap by remember {
 		var scrollProgressModificationTime: Long? = null
@@ -177,7 +179,9 @@ fun MessageList(
 					spacing = spacing,
 					scrollProgress = scrollProgress,
 					horizontalDragProgress = dragProgress,
-					onDownloadAttachment = onDownloadAttachment
+					onDownloadAttachment = onDownloadAttachment,
+					isPlayingEffect = isPlayingEffect,
+					onPlayEffect = onPlayEffect
 				)
 			} else if(conversationItem is ConversationAction) {
 				ConversationActionListEntry(
