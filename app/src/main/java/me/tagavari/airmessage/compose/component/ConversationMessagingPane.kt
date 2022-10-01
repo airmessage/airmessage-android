@@ -22,8 +22,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.layout.FoldingFeature
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.R
@@ -63,7 +63,11 @@ fun ConversationMessagingPane(
 	
 	val syncState by remember {
 		ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
-			.mapNotNull { event ->
+			.filter { it is ReduxEventMassRetrieval.Start
+					|| it is ReduxEventMassRetrieval.Progress
+					|| it is ReduxEventMassRetrieval.Complete
+					|| it is ReduxEventMassRetrieval.Error }
+			.map { event ->
 				when(event) {
 					is ReduxEventMassRetrieval.Start -> ProgressState.Indeterminate
 					is ReduxEventMassRetrieval.Progress -> ProgressState.Determinate(
