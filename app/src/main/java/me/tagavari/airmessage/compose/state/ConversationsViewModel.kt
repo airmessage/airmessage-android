@@ -5,7 +5,6 @@ import android.provider.Telephony
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.rx3.asFlow
@@ -102,6 +101,19 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				.collect { detailPageSelected ->
 					if(detailPageSelected) ForegroundState.conversationListLoadCount++
 					else ForegroundState.conversationListLoadCount--
+				}
+		}
+		
+		//Deselect the selected conversation if it's been removed
+		viewModelScope.launch {
+			snapshotFlow { conversations }
+				.mapNotNull { it?.getOrNull() }
+				.collect { conversations ->
+					val localDetailPage = detailPage
+					if(localDetailPage is ConversationsDetailPage.Messaging
+						&& conversations.none { it.localID == localDetailPage.conversationID }) {
+						detailPage = null
+					}
 				}
 		}
 	}
