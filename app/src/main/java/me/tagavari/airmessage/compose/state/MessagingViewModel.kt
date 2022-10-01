@@ -762,7 +762,7 @@ class MessagingViewModel(
 			}
 			
 			if(toastText != null) {
-				Toast.makeText(getApplication(), getApplication<Application>().getString(R.string.message_attachmentreqerror_desc, toastText), Toast.LENGTH_SHORT).show();
+				Toast.makeText(getApplication(), getApplication<Application>().getString(R.string.message_attachmentreqerror_desc, toastText), Toast.LENGTH_SHORT).show()
 			}
 		}
 	}
