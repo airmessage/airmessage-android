@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import me.tagavari.airmessage.compose.component.ConversationMessagingPane
+import me.tagavari.airmessage.compose.component.SyncDialog
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
 import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
@@ -83,6 +84,11 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 					ConversationMessagingPane(
 						devicePosture = devicePostureFlow.collectAsState(initial = null).value,
 						windowSizeClass = calculateWindowSizeClass(this)
+					)
+					
+					SyncDialog(
+						activity = this,
+						conversations = viewModel.conversations?.getOrNull() ?: emptyList()
 					)
 				}
 			}
@@ -234,8 +240,6 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	}
 	
 	companion object {
-		private const val keyFragmentSync = "fragment_sync"
-		
 		const val INTENT_TARGET_ID = "targetID"
 		const val INTENT_TARGET_NEW = "targetNew"
 	}
