@@ -105,6 +105,10 @@ class AttachmentInfo : MessageComponent {
 	fun copy(
 		localID: Long = this.localID,
 		guid: String? = this.guid,
+		stickers: MutableList<StickerInfo> = this.stickers,
+		tapbacks: MutableList<TapbackInfo> = this.tapbacks,
+		previewState: Int = this.previewState,
+		previewID: Long = this.previewID,
 		fileName: String? = this.fileName,
 		contentType: String? = this.contentType,
 		fileSize: Long = this.fileSize,
@@ -117,6 +121,10 @@ class AttachmentInfo : MessageComponent {
 	) = AttachmentInfo(
 		localID,
 		guid,
+		stickers,
+		tapbacks,
+		previewState,
+		previewID,
 		fileName,
 		contentType,
 		fileSize,
