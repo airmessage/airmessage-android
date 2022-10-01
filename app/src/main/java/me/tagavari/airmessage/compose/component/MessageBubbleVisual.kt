@@ -103,7 +103,6 @@ fun MessageBubbleVisual(
 							width = with(LocalDensity.current) { 200.dp.roundToPx() },
 							height = Dimension.Undefined
 						))
-						.crossfade(true)
 						.build(),
 					contentDescription = null,
 					colorFilter = if(flow.isSelected) ColorFilter.tint(flow.colors.background.copy(alpha = 0.8F), blendMode = BlendMode.Screen) else null,

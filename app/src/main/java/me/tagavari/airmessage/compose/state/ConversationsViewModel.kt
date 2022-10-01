@@ -5,10 +5,13 @@ import android.provider.Telephony
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.PendingConversationReceivedContent
 import me.tagavari.airmessage.data.DatabaseManager
@@ -22,6 +25,7 @@ import me.tagavari.airmessage.helper.ConversationPreviewHelper
 import me.tagavari.airmessage.helper.ShortcutHelper
 import me.tagavari.airmessage.messaging.ConversationInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.redux.ReduxEventMassRetrieval
 import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.redux.ReduxEventTextImport
 import me.tagavari.airmessage.task.ConversationActionTask
@@ -29,8 +33,6 @@ import me.tagavari.airmessage.task.ConversationActionTask
 class ConversationsViewModel(application: Application) : AndroidViewModel(application) {
 	var conversations by mutableStateOf<Result<List<ConversationInfo>>?>(null)
 		private set
-	
-	val hasUnreadConversations by derivedStateOf { conversations?.getOrNull()?.any { it.unreadMessageCount > 0 } ?: false }
 	
 	var detailPage by mutableStateOf<ConversationsDetailPage?>(null)
 	val lastSelectedDetailPage by derivedStateOf {
@@ -42,10 +44,39 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	private val pendingReceivedContent = MutableStateFlow<PendingConversationReceivedContent?>(null)
 	
 	var showHelpPane by mutableStateOf(false)
+	var showArchivedConversations by mutableStateOf(false)
+	
+	private val loadConversationsMutex = Mutex()
+	
+	val singlePaneTarget by derivedStateOf {
+		val localDetailPage = detailPage
+		when {
+			localDetailPage != null -> ConversationsSinglePaneTarget.Detail(localDetailPage)
+			showArchivedConversations -> ConversationsSinglePaneTarget.ArchivedConversations
+			else -> ConversationsSinglePaneTarget.Conversations
+		}
+	}
 	
 	init {
 		//Load conversations
 		loadConversations()
+		
+		//Subscribe to message updates
+		viewModelScope.launch {
+			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(this@ConversationsViewModel::applyMessageUpdate)
+		}
+		
+		//Subscribe to mass retrieval updates
+		viewModelScope.launch {
+			ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
+				.collect { event ->
+					if(event is ReduxEventMassRetrieval.Complete
+						|| event is ReduxEventMassRetrieval.Error) {
+						//Reload conversations
+						loadConversations()
+					}
+				}
+		}
 		
 		//Subscribe to text message import updates
 		viewModelScope.launch {
@@ -87,18 +118,20 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	 */
 	fun loadConversations() {
 		viewModelScope.launch {
-			//Load conversations
-			conversations = null
-			conversations = withContext(Dispatchers.IO) {
-				try {
-					Result.success(DatabaseManager.getInstance().fetchSummaryConversations(getApplication(), false))
-				} catch(throwable: Throwable) {
-					Result.failure(throwable)
+			//Ensure this function cannot run multiple instances
+			loadConversationsMutex.withLock {
+				//Load conversations
+				conversations = null
+				conversations = withContext(Dispatchers.IO) {
+					try {
+						DatabaseManager.getInstance()
+							.fetchSummaryConversations(getApplication(), false)
+							.let { Result.success(it) }
+					} catch(throwable: Throwable) {
+						Result.failure(throwable)
+					}
 				}
 			}
-			
-			//Subscribe to updates
-			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(this@ConversationsViewModel::applyMessageUpdate)
 		}
 	}
 	
@@ -135,17 +168,20 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						val conversation = list.firstOrNull { it.localID == transferredConversation.clientConversation.localID }
 						
 						//Build a conversation preview based on the new messages
-						val preview = ConversationPreviewHelper.latestItemToPreview(transferredConversation.serverConversationItems.map { it.targetItem })
+						val preview = ConversationPreviewHelper.latestItemToPreview(
+							transferredConversation.serverConversationItems.map { it.targetItem }
+						)
 						
 						//Remove the conversation if it was found
 						conversation?.let { list.remove(it) }
 						
 						//Add or re-sort the conversation
-						val updatedConversation = (conversation ?: transferredConversation.clientConversation).run {
-							copy(
-								messagePreview = ConversationHelper.getLatestPreview(messagePreview, preview)
-							)
-						}
+						val updatedConversation = (conversation ?: transferredConversation.clientConversation)
+							.run {
+								copy(
+									messagePreview = ConversationHelper.getLatestPreview(messagePreview, preview)
+								)
+							}
 						val insertionIndex = ConversationHelper.findInsertionIndex(updatedConversation, list)
 						list.add(insertionIndex, updatedConversation)
 					}
@@ -436,4 +472,10 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 sealed interface ConversationsDetailPage {
 	class Messaging(val conversationID: Long) : ConversationsDetailPage
 	object NewConversation : ConversationsDetailPage
+}
+
+sealed interface ConversationsSinglePaneTarget {
+	object Conversations : ConversationsSinglePaneTarget
+	object ArchivedConversations : ConversationsSinglePaneTarget
+	class Detail(val page: ConversationsDetailPage) : ConversationsSinglePaneTarget
 }
