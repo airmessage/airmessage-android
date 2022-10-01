@@ -10,7 +10,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
-import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.WindowSizeClass
 import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.*
@@ -20,11 +19,12 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.window.layout.FoldingFeature
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
@@ -37,13 +37,11 @@ import me.tagavari.airmessage.redux.ReduxEventMassRetrieval
 import soup.compose.material.motion.MaterialFadeThrough
 import soup.compose.material.motion.MaterialSharedAxisX
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3WindowSizeClassApi::class,
-	ExperimentalAnimationApi::class
-)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun ConversationMessagingPane(
 	devicePosture: FoldingFeature? = null,
-	windowSizeClass: WindowSizeClass = WindowSizeClass.calculateFromSize(DpSize(100.dp, 100.dp))
+	windowSizeClass: WindowSizeClass
 ) {
 	val context = LocalContext.current
 	val viewModel = viewModel<ConversationsViewModel>()
@@ -195,15 +193,47 @@ fun ConversationMessagingPane(
 		}
 	} else {
 		//Handle back presses
-		BackHandler(enabled = viewModel.detailPage != null) {
-			viewModel.detailPage = null
+		BackHandler(
+			enabled = viewModel.detailPage != null
+					|| viewModel.showArchivedConversations
+		) {
+			when {
+				viewModel.detailPage != null ->
+					viewModel.detailPage = null
+				viewModel.showArchivedConversations ->
+					viewModel.showArchivedConversations = false
+			}
 		}
+		
+		//Keep track of if we're navigating forwards or backwards
+		val isNavigatingForwards by remember {
+			snapshotFlow { viewModel.singlePaneTarget }
+				.runningFold(emptyList<ConversationsSinglePaneTarget>()) { accumulator, value ->
+					//Capture the last 2 items
+					if(accumulator.size < 2) {
+						accumulator + value
+					} else {
+						listOf(accumulator[1], value)
+					}
+				}
+				.map { lastScreens ->
+					if(lastScreens.size < 2) {
+						//Always assume we're navigating forwards
+						true
+					} else {
+						val screenFrom = lastScreens[0]
+						val screenTo = lastScreens[1]
+						
+						screenTo.depth > screenFrom.depth
+					}
+				}
+		}.collectAsState(initial = true)
 		
 		//Transition between pages individually
 		MaterialSharedAxisX(
 			modifier = Modifier.background(MaterialTheme.colorScheme.background),
 			targetState = viewModel.singlePaneTarget,
-			forward = viewModel.singlePaneTarget != ConversationsSinglePaneTarget.Conversations,
+			forward = isNavigatingForwards,
 		) { target ->
 			when(target) {
 				is ConversationsSinglePaneTarget.Conversations -> {

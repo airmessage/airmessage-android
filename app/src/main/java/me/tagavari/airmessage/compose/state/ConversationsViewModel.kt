@@ -486,8 +486,8 @@ sealed interface ConversationsDetailPage {
 	object NewConversation : ConversationsDetailPage
 }
 
-sealed interface ConversationsSinglePaneTarget {
-	object Conversations : ConversationsSinglePaneTarget
-	object ArchivedConversations : ConversationsSinglePaneTarget
-	class Detail(val page: ConversationsDetailPage) : ConversationsSinglePaneTarget
+sealed class ConversationsSinglePaneTarget(val depth: Int) {
+	object Conversations : ConversationsSinglePaneTarget(0)
+	object ArchivedConversations : ConversationsSinglePaneTarget(1)
+	class Detail(val page: ConversationsDetailPage) : ConversationsSinglePaneTarget(2)
 }
