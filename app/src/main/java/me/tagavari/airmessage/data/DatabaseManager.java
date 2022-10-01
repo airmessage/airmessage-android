@@ -933,7 +933,7 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param onlyArchived TRUE to only return archived conversations, FALSE to only return non-archived conversations
 	 * @return A list of conversations
 	 */
-	public List<ConversationInfo> fetchSummaryConversations(Context context, boolean onlyArchived) {
+	public List<ConversationInfo> fetchSummaryConversations(@NonNull Context context, @Nullable Boolean onlyArchived) {
 		return fetchSummaryConversations(context, onlyArchived, -1);
 	}
 	
@@ -945,17 +945,29 @@ public class DatabaseManager extends SQLiteOpenHelper {
 	 * @param limit The number of conversations to retrieve
 	 * @return A list of conversations
 	 */
-	public List<ConversationInfo> fetchSummaryConversations(Context context, boolean onlyArchived, int limit) {
+	public List<ConversationInfo> fetchSummaryConversations(@NonNull Context context, @Nullable Boolean onlyArchived, int limit) {
 		//Getting the database
 		SQLiteDatabase database = getReadableDatabase();
 		
 		//Creating the conversation list
 		List<ConversationInfo> conversationList = new ArrayList<>();
 		
+		String selection = Contract.ConversationEntry.COLUMN_NAME_STATE + " != ? ";
+		if(Boolean.TRUE.equals(onlyArchived)) {
+			selection += "AND " + Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + " != 0";
+		} else if(Boolean.FALSE.equals(onlyArchived)) {
+			selection += "AND " + Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + " == 0";
+		}
+		
 		//Querying the database
-		Cursor cursor = database.query(Contract.ConversationEntry.TABLE_NAME, sqlQueryConversationData,
-				Contract.ConversationEntry.COLUMN_NAME_STATE + " != ? AND " + Contract.ConversationEntry.COLUMN_NAME_ARCHIVED + (onlyArchived ? " != " : " = ") + "0", new String[]{Integer.toString(ConversationState.incompleteServer)},
-				null, null, null, limit == -1 ? null : Integer.toString(limit));
+		Cursor cursor = database.query(
+				Contract.ConversationEntry.TABLE_NAME,
+				sqlQueryConversationData,
+				selection,
+				new String[]{Integer.toString(ConversationState.incompleteServer)},
+				null, null, null,
+				limit == -1 ? null : Integer.toString(limit)
+		);
 		
 		//Getting the indexes
 		int indexChatID = cursor.getColumnIndexOrThrow(Contract.ConversationEntry._ID);

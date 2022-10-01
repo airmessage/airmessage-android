@@ -137,7 +137,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				conversations = withContext(Dispatchers.IO) {
 					try {
 						DatabaseManager.getInstance()
-							.fetchSummaryConversations(getApplication(), false)
+							.fetchSummaryConversations(getApplication(), null)
 							.let { Result.success(it) }
 					} catch(throwable: Throwable) {
 						Result.failure(throwable)
