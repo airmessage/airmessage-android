@@ -87,11 +87,20 @@ fun ConversationMessagingPane(
 		activeConversationID = (viewModel.detailPage as? ConversationsDetailPage.Messaging)?.conversationID,
 		syncState = syncState,
 		
+		onNavigateBack = {
+			when {
+				viewModel.showHelpPane -> viewModel.showHelpPane = false
+				viewModel.showArchivedConversations -> viewModel.showArchivedConversations = false
+			}
+		},
 		onSelectConversation = { conversationID ->
 			viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
 		},
 		onReloadConversations = {
 			viewModel.loadConversations()
+		},
+		onNavigateArchived = {
+			viewModel.showArchivedConversations = true
 		},
 		onNavigateSettings = {
 			context.startActivity(Intent(context, Preferences::class.java))

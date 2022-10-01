@@ -22,8 +22,10 @@ data class ConversationPaneProps(
 	val syncState: ProgressState? = null,
 	
 	//Callbacks
+	val onNavigateBack: () -> Unit = {},
 	val onSelectConversation: (Long) -> Unit = {},
 	val onReloadConversations: () -> Unit = {},
+	val onNavigateArchived: () -> Unit = {},
 	val onNavigateSettings: () -> Unit = {},
 	val onNavigateHelp: () -> Unit = {},
 	val onNewConversation: () -> Unit = {},

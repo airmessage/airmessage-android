@@ -35,8 +35,7 @@ fun ConversationPane(
 	val snackbarHostState = remember { SnackbarHostState() }
 	val scope = rememberCoroutineScope()
 	
-	//Use a large top app bar if not floating
-	val scrollBehavior = if(props.isFloatingPane) {
+	val scrollBehavior = if(props.isArchived || props.isFloatingPane) {
 		TopAppBarDefaults.pinnedScrollBehavior(state = props.topAppBarState)
 	} else {
 		TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state = props.topAppBarState)
@@ -62,7 +61,7 @@ fun ConversationPane(
 	}
 	
 	//Don't allow the user to create a new conversation while syncing
-	val allowNewConversation = props.syncState == null
+	val allowNewConversation = !props.isArchived && props.syncState == null
 	
 	Scaffold(
 		modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -123,14 +122,19 @@ fun ConversationPane(
 				
 				//Conversations loaded, show list
 				props.conversations.onSuccess { conversations ->
+					val filteredConversations = remember(conversations, props.isArchived) {
+						conversations.filter { it.isArchived == props.isArchived }
+					}
+					
 					ConversationList(
-						conversations = conversations,
+						conversations = filteredConversations,
 						scrollState = props.scrollState,
 						contentPadding = innerPadding,
 						activeConversationID = props.activeConversationID,
 						onClickConversation = props.onSelectConversation,
 						selectedConversations = selectedConversationIDs,
-						setSelectedConversations = { selectedConversationIDs = it }
+						setSelectedConversations = { selectedConversationIDs = it },
+						showCards = !props.isArchived
 					)
 				}
 			}

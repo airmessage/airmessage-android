@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -20,6 +22,14 @@ fun ConversationPaneAppBar(
 		TopAppBar(
 			title = {
 				Text(stringResource(R.string.screen_archived))
+			},
+			navigationIcon = {
+				IconButton(onClick = props.onNavigateBack) {
+					Icon(
+						imageVector = Icons.Filled.ArrowBack,
+						contentDescription = stringResource(id = R.string.action_back)
+					)
+				}
 			},
 			scrollBehavior = scrollBehavior
 		)

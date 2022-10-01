@@ -23,15 +23,18 @@ fun ConversationList(
 	contentPadding: PaddingValues = PaddingValues(0.dp),
 	onClickConversation: (Long) -> Unit,
 	selectedConversations: Set<Long>,
-	setSelectedConversations: (Set<Long>) -> Unit
+	setSelectedConversations: (Set<Long>) -> Unit,
+	showCards: Boolean = true
 ) {
 	LazyColumn(
 		modifier = modifier,
 		contentPadding = contentPadding,
 		state = scrollState
 	) {
-		item {
-			StatusCardColumn()
+		if(showCards) {
+			item {
+				StatusCardColumn()
+			}
 		}
 		
 		items(
