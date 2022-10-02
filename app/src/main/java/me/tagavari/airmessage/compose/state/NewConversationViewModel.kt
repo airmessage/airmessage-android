@@ -50,7 +50,11 @@ class NewConversationViewModel(
 	var recipientInputType by savedStateHandle.saveable { mutableStateOf(ConversationRecipientInputType.EMAIL) }
 	
 	val recipientInputValid by derivedStateOf {
-		AddressHelper.validateAddress(recipientInput)
+		if(selectedService.serviceSupportsEmail) {
+			AddressHelper.validateAddress(recipientInput)
+		} else {
+			AddressHelper.validatePhoneNumber(recipientInput)
+		}
 	}
 	
 	//Selected service
