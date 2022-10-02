@@ -66,10 +66,8 @@ import io.reactivex.rxjava3.core.Completable;
 import io.reactivex.rxjava3.disposables.Disposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.compose.OnboardingCompose;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService;
-import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.contract.ContractDefaultMessagingApp;
@@ -86,7 +84,6 @@ import me.tagavari.airmessage.helper.NotificationHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
-import me.tagavari.airmessage.service.ConnectionService;
 
 public class Preferences extends AppCompatCompositeActivity implements PreferenceFragmentCompat.OnPreferenceStartScreenCallback {
 	private static final String TAG = Preferences.class.getSimpleName();
@@ -1003,9 +1000,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		}
 		
 		private void requestSyncMessages(MassRetrievalParams params) {
-			//Clearing download tasks
-			ConnectionTaskManager.clearDownloads();
-			
 			//Deleting the messages
 			syncSubscription = MessagesDataHelper.deleteAMBMessages(getContext())
 					.toSingle(() -> {

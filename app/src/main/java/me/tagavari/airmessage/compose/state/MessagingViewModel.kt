@@ -9,6 +9,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.*
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
@@ -22,11 +23,7 @@ import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlob
 import me.tagavari.airmessage.container.ReadableBlobLocalFile
 import me.tagavari.airmessage.data.DatabaseManager
-import me.tagavari.airmessage.enums.AttachmentReqErrorCode
-import me.tagavari.airmessage.enums.MessagePreviewState
-import me.tagavari.airmessage.enums.MessageState
-import me.tagavari.airmessage.enums.ServiceHandler
-import me.tagavari.airmessage.enums.ServiceType
+import me.tagavari.airmessage.enums.*
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.*
 import me.tagavari.airmessage.messaging.*
@@ -34,12 +31,12 @@ import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileClear
 import me.tagavari.airmessage.redux.ReduxEventMessaging.ConversationDraftFileUpdate
+import me.tagavari.airmessage.service.ConnectionService
 import me.tagavari.airmessage.task.ConversationActionTask
 import me.tagavari.airmessage.task.DraftActionTaskCoroutine
 import me.tagavari.airmessage.util.LatLngInfo
 import me.tagavari.airmessage.util.ReplaceInsertResult
 import java.io.IOException
-
 
 class MessagingViewModel(
 	application: Application,
@@ -81,6 +78,8 @@ class MessagingViewModel(
 		
 		setOf(readTargetIndex, deliveredTargetIndex).filter { it != -1 }
 	}
+	private val autoDownloadFlow = MutableSharedFlow<Pair<MessageInfo, AttachmentInfo>>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+	
 	val queuedFiles = mutableStateListOf<QueuedFile>()
 	val messageSelectionState = MessageSelectionState()
 	val conversationSuggestions = snapshotFlow { messages.toList() }
@@ -143,11 +142,70 @@ class MessagingViewModel(
 		viewModelScope.launch {
 			ReduxEmitterNetwork.messageUpdateSubject.asFlow().collect(this@MessagingViewModel::applyMessageUpdate)
 		}
+		
+		//Automatically download attachment files
+		viewModelScope.launch {
+			//Collect message updates while we're connected
+			ReduxEmitterNetwork.connectionStateSubject.asFlow()
+				.filter { it.state == ConnectionState.connected }
+				.combine(autoDownloadFlow) { _, attachmentList -> attachmentList }
+				.filter { (_, attachment) -> attachment.shouldAutoDownload }
+				.collect { (messageInfo, attachmentInfo) ->
+					//Download the attachment
+					downloadAttachment(ConnectionService.getConnectionManager(), messageInfo, attachmentInfo)
+					
+					//Mark the attachment as no longer needing to be downloaded
+					@OptIn(DelicateCoroutinesApi::class)
+					GlobalScope.launch(Dispatchers.IO) {
+						DatabaseManager.getInstance().markAttachmentAutoDownloaded(attachmentInfo.localID)
+					}
+					
+					//Find the message
+					val messageIndex = messages.indexOfFirst { it.localID == messageInfo.localID }
+					if(messageIndex == -1) return@collect
+					
+					//Find the attachment
+					val attachmentList = messageInfo.attachments.toMutableList()
+					val attachmentIndex = attachmentList.indexOfFirst { it.localID == attachmentInfo.localID }
+					if(attachmentIndex == -1) return@collect
+					
+					//Update the attachment
+					attachmentList[attachmentIndex] = attachmentList[attachmentIndex].copy(
+						shouldAutoDownload = false
+					)
+					
+					//Update the message
+					messages[messageIndex] = messageInfo.clone().apply {
+						attachments = attachmentList
+					}
+				}
+		}
 	}
 	
 	override fun onCleared() {
 		//Release sounds
 		soundPool.release()
+	}
+	
+	/**
+	 * Loads new conversation items into the conversation
+	 * @param conversationItems The conversation items to add to the top of the conversation,
+	 * from oldest to newest
+	 */
+	private suspend fun addConversationItems(conversationItems: List<ConversationItem>) {
+		messages.addAll(0, conversationItems)
+		
+		if(Preferences.getPreferenceAutoDownloadAttachments(getApplication())) {
+			conversationItems
+				//Handle items newest to oldest
+				.asReversed()
+				.asSequence()
+				//Map conversation items to attachments
+				.filterIsInstance<MessageInfo>()
+				.flatMap { message -> message.attachments.map { Pair(message, it) } }
+				.asFlow()
+				.collect(autoDownloadFlow)
+		}
 	}
 	
 	/**
@@ -170,7 +228,7 @@ class MessagingViewModel(
 			//Load the initial messages
 			withContext(Dispatchers.IO) {
 				lazyLoader.loadNextChunk(getApplication(), messageChunkSize)
-			}.let { messages.addAll(it) }
+			}.let { addConversationItems(it) }
 		}
 	}
 	
@@ -197,7 +255,7 @@ class MessagingViewModel(
 			
 			//Handle the result
 			lazyLoadState = if(loadedMessages.isNotEmpty()) {
-				messages.addAll(0, loadedMessages)
+				addConversationItems(loadedMessages)
 				MessageLazyLoadState.COMPLETE
 			} else {
 				MessageLazyLoadState.IDLE

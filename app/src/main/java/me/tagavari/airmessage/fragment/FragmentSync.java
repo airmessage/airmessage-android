@@ -23,7 +23,6 @@ import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.ConnectionTaskManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
 import me.tagavari.airmessage.data.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
@@ -194,9 +193,6 @@ public class FragmentSync extends BottomSheetDialogFragment {
 		//Updating the saved installation ID
 		updateInstallationID();
 		
-		//Clearing download tasks
-		ConnectionTaskManager.clearDownloads();
-		
 		//Deleting the messages
 		MessagesDataHelper.deleteAMBMessages(getContext()).subscribeOn(Schedulers.single()).subscribe(() -> {
 			//Requesting a re-sync
@@ -215,9 +211,6 @@ public class FragmentSync extends BottomSheetDialogFragment {
 	private void deleteMessages(View view) {
 		//Updating the saved installation ID
 		updateInstallationID();
-		
-		//Clearing download tasks
-		ConnectionTaskManager.clearDownloads();
 		
 		//Deleting the messages
 		MessagesDataHelper.deleteAMBMessages(getContext()).subscribeOn(Schedulers.single()).subscribe();
