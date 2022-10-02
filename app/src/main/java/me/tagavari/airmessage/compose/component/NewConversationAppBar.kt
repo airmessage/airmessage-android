@@ -99,7 +99,8 @@ fun NewConversationAppBar(
 					Row(
 						modifier = Modifier
 							.weight(1F)
-							.horizontalScroll(rememberScrollState()),
+							.horizontalScroll(rememberScrollState())
+							.padding(end = 8.dp),
 						horizontalArrangement = Arrangement.spacedBy(8.dp)
 					) {
 						for(service in MessageServiceDescription.availableServices) {
