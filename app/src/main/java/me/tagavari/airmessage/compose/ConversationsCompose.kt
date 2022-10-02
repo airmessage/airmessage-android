@@ -9,8 +9,6 @@ import android.os.Bundle
 import android.view.MotionEvent
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
 import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
 import androidx.compose.runtime.collectAsState
@@ -41,7 +39,7 @@ import me.tagavari.airmessage.helper.ShortcutHelper.shortcutIDToConversationID
 import me.tagavari.airmessage.helper.getParcelableArrayListExtraCompat
 import me.tagavari.airmessage.helper.getParcelableExtraCompat
 
-@OptIn(ExperimentalMaterial3WindowSizeClassApi::class, ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 class ConversationsCompose : FragmentActivity(), GestureTrackable {
 	private val viewModel: ConversationsViewModel by viewModels()
 	
