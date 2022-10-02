@@ -51,7 +51,7 @@ fun ContactRow(
 			Column {
 				for(address in contact.addresses) {
 					val enabled = remember {
-						requiredService.serviceSupportsEmail || AddressHelper.validateEmail(address.address)
+						requiredService.serviceSupportsEmail || AddressHelper.validatePhoneNumber(address.address)
 					}
 					
 					Row(
