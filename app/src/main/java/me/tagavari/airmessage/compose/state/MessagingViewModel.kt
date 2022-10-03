@@ -159,25 +159,6 @@ class MessagingViewModel(
 					GlobalScope.launch(Dispatchers.IO) {
 						DatabaseManager.getInstance().markAttachmentAutoDownloaded(attachmentInfo.localID)
 					}
-					
-					//Find the message
-					val messageIndex = messages.indexOfFirst { it.localID == messageInfo.localID }
-					if(messageIndex == -1) return@collect
-					
-					//Find the attachment
-					val attachmentList = messageInfo.attachments.toMutableList()
-					val attachmentIndex = attachmentList.indexOfFirst { it.localID == attachmentInfo.localID }
-					if(attachmentIndex == -1) return@collect
-					
-					//Update the attachment
-					attachmentList[attachmentIndex] = attachmentList[attachmentIndex].copy(
-						shouldAutoDownload = false
-					)
-					
-					//Update the message
-					messages[messageIndex] = messageInfo.clone().apply {
-						attachments = attachmentList
-					}
 				}
 		}
 	}
@@ -485,7 +466,7 @@ class MessagingViewModel(
 		}
 	}
 	
-	private fun applyMessageUpdate(resultList: List<ReplaceInsertResult>) {
+	private suspend fun applyMessageUpdate(resultList: List<ReplaceInsertResult>) {
 		for(result in resultList) {
 			//Add new items
 			for(newItem in result.newItems) {
@@ -495,6 +476,10 @@ class MessagingViewModel(
 				val insertIndex = messageBeforeIndex + 1
 				
 				messages.add(insertIndex, newItem)
+				
+				if(newItem is MessageInfo) {
+					newItem.attachments.map { Pair(newItem, it) }.asFlow().collect(autoDownloadFlow)
+				}
 			}
 			
 			//Apply updated items
