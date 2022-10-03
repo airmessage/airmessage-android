@@ -56,6 +56,8 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		}
 	}
 	
+	private var messagingViewModelData: MessagingViewModelData? = null
+	
 	init {
 		//Load conversations
 		loadConversations()
@@ -123,6 +125,9 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		if(detailPage != null) {
 			ForegroundState.conversationListLoadCount--
 		}
+		
+		//Clean up the existing view model
+		messagingViewModelData?.onCleared()
 	}
 	
 	/**
@@ -339,6 +344,26 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				})
 			}
 		}
+	}
+	
+	fun getMessagingViewModel(conversationID: Long): MessagingViewModelData {
+		//Create a new view model if we have none
+		val viewModelData = messagingViewModelData
+		
+		//Return a matching view model if we have the same conversation ID
+		if(viewModelData?.conversationID == conversationID) {
+			return viewModelData
+		}
+		
+		//Clean up the existing view model
+		viewModelData?.onCleared()
+		
+		//Create a new view model
+		val coroutineScope = viewModelScope + SupervisorJob(viewModelScope.coroutineContext.job)
+		val data = MessagingViewModelData(getApplication(), conversationID, coroutineScope)
+		messagingViewModelData = data
+		return data
+		
 	}
 	
 	/**

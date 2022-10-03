@@ -5,11 +5,14 @@ import android.view.MotionEvent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.core.view.WindowCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.flowOf
 import me.tagavari.airmessage.compose.component.MessagingScreen
 import me.tagavari.airmessage.compose.interop.GestureTrackable
 import me.tagavari.airmessage.compose.interop.GestureTracker
 import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
+import me.tagavari.airmessage.compose.state.MessagingViewModel
+import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 
 class MessagingCompose : ComponentActivity(), GestureTrackable {
@@ -24,8 +27,14 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 		setContent {
 			ConnectionServiceLocalProvider(context = this) {
 				AirMessageAndroidTheme {
+					val viewModel = viewModel<MessagingViewModel>(
+						factory = MessagingViewModelFactory(application, conversationID),
+						key = conversationID.toString()
+					).data
+					
 					MessagingScreen(
 						conversationID = conversationID,
+						viewModel = viewModel,
 						receivedContentFlow = flowOf(),
 						onProcessedReceivedContent = {}
 					)

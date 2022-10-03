@@ -175,6 +175,7 @@ fun ConversationMessagingPane(
 							key(activeConversationID) {
 								MessagingScreen(
 									conversationID = activeConversationID,
+									viewModel = viewModel.getMessagingViewModel(activeConversationID),
 									floatingPane = useFloatingPane,
 									receivedContentFlow = viewModel.getPendingReceivedContentFlowForConversation(activeConversationID),
 									scrollState = scrollStateDetail,
@@ -264,6 +265,7 @@ fun ConversationMessagingPane(
 							key(detailPage) {
 								MessagingScreen(
 									conversationID = activeConversationID,
+									viewModel = viewModel.getMessagingViewModel(activeConversationID),
 									navigationIcon = {
 										IconButton(onClick = { viewModel.detailPage = null }) {
 											Icon(

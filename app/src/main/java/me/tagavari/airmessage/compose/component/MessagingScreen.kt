@@ -1,6 +1,5 @@
 package me.tagavari.airmessage.compose.component
 
-import android.app.Application
 import android.app.PendingIntent
 import android.content.ClipData
 import android.content.ClipboardManager
@@ -38,7 +37,6 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
@@ -49,8 +47,7 @@ import me.tagavari.airmessage.compose.remember.MessagingMediaCaptureType
 import me.tagavari.airmessage.compose.remember.rememberAudioPlayback
 import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
-import me.tagavari.airmessage.compose.state.MessagingViewModel
-import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
+import me.tagavari.airmessage.compose.state.MessagingViewModelData
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlobUri
@@ -67,6 +64,7 @@ import me.tagavari.airmessage.messaging.MessageInfo
 @Composable
 fun MessagingScreen(
 	modifier: Modifier = Modifier,
+	viewModel: MessagingViewModelData,
 	floatingPane: Boolean = false,
 	conversationID: Long,
 	navigationIcon: @Composable () -> Unit = {},
@@ -74,12 +72,7 @@ fun MessagingScreen(
 	scrollState: LazyListState = rememberLazyListState(),
 	onProcessedReceivedContent: () -> Unit
 ) {
-	val application = LocalContext.current.applicationContext as Application
 	val connectionManager = LocalConnectionManager.current
-	val viewModel = viewModel<MessagingViewModel>(
-		factory = MessagingViewModelFactory(application, conversationID),
-		key = conversationID.toString()
-	)
 	
 	val isScrolledToBottom by remember {
 		derivedStateOf {
@@ -95,7 +88,7 @@ fun MessagingScreen(
 			scrollState.animateScrollToItem(0)
 			
 			//Create feedback when a new incoming message is received
-			if(event == MessagingViewModel.MessageAdditionEvent.INCOMING_MESSAGE) {
+			if(event == MessagingViewModelData.MessageAdditionEvent.INCOMING_MESSAGE) {
 				SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageIncoming)
 				haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 			}
