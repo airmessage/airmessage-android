@@ -167,10 +167,16 @@ private fun LicenseDialog(
 }
 
 @Composable
-private fun HTMLText(html: String, modifier: Modifier = Modifier, color: Color = Color.Black) {
-	AndroidView(modifier = modifier, factory = { context ->
-		TextView(context).apply {
-			setTextColor(color.toArgb())
-		}
-	}, update = { it.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT) })
+private fun HTMLText(
+	html: String,
+	modifier: Modifier = Modifier,
+	color: Color = MaterialTheme.colorScheme.onSurface
+) {
+	AndroidView(
+		modifier = modifier,
+		factory = { context -> TextView(context) },
+		update = { textView ->
+			textView.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_COMPACT)
+			textView.setTextColor(color.toArgb()) }
+	)
 }
