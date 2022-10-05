@@ -113,7 +113,7 @@ fun ConversationPane(
 				//Conversations failed to load
 				props.conversations.onFailure {
 					ConversationsPaneErrorState(
-						modifier = modifier
+						modifier = Modifier
 							.fillMaxSize()
 							.padding(innerPadding),
 						onRetry = props.onReloadConversations
@@ -126,16 +126,24 @@ fun ConversationPane(
 						conversations.filter { it.isArchived == props.isArchived }
 					}
 					
-					ConversationList(
-						conversations = filteredConversations,
-						scrollState = props.scrollState,
-						contentPadding = innerPadding,
-						activeConversationID = props.activeConversationID,
-						onClickConversation = props.onSelectConversation,
-						selectedConversations = selectedConversationIDs,
-						setSelectedConversations = { selectedConversationIDs = it },
-						showCards = !props.isArchived
-					)
+					if(filteredConversations.isNotEmpty()) {
+						ConversationList(
+							conversations = filteredConversations,
+							scrollState = props.scrollState,
+							contentPadding = innerPadding,
+							activeConversationID = props.activeConversationID,
+							onClickConversation = props.onSelectConversation,
+							selectedConversations = selectedConversationIDs,
+							setSelectedConversations = { selectedConversationIDs = it },
+							showCards = !props.isArchived
+						)
+					} else {
+						ConversationsPaneEmptyState(
+							modifier = Modifier.fillMaxSize(),
+							type = if(props.isArchived) ConversationsPaneEmptyStateType.ARCHIVED
+							else ConversationsPaneEmptyStateType.CONVERSATIONS
+						)
+					}
 				}
 			}
 		},
