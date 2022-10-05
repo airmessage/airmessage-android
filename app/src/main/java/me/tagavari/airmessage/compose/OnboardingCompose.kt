@@ -24,6 +24,7 @@ import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingConnect
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingManual
+import me.tagavari.airmessage.compose.component.onboarding.OnboardingNavigationPane
 import me.tagavari.airmessage.compose.component.onboarding.OnboardingWelcome
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
@@ -57,7 +58,6 @@ class OnboardingCompose : ComponentActivity() {
 		}
 	}
 	
-	@OptIn(ExperimentalAnimationApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		
@@ -65,126 +65,13 @@ class OnboardingCompose : ComponentActivity() {
 		
 		setContent {
 			AirMessageAndroidTheme {
-				val scope = rememberCoroutineScope()
-				
-				LaunchedEffect(Unit) {
-					//Prevent the connection service from launching on boot
-					Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, false)
-				}
-				
-				var screen by rememberSaveable { mutableStateOf(OnboardingComposeScreen.WELCOME) }
-				
-				DisposableEffect(connectionManager) {
-					//Disable reconnections while configuring
-					connectionManager?.setDisableReconnections(true)
-					
-					onDispose {
-						val connectionManager = connectionManager ?: return@onDispose
-						
-						connectionManager.setConnectionOverride(null)
-						connectionManager.setDisableReconnections(false)
+				OnboardingNavigationPane(
+					connectionManager = connectionManager,
+					onComplete = {
+						startActivity(Intent(this, ConversationsCompose::class.java))
+						finish()
 					}
-				}
-				
-				//Navigates back to the welcome screen from a child screen
-				fun navigateWelcome() {
-					screen = OnboardingComposeScreen.WELCOME
-					connectionManager?.disconnect(ConnectionErrorCode.user)
-					scope.launch {
-						FirebaseAuthBridge.signOut(this@OnboardingCompose)
-					}
-				}
-				
-				//Navigate backwards when back is pressed
-				BackHandler(enabled = screen != OnboardingComposeScreen.WELCOME) {
-					navigateWelcome()
-				}
-				
-				MaterialSharedAxisX(
-					modifier = Modifier.background(MaterialTheme.colorScheme.background),
-					targetState = screen,
-					forward = screen != OnboardingComposeScreen.WELCOME,
-				) { animatedScreen ->
-					when(animatedScreen) {
-						OnboardingComposeScreen.WELCOME -> {
-							OnboardingWelcome(
-								modifier = Modifier.fillMaxSize(),
-								showGoogle = FirebaseAuthBridge.isSupported,
-								onClickGoogle = {
-									//Start connecting
-									connectionManager?.let { connectionManager ->
-										screen = OnboardingComposeScreen.CONNECT
-										connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.connect, ConnectionParams.Security(null)))
-										connectionManager.connect()
-									}
-								},
-								onClickManual = {
-									screen = OnboardingComposeScreen.MANUAL
-								}
-							)
-						}
-						OnboardingComposeScreen.CONNECT -> {
-							val connectionState by ReduxEmitterNetwork.connectionStateSubject.subscribeAsState(initial = null)
-							var appliedPassword by remember { mutableStateOf<String?>(null) }
-							
-							LaunchedEffect(Unit) {
-								//Wait for when we become connected
-								ReduxEmitterNetwork.connectionStateSubject.asFlow()
-									.filterIsInstance<ReduxEventConnection.Connected>()
-									.first()
-								
-								//Save the connection data to shared preferences
-								SharedPreferencesManager.setProxyType(this@OnboardingCompose, ProxyType.connect)
-								@Suppress("BlockingMethodInNonBlockingContext")
-								SharedPreferencesManager.setDirectConnectionPassword(this@OnboardingCompose, appliedPassword)
-								SharedPreferencesManager.setConnectionConfigured(this@OnboardingCompose, true)
-								
-								//Disable the connection on boot
-								Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, false)
-								
-								//Start the conversations activity
-								startActivity(Intent(this@OnboardingCompose, ConversationsCompose::class.java))
-								finish()
-							}
-							
-							OnboardingConnect(
-								modifier = Modifier.fillMaxSize(),
-								errorCode = (connectionState as? ReduxEventConnection.Disconnected)?.code,
-								onEnterPassword = { password ->
-									connectionManager?.let { connectionManager ->
-										connectionManager.setConnectionOverride(ConnectionOverride(ProxyType.connect, ConnectionParams.Security(password)))
-										connectionManager.connect()
-										appliedPassword = password
-									}
-								},
-								onReconnect = {
-									connectionManager?.connect()
-								},
-								onCancel = ::navigateWelcome
-							)
-						}
-						OnboardingComposeScreen.MANUAL -> {
-							OnboardingManual(
-								modifier = Modifier.fillMaxSize(),
-								connectionManager = connectionManager,
-								onCancel = ::navigateWelcome,
-								onFinish = { connectionParams ->
-									//Save the connection data to shared preferences
-									SharedPreferencesManager.setProxyType(this@OnboardingCompose, ProxyType.direct)
-									SharedPreferencesManager.setDirectConnectionDetails(this@OnboardingCompose, connectionParams)
-									SharedPreferencesManager.setConnectionConfigured(this@OnboardingCompose, true)
-									
-									//Enable connection on boot
-									Preferences.updateConnectionServiceBootEnabled(this@OnboardingCompose, Preferences.getPreferenceStartOnBoot(this@OnboardingCompose))
-									
-									//Start the conversations activity
-									startActivity(Intent(this@OnboardingCompose, ConversationsCompose::class.java))
-									finish()
-								}
-							)
-						}
-					}
-				}
+				)
 			}
 		}
 	}
@@ -192,7 +79,7 @@ class OnboardingCompose : ComponentActivity() {
 	override fun onStart() {
 		super.onStart()
 		
-		//Binding to the connection service
+		//Bind to the connection service
 		bindService(
 			Intent(this, ConnectionService::class.java),
 			serviceConnection,
@@ -203,13 +90,7 @@ class OnboardingCompose : ComponentActivity() {
 	override fun onStop() {
 		super.onStop()
 		
-		//Unbinding from the connection service
+		//Unbind from the connection service
 		unbindService(serviceConnection)
-	}
-	
-	private enum class OnboardingComposeScreen {
-		WELCOME,
-		MANUAL,
-		CONNECT
 	}
 }
