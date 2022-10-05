@@ -49,6 +49,7 @@
 	<application
 		android:allowBackup="true"
 		android:fullBackupContent="@xml/backup_rules"
+		android:dataExtractionRules="@xml/backup_rules_12"
 		android:appCategory="social"
 		android:icon="@mipmap/app_icon"
 		android:roundIcon="@mipmap/app_icon"

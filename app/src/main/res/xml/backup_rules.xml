@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <full-backup-content>
 	<include domain="sharedpref" path="." />
-
-	<exclude domain="file" path="instant-run" />
-	<exclude domain="file" path="attachments" />
-	<exclude domain="database" path="messages.db" />
 	<exclude domain="sharedpref" path="connectivity.xml" />
 	<exclude domain="sharedpref" path="secure.xml" />
 </full-backup-content>
