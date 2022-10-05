@@ -22,6 +22,8 @@ import com.google.maps.android.ktx.addMarker
 import com.google.maps.android.ktx.awaitMap
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.compose.component.MessageBubbleLocationContentGeocoder
 import me.tagavari.airmessage.util.LatLngInfo
 
 /**
@@ -35,41 +37,50 @@ fun MessageBubbleLocationMap(
 	highlight: Color? = null
 ) {
 	val context = LocalContext.current
-	val latLng = LatLng(coords.latitude, coords.longitude)
 	
-	val mapView = rememberMapViewWithLifecycle()
-	
-	//Initialize map
-	val isDarkTheme = isSystemInDarkTheme()
-	LaunchedEffect(mapView) {
-		val googleMap = mapView.awaitMap()
+	//Use Google Maps if message previews are enabled
+	if(Preferences.getPreferenceMessagePreviews(context)) {
+		val latLng = LatLng(coords.latitude, coords.longitude)
 		
-		//Set theme
-		val mapTheme = if(isDarkTheme) R.raw.map_dark else R.raw.map_light
-		val mapStyle = MapStyleOptions.loadRawResourceStyle(context, mapTheme)
-		googleMap.setMapStyle(mapStyle)
-	}
-	
-	val scope = rememberCoroutineScope()
-	Box(modifier = modifier) {
-		AndroidView(
-			factory = { mapView },
-			update = { map ->
-				scope.launch {
-					val googleMap = map.awaitMap()
-					googleMap.addMarker { position(latLng) }
-					googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16F))
-				}
-			}
-		)
+		val mapView = rememberMapViewWithLifecycle()
 		
-		highlight?.let { highlightColor ->
-			Box(
-				modifier = Modifier
-					.background(highlightColor)
-					.fillMaxSize()
-			)
+		//Initialize map
+		val isDarkTheme = isSystemInDarkTheme()
+		LaunchedEffect(mapView) {
+			val googleMap = mapView.awaitMap()
+			
+			//Set theme
+			val mapTheme = if(isDarkTheme) R.raw.map_dark else R.raw.map_light
+			val mapStyle = MapStyleOptions.loadRawResourceStyle(context, mapTheme)
+			googleMap.setMapStyle(mapStyle)
 		}
+		
+		val scope = rememberCoroutineScope()
+		Box(modifier = modifier) {
+			AndroidView(
+				factory = { mapView },
+				update = { map ->
+					scope.launch {
+						val googleMap = map.awaitMap()
+						googleMap.addMarker { position(latLng) }
+						googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(latLng, 16F))
+					}
+				}
+			)
+			
+			highlight?.let { highlightColor ->
+				Box(
+					modifier = Modifier
+						.background(highlightColor)
+						.fillMaxSize()
+				)
+			}
+		}
+	} else {
+		MessageBubbleLocationContentGeocoder(
+			modifier = modifier,
+			coords = coords
+		)
 	}
 }
 
