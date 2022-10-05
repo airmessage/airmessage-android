@@ -4,6 +4,7 @@ import android.os.Build
 import android.view.MotionEvent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.Icon
@@ -27,7 +28,8 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
-import coil.compose.AsyncImage
+import coil.compose.SubcomposeAsyncImage
+import coil.compose.SubcomposeAsyncImageContent
 import coil.imageLoader
 import coil.memory.MemoryCache
 import coil.request.ImageRequest
@@ -51,7 +53,8 @@ fun MessageBubbleVisual(
 	type: String?,
 	onClick: () -> Unit,
 	onSetSelected: (Boolean) -> Unit,
-	sendStyle: String?
+	sendStyle: String?,
+	fallback: @Composable () -> Unit
 ) {
 	val haptic = LocalHapticFeedback.current
 	
@@ -67,36 +70,7 @@ fun MessageBubbleVisual(
 	FillLayout(
 		mainContent = {
 			Box {
-				AsyncImage(
-					modifier = Modifier
-						.width(200.dp)
-						.clip(flow.bubbleShape)
-						.then(run {
-							//Blur is only supported on Android 12+
-							if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-								Modifier.blur(invisibleInkState.contentBlur)
-							} else {
-								val color = flow.colors.background.copy(alpha = 1F - invisibleInkState.contentAlpha)
-								Modifier.drawWithContent {
-									drawContent()
-									drawRect(color)
-								}
-							}
-						})
-						.wrapContentHeight()
-						.combinedClickable(
-							onClick = {
-								if(flow.isSelected) {
-									onSetSelected(false)
-								} else {
-									onClick()
-								}
-							},
-							onLongClick = {
-								haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-								onSetSelected(!flow.isSelected)
-							}
-						),
+				SubcomposeAsyncImage(
 					model = ImageRequest.Builder(context)
 						.data(file)
 						.size(Size(
@@ -106,41 +80,85 @@ fun MessageBubbleVisual(
 						.build(),
 					contentDescription = null,
 					colorFilter = if(flow.isSelected) ColorFilter.tint(flow.colors.background.copy(alpha = 0.8F), blendMode = BlendMode.Screen) else null,
-					contentScale = ContentScale.FillWidth
-				)
-				
-				if(isVideo) {
-					val isContentLight by produceState(initialValue = false) {
-						//Create the image request
-						val request = ImageRequest.Builder(context)
-							.data(file)
-							// We scale the image to cover 16px x 16px (i.e. min dimension == 16px)
-							.size(16).scale(Scale.FILL)
-							// Disable hardware bitmaps, since Palette uses Bitmap.getPixels()
-							.allowHardware(false)
-							// Set a custom memory cache key to avoid overwriting the displayed image in the cache
-							.memoryCacheKey(MemoryCache.Key(file.path, mapOf("palette" to "true")))
-							.build()
-						
-						//Load the bitmap
-						val bitmap = when(val result = context.imageLoader.execute(request)) {
-							is SuccessResult -> result.drawable.toBitmap()
-							else -> null
+					contentScale = ContentScale.FillWidth,
+					success = {
+						Box(
+							modifier = Modifier
+								.width(200.dp)
+								.clip(flow.bubbleShape)
+								.then(run {
+									//Blur is only supported on Android 12+
+									if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+										Modifier.blur(invisibleInkState.contentBlur)
+									} else {
+										val color = flow.colors.background.copy(alpha = 1F - invisibleInkState.contentAlpha)
+										Modifier.drawWithContent {
+											drawContent()
+											drawRect(color)
+										}
+									}
+								})
+								.wrapContentHeight()
+								.combinedClickable(
+									onClick = {
+										if(flow.isSelected) {
+											onSetSelected(false)
+										} else {
+											onClick()
+										}
+									},
+									onLongClick = {
+										haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+										onSetSelected(!flow.isSelected)
+									}
+								)
+						) {
+							this@SubcomposeAsyncImage.SubcomposeAsyncImageContent()
+							
+							if(isVideo) {
+								val isContentLight by produceState(initialValue = false) {
+									//Create the image request
+									val request = ImageRequest.Builder(context)
+										.data(file)
+										// We scale the image to cover 16px x 16px (i.e. min dimension == 16px)
+										.size(16).scale(Scale.FILL)
+										// Disable hardware bitmaps, since Palette uses Bitmap.getPixels()
+										.allowHardware(false)
+										// Set a custom memory cache key to avoid overwriting the displayed image in the cache
+										.memoryCacheKey(MemoryCache.Key(file.path, mapOf("palette" to "true")))
+										.build()
+									
+									//Load the bitmap
+									val bitmap = when(val result = context.imageLoader.execute(request)) {
+										is SuccessResult -> result.drawable.toBitmap()
+										else -> null
+									}
+									
+									//Calculate the brightness value
+									value = bitmap?.let { calculateBrightness(it, 1) > 200 } ?: false
+								}
+								
+								Icon(
+									modifier = Modifier
+										.size(48.dp)
+										.align(Alignment.Center),
+									painter = painterResource(id = R.drawable.play_circle_rounded),
+									tint = if(isContentLight) Color(0xFF212121) else Color(0xFFFFFFFF),
+									contentDescription = null
+								)
+							}
 						}
-						
-						//Calculate the brightness value
-						value = bitmap?.let { calculateBrightness(it, 1) > 200 } ?: false
-					}
-					
-					Icon(
-						modifier = Modifier
-							.size(48.dp)
-							.align(Alignment.Center),
-						painter = painterResource(id = R.drawable.play_circle_rounded),
-						tint = if(isContentLight) Color(0xFF212121) else Color(0xFFFFFFFF),
-						contentDescription = null
-					)
-				}
+					},
+					loading = {
+						Box(
+							modifier = Modifier
+								.clip(flow.bubbleShape)
+								.background(flow.colors.background)
+								.size(width = 200.dp, height = 100.dp)
+						)
+					},
+					error = { fallback() }
+				)
 			}
 		},
 		dependentContent = {

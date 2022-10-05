@@ -291,6 +291,19 @@ fun MessageInfoListEntry(
 									}
 								)
 							} else {
+								val fallbackComponent = @Composable {
+									MessageBubbleFile(
+										flow = attachmentFlow,
+										name = attachment.computedFileName ?: "",
+										onClick = {
+											IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
+										},
+										onSetSelected = { selected ->
+											selectionState.setSelectionAttachmentID(attachment.localID, selected)
+										}
+									)
+								}
+								
 								when {
 									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
 											|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo) -> {
@@ -308,7 +321,8 @@ fun MessageInfoListEntry(
 											onSetSelected = { selected ->
 												selectionState.setSelectionAttachmentID(attachment.localID, selected)
 											},
-											sendStyle = messageInfo.sendStyle
+											sendStyle = messageInfo.sendStyle,
+											fallback = fallbackComponent
 										)
 									}
 									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio) -> {
@@ -373,16 +387,7 @@ fun MessageInfoListEntry(
 										)
 									}
 									else -> {
-										MessageBubbleFile(
-											flow = attachmentFlow,
-											name = attachment.computedFileName ?: "",
-											onClick = {
-												IntentHelper.openAttachmentFile(context, attachmentFile, attachment.computedContentType)
-											},
-											onSetSelected = { selected ->
-												selectionState.setSelectionAttachmentID(attachment.localID, selected)
-											}
-										)
+										fallbackComponent()
 									}
 								}
 							}
