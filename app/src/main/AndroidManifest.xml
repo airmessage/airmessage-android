@@ -63,7 +63,7 @@
 			android:name=".compose.ConversationsCompose"
 			android:exported="true"
 			android:label="@string/app_name"
-			android:theme="@style/Theme.AirMessage.Compose"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
@@ -90,25 +90,25 @@
 		<!-- Standalone messaging screen -->
 		<activity
 			android:name=".compose.MessagingCompose"
-			android:theme="@style/Theme.AirMessage.Compose"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize" />
 		
 		<!-- Conversation details -->
 		<activity
 			android:name=".compose.ConversationDetailsCompose"
-			android:theme="@style/Theme.AirMessage.Compose" />
+			android:theme="@style/Theme.AirMessage.M3.API" />
 		
 		<!-- Onboarding -->
 		<activity
 			android:exported="true"
 			android:name=".compose.OnboardingCompose"
-			android:theme="@style/Theme.AirMessage.Compose"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize" />
 		
 		<!-- Manual reconfiguration -->
 		<activity
 			android:name=".compose.ServerConfigStandaloneCompose"
-			android:theme="@style/Theme.AirMessage.Compose"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize" />
 		
 		<!-- Preferences -->
@@ -169,7 +169,7 @@
 		<activity
 			android:exported="false"
 			android:name=".compose.LibrariesCompose"
-			android:theme="@style/Theme.AirMessage.Compose"
+			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>

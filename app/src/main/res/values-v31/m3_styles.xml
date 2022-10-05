@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+	<!-- Don't override any colors to use dynamic theming on Android 12+ -->
 	<style name="Theme.AirMessage.M3" parent="Theme.Material3.DayNight.NoActionBar" />
 </resources>
