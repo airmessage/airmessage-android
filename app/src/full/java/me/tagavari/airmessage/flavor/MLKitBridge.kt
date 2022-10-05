@@ -14,7 +14,7 @@ import me.tagavari.airmessage.data.loadConversationForMLKit
 import me.tagavari.airmessage.messaging.MessageInfo
 
 object MLKitBridge {
-	val isSupported = true
+	const val isSupported = true
 	
 	/**
 	 * Maps a list of [MessageInfo] to [ConversationActions.Message]
