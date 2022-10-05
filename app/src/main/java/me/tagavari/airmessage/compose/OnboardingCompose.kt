@@ -6,39 +6,19 @@ import android.content.ServiceConnection
 import android.os.Bundle
 import android.os.IBinder
 import androidx.activity.ComponentActivity
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
-import androidx.compose.animation.ExperimentalAnimationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.runtime.*
-import androidx.compose.runtime.rxjava3.subscribeAsState
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.ui.Modifier
+import androidx.compose.material3.windowsizeclass.ExperimentalMaterial3WindowSizeClassApi
+import androidx.compose.material3.windowsizeclass.calculateWindowSizeClass
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.core.view.WindowCompat
-import kotlinx.coroutines.flow.filterIsInstance
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.rx3.asFlow
-import me.tagavari.airmessage.activity.Preferences
-import me.tagavari.airmessage.compose.component.onboarding.OnboardingConnect
-import me.tagavari.airmessage.compose.component.onboarding.OnboardingManual
-import me.tagavari.airmessage.compose.component.onboarding.OnboardingNavigationPane
-import me.tagavari.airmessage.compose.component.onboarding.OnboardingWelcome
+import me.tagavari.airmessage.compose.component.onboarding.OnboardingPane
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
-import me.tagavari.airmessage.connection.ConnectionOverride
-import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
-import me.tagavari.airmessage.enums.ProxyType
-import me.tagavari.airmessage.flavor.FirebaseAuthBridge
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxEventConnection
 import me.tagavari.airmessage.service.ConnectionService
 import me.tagavari.airmessage.service.ConnectionService.ConnectionBinder
-import me.tagavari.airmessage.util.ConnectionParams
-import soup.compose.material.motion.MaterialSharedAxisX
 
 class OnboardingCompose : ComponentActivity() {
 	//Service bindings
@@ -58,6 +38,7 @@ class OnboardingCompose : ComponentActivity() {
 		}
 	}
 	
+	@OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		
@@ -65,12 +46,13 @@ class OnboardingCompose : ComponentActivity() {
 		
 		setContent {
 			AirMessageAndroidTheme {
-				OnboardingNavigationPane(
+				OnboardingPane(
 					connectionManager = connectionManager,
 					onComplete = {
 						startActivity(Intent(this, ConversationsCompose::class.java))
 						finish()
-					}
+					},
+					windowSizeClass = calculateWindowSizeClass(this)
 				)
 			}
 		}
