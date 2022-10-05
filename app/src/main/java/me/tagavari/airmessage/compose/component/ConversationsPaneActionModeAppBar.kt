@@ -9,6 +9,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.CoroutineScope
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.state.ConversationPaneProps
 import me.tagavari.airmessage.messaging.ConversationInfo
 
 @OptIn(ExperimentalMaterial3Api::class)

@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.res.stringResource
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.state.ConversationPaneProps
 
 @Composable
 fun ConversationPaneAppBarActions(

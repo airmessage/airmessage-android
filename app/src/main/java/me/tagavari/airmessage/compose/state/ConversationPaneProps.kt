@@ -1,4 +1,4 @@
-package me.tagavari.airmessage.compose.component
+package me.tagavari.airmessage.compose.state
 
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.material3.ExperimentalMaterial3Api

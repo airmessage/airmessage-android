@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.compose.state.ConversationPaneProps
 import me.tagavari.airmessage.compose.state.ConversationsDetailPage
 import me.tagavari.airmessage.compose.state.ConversationsSinglePaneTarget
 import me.tagavari.airmessage.compose.state.ConversationsViewModel
