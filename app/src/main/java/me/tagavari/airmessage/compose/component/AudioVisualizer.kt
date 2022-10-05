@@ -7,9 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 
-private const val amplitudeMin = 100
-private const val amplitudeMax = 10000
-private const val amplitudeFallStep = 1000
+private const val amplitudeMin = 400
+private const val amplitudeMax = 14000
 
 private const val lineWidth = 6F
 private const val lineSpacing = 2F
