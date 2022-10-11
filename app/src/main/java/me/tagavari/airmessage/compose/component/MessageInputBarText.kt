@@ -245,7 +245,7 @@ fun MessageInputBarText(
 						factory = { ctx ->
 							EditText(ctx).apply {
 								addTextChangedListener { text ->
-									onMessageTextChange(text?.toString() ?: "")
+									text?.toString()?.let(onMessageTextChange)
 								}
 								
 								setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
