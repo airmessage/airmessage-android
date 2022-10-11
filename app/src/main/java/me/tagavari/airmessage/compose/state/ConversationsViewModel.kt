@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.state
 
 import android.app.Application
 import android.provider.Telephony
+import androidx.collection.LruCache
 import androidx.compose.runtime.*
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -56,7 +57,11 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		}
 	}
 	
-	private var messagingViewModelData: MessagingViewModelData? = null
+	private val messagingViewModelCache = object : LruCache<Long, MessagingViewModelData>(2) {
+		override fun entryRemoved(evicted: Boolean, key: Long, oldValue: MessagingViewModelData, newValue: MessagingViewModelData?) {
+			oldValue.onCleared()
+		}
+	}
 	
 	init {
 		//Load conversations
@@ -126,8 +131,8 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 			ForegroundState.conversationListLoadCount--
 		}
 		
-		//Clean up the existing view model
-		messagingViewModelData?.onCleared()
+		//Clean up hosted view models
+		messagingViewModelCache.evictAll()
 	}
 	
 	/**
@@ -347,22 +352,14 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	}
 	
 	fun getMessagingViewModel(conversationID: Long): MessagingViewModelData {
-		//Create a new view model if we have none
-		val viewModelData = messagingViewModelData
-		
-		//Return a matching view model if we have the same conversation ID
-		if(viewModelData?.conversationID == conversationID) {
-			return viewModelData
-		}
-		
-		//Clean up the existing view model
-		viewModelData?.onCleared()
+		//Return a cached view model
+		messagingViewModelCache[conversationID]?.let { return it }
 		
 		//Create a new view model
 		val coroutineScope = viewModelScope + SupervisorJob(viewModelScope.coroutineContext.job)
-		val data = MessagingViewModelData(getApplication(), conversationID, coroutineScope)
-		messagingViewModelData = data
-		return data
+		val viewModelData = MessagingViewModelData(getApplication(), conversationID, coroutineScope)
+		messagingViewModelCache.put(conversationID, viewModelData)
+		return viewModelData
 		
 	}
 	
