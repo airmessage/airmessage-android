@@ -230,7 +230,7 @@ fun ConversationMessagingPane(
 						val screenFrom = lastScreens[0]
 						val screenTo = lastScreens[1]
 						
-						screenTo.depth > screenFrom.depth
+						screenTo.depth >= screenFrom.depth
 					}
 				}
 		}.collectAsState(initial = true)
@@ -239,7 +239,7 @@ fun ConversationMessagingPane(
 		MaterialSharedAxisX(
 			modifier = Modifier.background(MaterialTheme.colorScheme.background),
 			targetState = viewModel.singlePaneTarget,
-			forward = isNavigatingForwards,
+			forward = isNavigatingForwards
 		) { target ->
 			when(target) {
 				is ConversationsSinglePaneTarget.Conversations -> {
