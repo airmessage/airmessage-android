@@ -1,13 +1,13 @@
 package me.tagavari.airmessage.compose.remember
 
 import android.util.Patterns
+import androidx.collection.LruCache
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import me.saket.unfurl.Unfurler
-import me.saket.unfurl.internal.LruCache
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.constants.DataSizeConstants
 import me.tagavari.airmessage.data.DatabaseManager
@@ -69,7 +69,7 @@ fun deriveMessagePreview(messageInfo: MessageInfo): State<MessagePreviewInfo?> {
 					} ?: return@withLock null
 					
 					//Update the cache
-					messagePreviewCache[textComponent.previewID] = preview
+					messagePreviewCache.put(textComponent.previewID, preview)
 					
 					return@withLock preview
 				}
@@ -168,7 +168,7 @@ fun deriveMessagePreview(messageInfo: MessageInfo): State<MessagePreviewInfo?> {
 						
 						//Save the item in the cache
 						messagePreviewCacheMutex.withLock {
-							messagePreviewCache[preview.localID] = preview
+							messagePreviewCache.put(preview.localID, preview)
 						}
 						
 						//Set the preview state

@@ -4,7 +4,7 @@ import android.content.Context
 import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
-import android.util.LruCache
+import androidx.collection.LruCache
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.core.SingleEmitter

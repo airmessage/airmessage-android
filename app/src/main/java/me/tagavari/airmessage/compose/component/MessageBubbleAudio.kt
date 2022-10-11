@@ -1,7 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
 import android.text.format.DateUtils
-import android.util.LruCache
+import androidx.collection.LruCache
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
