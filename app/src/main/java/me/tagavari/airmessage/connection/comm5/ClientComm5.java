@@ -185,7 +185,7 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 	}
 	
 	private int checkProtocolManagerApplicability(int subVersion) {
-		if(subVersion < 4) return -1;
+		if(subVersion < 5) return -1;
 		else if(subVersion > 5) return 1;
 		else return 0;
 	}
@@ -195,8 +195,6 @@ public class ClientComm5 extends CommunicationsManager<EncryptedPacket> {
 		switch(subVersion) {
 			default:
 				throw new IllegalArgumentException("Invalid communications sub version " + subVersion);
-			case 4:
-				return new ClientProtocol4(this, getDataProxy());
 			case 5:
 				return new ClientProtocol5(this, getDataProxy());
 		}

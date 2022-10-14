@@ -9,7 +9,6 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import me.tagavari.airmessage.common.Blocks
 import me.tagavari.airmessage.connection.comm5.AirUnpacker
-import me.tagavari.airmessage.connection.comm5.ClientProtocol4
 import me.tagavari.airmessage.connection.comm5.ClientProtocol5
 import me.tagavari.airmessage.connection.encryption.EncryptionAES
 import me.tagavari.airmessage.connection.task.MessageUpdateTask
@@ -155,11 +154,6 @@ class FCMService : FirebaseMessagingService() {
 		try {
 			if(protocolVersion.size == 2 && protocolVersion[0] == 5) {
 				when(protocolVersion[1]) {
-					4 -> { //Protocol 5.4
-						conversationItems = ClientProtocol4.unpackConversationItems(airUnpacker)
-						modifiers = ClientProtocol4.unpackModifiers(airUnpacker)
-						dataLoaded = true
-					}
 					5 -> { //Protocol 5.5
 						conversationItems = ClientProtocol5.unpackConversationItems(airUnpacker)
 						modifiers = ClientProtocol5.unpackModifiers(airUnpacker)
