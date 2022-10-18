@@ -13,6 +13,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
+import com.google.android.gms.common.ConnectionResult
+import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMapOptions
 import com.google.android.gms.maps.MapView
@@ -38,8 +40,11 @@ fun MessageBubbleLocationMap(
 ) {
 	val context = LocalContext.current
 	
-	//Use Google Maps if message previews are enabled
-	if(Preferences.getPreferenceMessagePreviews(context)) {
+	//Use Google Maps if message previews are enabled,
+	//and Google Play Services are available
+	if(Preferences.getPreferenceMessagePreviews(context)
+		&& GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context)
+		== ConnectionResult.SUCCESS) {
 		val latLng = LatLng(coords.latitude, coords.longitude)
 		
 		val mapView = rememberMapViewWithLifecycle()
