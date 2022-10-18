@@ -100,12 +100,16 @@ fun NewConversationPane(
 			directAddText = if(viewModel.recipientInputValid) viewModel.recipientInput else null,
 			onDirectAdd = ::addInputRecipient,
 			onAddRecipient = { contactInfo, addressInfo ->
+				//Add the recipient
 				viewModel.addSelectedRecipient(
 					SelectedRecipient(
 						address = addressInfo.address,
 						name = contactInfo.name
 					)
 				)
+				
+				//Clear the input text
+				viewModel.recipientInput = ""
 			},
 			isLoading = viewModel.isLoading
 		)
