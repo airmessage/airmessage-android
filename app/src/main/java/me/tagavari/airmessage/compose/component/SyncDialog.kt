@@ -72,7 +72,7 @@ private fun showSyncDialog(activity: FragmentActivity, connectionManager: Connec
 		deleteMessages
 	)
 	fragmentSync.isCancelable = false
-	fragmentSync.show(activity.supportFragmentManager, keyFragmentSync)
+	fragmentSync.showNow(activity.supportFragmentManager, keyFragmentSync)
 }
 
 private const val keyFragmentSync = "fragment_sync"
