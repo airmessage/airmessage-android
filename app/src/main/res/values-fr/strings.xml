@@ -559,4 +559,15 @@
 	<string name="notificationchannel_incomingcall_desc">Notifications concernant les appels FaceTime entrants</string>
 	<string name="message_locationfrom">Position du %s</string>
 	<string name="message_permissiondetails_notifications">Autoriser AirMessage à envoyer des notifications</string>
+	<string name="action_recordvideo">Enregistrer une vidéo</string>
+	<string name="action_showpassword">Afficher le mot de passe</string>
+	<string name="action_hidepassword">Masquer le mot de passe</string>
+	<string name="action_enablelocation">Activer les services de localisation</string>
+	<string name="screen_helpandfeedback">Aide et commentaires</string>
+	<string name="message_locationerror_unavailable">Votre position actuelle n\'a pas pu être trouvée</string>
+	<string name="message_locationerror_disabled_desc">Veuillez activer les services de localisation pour continuer</string>
+	<string name="message_locationerror_disabled">Les services de localisation sont désactivés</string>
+	<string name="message_locationerror_unavailable_desc">Veuillez réessayer plus tard</string>
+	<string name="message_endpoint_connected">Connecté</string>
+	<string name="message_endpoint_notreachable">Inaccessible</string>
 </resources>

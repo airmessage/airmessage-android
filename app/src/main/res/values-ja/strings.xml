@@ -550,4 +550,15 @@
 	<string name="notificationchannel_incomingcall_desc">FaceTime 通話の着信に関する通知</string>
 	<string name="message_locationfrom">%s からの位置情報</string>
 	<string name="message_permissiondetails_notifications">AirMessage からの通知の送信を許可してください</string>
+	<string name="action_recordvideo">動画を録画</string>
+	<string name="action_hidepassword">パスワードを非表示</string>
+	<string name="action_showpassword">パスワードを表示</string>
+	<string name="action_enablelocation">位置情報の有効化</string>
+	<string name="screen_helpandfeedback">ヘルプとフィードバック</string>
+	<string name="message_locationerror_disabled">位置情報サービスは無効です</string>
+	<string name="message_locationerror_disabled_desc">続行するには、位置情報を有効にしてください</string>
+	<string name="message_locationerror_unavailable">現在地が見つかりませんでした</string>
+	<string name="message_locationerror_unavailable_desc">後でやり直してください</string>
+	<string name="message_endpoint_connected">接続済み</string>
+	<string name="message_endpoint_notreachable">到達不能</string>
 </resources>
