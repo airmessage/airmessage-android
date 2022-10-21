@@ -103,6 +103,7 @@ android {
 
 		foss {
 			dimension "distribution"
+			versionNameSuffix "-fdroid"
 		}
 	}
 

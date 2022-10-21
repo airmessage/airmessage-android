@@ -570,4 +570,10 @@
 	<string name="message_locationerror_unavailable_desc">Veuillez réessayer plus tard</string>
 	<string name="message_endpoint_connected">Connecté</string>
 	<string name="message_endpoint_notreachable">Inaccessible</string>
+	
+	<string name="action_dontshowagain">Ne plus afficher</string>
+	<string name="action_helpthecause">Soutenir la cause</string>
+	
+	<string name="message_freeimessage_title">Libérons iMessage - #FreeiMessage</string>
+	<string name="message_freeimessage_description">iMessage a toujours été limité aux plates-formes Apple, perturbant la communication et dégradant les expériences des utilisateurs Apple, ainsi que des utilisateurs Android et Windows.\n\nNous méritons mieux.\n\niMessage mérite d\'être un écosystème ouvert.\n\nAidez-nous à le faire savoir à Tim Cook et à Apple.</string>
 </resources>
