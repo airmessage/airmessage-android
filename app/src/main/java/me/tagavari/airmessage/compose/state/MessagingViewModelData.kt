@@ -237,9 +237,9 @@ class MessagingViewModelData(
 			//Handle the result
 			lazyLoadState = if(loadedMessages.isNotEmpty()) {
 				addConversationItems(loadedMessages)
-				MessageLazyLoadState.COMPLETE
-			} else {
 				MessageLazyLoadState.IDLE
+			} else {
+				MessageLazyLoadState.COMPLETE
 			}
 		}
 	}
