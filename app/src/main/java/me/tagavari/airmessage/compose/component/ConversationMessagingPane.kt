@@ -120,7 +120,13 @@ fun ConversationMessagingPane(
 	)
 	
 	if(useSplitPane) {
-		val hingeBounds = devicePosture?.bounds
+		//We can't use a horizontal split if the fold is horizontal
+		val useFoldableMetrics = devicePosture?.orientation == FoldingFeature.Orientation.VERTICAL
+		val hingeBounds = if(useFoldableMetrics) {
+			devicePosture!!.bounds
+		} else {
+			null
+		}
 		
 		val hingeOffset: Dp
 		val hingeWidth: Dp
@@ -152,7 +158,7 @@ fun ConversationMessagingPane(
 			MaterialFadeThrough(
 				targetState = viewModel.detailPage,
 			) { detailPage ->
-				val useFloatingPane = devicePosture?.isSeparating != true
+				val useFloatingPane = !useFoldableMetrics || devicePosture!!.isSeparating
 				
 				Box(
 					modifier = if(useFloatingPane) {
