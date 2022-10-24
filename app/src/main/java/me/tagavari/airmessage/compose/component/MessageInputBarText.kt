@@ -2,6 +2,7 @@ package me.tagavari.airmessage.compose.component
 
 import android.util.Pair
 import android.util.TypedValue
+import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
@@ -248,8 +249,12 @@ fun MessageInputBarText(
 									text?.toString()?.let(onMessageTextChange)
 								}
 								
+								imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI
+								inputType = EditorInfo.TYPE_CLASS_TEXT or
+										EditorInfo.TYPE_TEXT_FLAG_AUTO_CORRECT or
+										EditorInfo.TYPE_TEXT_FLAG_CAP_SENTENCES or
+										EditorInfo.TYPE_TEXT_FLAG_MULTI_LINE
 								setTextSize(TypedValue.COMPLEX_UNIT_SP, 16F)
-								letterSpacing
 								background = null
 								setPadding(0, 0, 0, 0)
 								setOnFocusChangeListener { _, hasFocus ->
