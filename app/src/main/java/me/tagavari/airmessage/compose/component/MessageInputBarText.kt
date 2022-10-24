@@ -4,6 +4,7 @@ import android.util.Pair
 import android.util.TypedValue
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
+import android.widget.Toast
 import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.VisibilityThreshold
@@ -13,6 +14,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.forEachGesture
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -320,8 +323,21 @@ fun MessageInputBarText(
 									.pointerInput(Unit) {
 										forEachGesture {
 											awaitPointerEventScope {
+												//Wait for the user to press down on the button
 												awaitFirstDown()
-												onStartAudioRecording()
+												
+												try {
+													//Wait for a bit to see if the user cancels immediately
+													withTimeout(150L) {
+														waitForUpOrCancellation()
+													}
+													
+													//Let the user know they have to hold to record
+													Toast.makeText(context, R.string.imperative_recording_instructions, Toast.LENGTH_LONG).show()
+												} catch(exception: PointerEventTimeoutCancellationException) {
+													//OK, start recording
+													onStartAudioRecording()
+												}
 											}
 										}
 									},
