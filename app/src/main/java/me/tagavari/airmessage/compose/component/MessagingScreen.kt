@@ -48,6 +48,7 @@ import me.tagavari.airmessage.compose.remember.rememberAudioPlayback
 import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModelData
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.LocalFile
 import me.tagavari.airmessage.container.ReadableBlobUri
@@ -217,7 +218,7 @@ fun MessagingScreen(
 									verticalArrangement = Arrangement.Top
 								) {
 									viewModel.conversation?.let { conversation ->
-										UserIconGroup(members = conversation.members)
+										UserIconGroup(members = conversation.members.wrapImmutableHolder())
 									}
 									
 									Spacer(modifier = Modifier.height(1.dp))

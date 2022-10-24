@@ -22,6 +22,7 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.data.UserCacheHelper
 
 @Composable
@@ -86,7 +87,7 @@ private fun UserChipLayout(
 		MemberImage(
 			modifier = Modifier.size(40.dp),
 			color = MaterialTheme.colorScheme.primary,
-			thumbnailURI = userInfo?.thumbnailURI
+			thumbnailURI = userInfo?.thumbnailURI.wrapImmutableHolder()
 		)
 		
 		Spacer(modifier = Modifier.width(16.dp))

@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.messaging
 
 import android.content.Context
+import androidx.compose.runtime.Immutable
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.helper.LanguageHelper.getNameFromContentType
 import me.tagavari.airmessage.helper.SendStyleHelper
@@ -19,6 +20,7 @@ abstract class ConversationPreview(val date: Long) : Serializable {
 	}
 	
 	//A message in the conversation
+	@Immutable
 	class Message(
 		date: Long,
 		val isOutgoing: Boolean,
@@ -61,7 +63,7 @@ abstract class ConversationPreview(val date: Long) : Serializable {
 		}
 		
 		companion object {
-			@kotlin.jvm.JvmStatic
+			@JvmStatic
 			fun fromMessage(messageInfo: MessageInfo): Message {
 				return Message(
 					messageInfo.date,
@@ -77,7 +79,12 @@ abstract class ConversationPreview(val date: Long) : Serializable {
 	}
 	
 	//A draft message or attachment
-	class Draft(date: Long, val message: String?, val attachments: List<AttachmentPreview>) : ConversationPreview(date) {
+	@Immutable
+	class Draft(
+		date: Long,
+		val message: String?,
+		val attachments: List<AttachmentPreview>
+	) : ConversationPreview(date) {
 		override fun buildString(context: Context): String {
 			val messageSummary =
 				//If we have a draft message, use that

@@ -2,12 +2,14 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import me.tagavari.airmessage.enums.MessagePreviewState
 
 /**
  * An object that represents a part of a message,
  * such as text or an attachment file
  */
+@Immutable
 abstract class MessageComponent(
 	var localID: Long,
 	@get:JvmName("getGUID") val guid: String?,

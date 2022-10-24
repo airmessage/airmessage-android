@@ -2,8 +2,10 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import java.io.File
 
+@Immutable
 class StickerInfo : Parcelable {
 	//Creating the sticker values
 	val localID: Long

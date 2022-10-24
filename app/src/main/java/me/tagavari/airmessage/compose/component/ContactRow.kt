@@ -16,6 +16,8 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.compose.util.ImmutableHolder
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.enums.MessageServiceDescription
 import me.tagavari.airmessage.helper.AddressHelper
 import me.tagavari.airmessage.util.AddressInfo
@@ -84,7 +86,7 @@ fun ContactRow(
 		MemberImage(
 			modifier = Modifier.size(40.dp),
 			color = MaterialTheme.colorScheme.primary,
-			thumbnailURI = contact.thumbnailURI
+			thumbnailURI = contact.thumbnailURI.wrapImmutableHolder()
 		)
 		
 		Spacer(modifier = Modifier.width(16.dp))

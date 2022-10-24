@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.NotificationsOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -21,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -29,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.remember.produceConversationTitle
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
@@ -46,10 +48,6 @@ fun ConversationListEntry(
 	active: Boolean = false,
 	selected: Boolean = false
 ) {
-	val title by produceConversationTitle(conversation)
-	
-	val preview = conversation.dynamicPreview
-	
 	Box(modifier = Modifier.height(72.dp)) {
 		val backgroundColor by animateColorAsState(
 			when {
@@ -66,20 +64,20 @@ fun ConversationListEntry(
 				else -> MaterialTheme.colorScheme.onBackground
 			}
 		)
-		
+
 		val haptic = LocalHapticFeedback.current
 		Surface(
 			modifier = Modifier
 				.align(Alignment.Center)
 				.padding(horizontal = 4.dp, vertical = 2.dp)
 				.clip(MaterialTheme.shapes.large)
-				.combinedClickable(
+				/* .combinedClickable(
 					onClick = onClick,
 					onLongClick = onLongClick?.let { callback -> {
 						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 						callback()
 					} }
-				),
+				) */,
 			color = backgroundColor,
 			contentColor = contentColor
 		) {
@@ -101,12 +99,20 @@ fun ConversationListEntry(
 				Spacer(modifier = Modifier.width(6.dp))
 				
 				//Group icon
-				UserIconGroup(members = conversation.members)
+				UserIconGroup(members = conversation.members.wrapImmutableHolder())
 				
 				Spacer(modifier = Modifier.width(16.dp))
 				
+				val preview = remember(conversation) { conversation.dynamicPreview }
+				
 				//Title and preview
 				Column(modifier = Modifier.weight(1F)) {
+					val context = LocalContext.current
+					val title by produceConversationTitle(conversation)
+					val previewText = remember(preview) {
+						preview?.buildString(context)
+					}
+					
 					Text(
 						text = title,
 						overflow = TextOverflow.Ellipsis,
@@ -115,7 +121,7 @@ fun ConversationListEntry(
 					)
 					
 					Text(
-						text = preview?.buildString(LocalContext.current) ?: stringResource(id = R.string.part_unknown),
+						text = previewText ?: stringResource(id = R.string.part_unknown),
 						style = MaterialTheme.typography.bodyMedium,
 						maxLines = 1,
 						overflow = TextOverflow.Ellipsis,
@@ -147,15 +153,16 @@ fun ConversationListEntry(
 						color = if(isPreviewError) MaterialTheme.colorScheme.error
 						else MaterialTheme.colorScheme.onSurfaceVariant
 					)
-					
-					Icon(
-						painter = painterResource(id = R.drawable.notifications_off_outlined),
-						contentDescription = stringResource(id = R.string.action_mute),
-						tint = MaterialTheme.colorScheme.onSurfaceVariant,
-						modifier = Modifier
-							.size(16.dp)
-							.alpha(if(conversation.isMuted) 1F else 0F)
-					)
+
+					if(conversation.isMuted) {
+						Icon(
+							imageVector = Icons.Outlined.NotificationsOff,
+							contentDescription = stringResource(id = R.string.action_mute),
+							tint = MaterialTheme.colorScheme.onSurfaceVariant,
+							modifier = Modifier
+								.size(16.dp)
+						)
+					}
 				}
 				
 				Spacer(modifier = Modifier.width(16.dp))

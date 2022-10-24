@@ -3,9 +3,7 @@ package me.tagavari.airmessage.compose.component
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
@@ -18,6 +16,8 @@ import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.remember.deriveContactUpdates
+import me.tagavari.airmessage.compose.util.ImmutableHolder
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
@@ -47,7 +47,7 @@ fun MemberImage(
 		color = Color(member.color),
 		thumbnailURI = userInfo?.run {
 			if(highRes) photoURI else thumbnailURI
-		}
+		}.wrapImmutableHolder()
 	)
 }
 
@@ -58,7 +58,7 @@ fun MemberImage(
 fun MemberImage(
 	modifier: Modifier = Modifier,
 	color: Color,
-	thumbnailURI: Uri?
+	thumbnailURI: ImmutableHolder<Uri?>
 ) {
 	@Composable
 	fun FallbackImage() {
@@ -71,7 +71,7 @@ fun MemberImage(
 	
 	SubcomposeAsyncImage(
 		modifier = modifier.clip(CircleShape),
-		model = thumbnailURI,
+		model = thumbnailURI.item,
 		loading = { FallbackImage() },
 		error = { FallbackImage() },
 		contentDescription = null

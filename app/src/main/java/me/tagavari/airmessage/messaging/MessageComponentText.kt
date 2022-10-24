@@ -8,6 +8,7 @@ import androidx.compose.runtime.Immutable
  * An object that represents the text part of
  * a message
  */
+@Immutable
 class MessageComponentText : MessageComponent {
 	val text: String?
 	val subject: String?

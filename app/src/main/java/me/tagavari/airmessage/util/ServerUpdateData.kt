@@ -1,8 +1,10 @@
 package me.tagavari.airmessage.util
 
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import kotlinx.parcelize.Parcelize
 
+@Immutable
 @Parcelize
 data class ServerUpdateData(
     val id: Int,

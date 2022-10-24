@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.messaging
 
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import kotlinx.parcelize.Parcelize
 import me.tagavari.airmessage.BuildConfig
 import me.tagavari.airmessage.MainApplication
@@ -11,6 +12,7 @@ import me.tagavari.airmessage.helper.MMSSMSHelper.getMaxMessageSize
 import me.tagavari.airmessage.util.ConversationTarget
 import me.tagavari.airmessage.util.ConversationTarget.*
 
+@Immutable
 @Parcelize
 data class ConversationInfo @JvmOverloads constructor(
 	var localID: Long,

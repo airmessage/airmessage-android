@@ -17,6 +17,7 @@ import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
@@ -50,7 +51,7 @@ fun ConversationDetailsMember(
 		MemberImage(
 			modifier = Modifier.size(40.dp),
 			color = Color(member.color),
-			thumbnailURI = userInfo?.thumbnailURI
+			thumbnailURI = userInfo?.thumbnailURI.wrapImmutableHolder()
 		)
 		
 		Spacer(modifier = Modifier.width(16.dp))

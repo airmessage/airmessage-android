@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.messaging
 
+import androidx.compose.runtime.Immutable
 import me.tagavari.airmessage.constants.FileNameConstants
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.container.LocalFile
@@ -10,6 +11,7 @@ import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.util.Union
 import java.io.File
 
+@Immutable
 data class QueuedFile constructor(
 	val localID: Long? = null,
 	val file: Union<ReadableBlob, File>,

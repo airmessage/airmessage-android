@@ -3,14 +3,13 @@ package me.tagavari.airmessage.compose.component
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.compose.util.ImmutableHolder
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.messaging.MemberInfo
 
 /**
@@ -19,9 +18,12 @@ import me.tagavari.airmessage.messaging.MemberInfo
 @Composable
 fun UserIconGroup(
 	modifier: Modifier = Modifier,
-	members: List<MemberInfo>,
+	members: ImmutableHolder<List<MemberInfo>>,
 	highRes: Boolean = false
 ) {
+	@Suppress("NAME_SHADOWING")
+	val members by members
+	
 	Box(modifier.size(40.dp, 40.dp)) {
 		when(members.size) {
 			0 -> {}
@@ -116,7 +118,7 @@ fun UserIconGroup(
 private fun Preview1Member() {
 	UserIconGroup(members = listOf(
 		MemberInfo("1", 0xFFFF1744.toInt())
-	))
+	).wrapImmutableHolder())
 }
 
 @Preview
@@ -125,7 +127,7 @@ private fun Preview2Members() {
 	UserIconGroup(members = listOf(
 		MemberInfo("1", 0xFFFF1744.toInt()),
 		MemberInfo("2", 0xFFF50057.toInt())
-	))
+	).wrapImmutableHolder())
 }
 
 @Preview
@@ -135,7 +137,7 @@ private fun Preview3Members() {
 		MemberInfo("1", 0xFFFF1744.toInt()),
 		MemberInfo("2", 0xFFF50057.toInt()),
 		MemberInfo("3", 0xFFB317CF.toInt())
-	))
+	).wrapImmutableHolder())
 }
 
 @Preview
@@ -146,5 +148,5 @@ private fun Preview4Members() {
 		MemberInfo("2", 0xFFF50057.toInt()),
 		MemberInfo("3", 0xFFB317CF.toInt()),
 		MemberInfo("4", 0xFF703BE3.toInt())
-	))
+	).wrapImmutableHolder())
 }

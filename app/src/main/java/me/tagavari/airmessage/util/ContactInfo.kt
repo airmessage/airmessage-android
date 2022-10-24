@@ -2,6 +2,7 @@ package me.tagavari.airmessage.util
 
 import android.content.res.Resources
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 
 /**
  * Represents data of a local Android contact
@@ -10,6 +11,7 @@ import android.net.Uri
  * @param thumbnailURI A URI to display the thumbnail of this contact
  * @param addresses The list of addresses associated with this contact
  */
+@Immutable
 data class ContactInfo(
 	val contactID: Long,
 	val name: String?,

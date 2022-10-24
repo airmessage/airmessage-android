@@ -22,6 +22,7 @@ import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.compose.util.ImmutableHolder
 import me.tagavari.airmessage.helper.AudioDecodeHelper
 import me.tagavari.airmessage.helper.AudioPreviewData
 import me.tagavari.airmessage.util.MessagePartFlow
@@ -37,11 +38,12 @@ private val audioPreviewCache = object : LruCache<File, AudioPreviewData>(1024 *
 @Composable
 fun MessageBubbleAudio(
 	flow: MessagePartFlow,
-	file: File,
+	file: ImmutableHolder<File>,
 	audioPlaybackState: AudioPlaybackState,
 	onTogglePlayback: () -> Unit,
 	onSetSelected: (Boolean) -> Unit
 ) {
+	val attachmentFile by file
 	val haptic = LocalHapticFeedback.current
 	val colors = flow.colors
 	
@@ -81,7 +83,7 @@ fun MessageBubbleAudio(
 					produceState<AudioPreviewData?>(null) {
 						audioPreviewCacheMutex.withLock {
 							//Look up a previous value in the cache
-							audioPreviewCache[file]?.let {
+							audioPreviewCache[attachmentFile]?.let {
 								value = it
 								return@withLock
 							}
@@ -89,11 +91,11 @@ fun MessageBubbleAudio(
 							//Process the file
 							@Suppress("BlockingMethodInNonBlockingContext")
 							val amplitudeList = withContext(Dispatchers.IO) {
-								AudioDecodeHelper.getAudioPreviewData(file)
+								AudioDecodeHelper.getAudioPreviewData(attachmentFile)
 							}
 							
 							//Save the value in the cache
-							audioPreviewCache.put(file, amplitudeList)
+							audioPreviewCache.put(attachmentFile, amplitudeList)
 							value = amplitudeList
 						}
 					}
@@ -153,7 +155,7 @@ private fun PreviewMessageBubbleAudio() {
 				anchorTop = false,
 				tintRatio = 0F
 			),
-			file = File(""),
+			file = ImmutableHolder(File("")),
 			audioPlaybackState = AudioPlaybackState.Stopped,
 			onTogglePlayback = {},
 			onSetSelected = {}

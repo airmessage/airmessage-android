@@ -48,6 +48,7 @@ import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.remember.deriveMessagePreview
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.compose.state.NetworkState
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -176,7 +177,7 @@ fun MessageInfoListEntry(
 							MemberImage(
 								modifier = Modifier.fillMaxSize(),
 								color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
-								thumbnailURI = userInfo?.thumbnailURI
+								thumbnailURI = userInfo?.thumbnailURI.wrapImmutableHolder()
 							)
 						}
 					}
@@ -332,7 +333,7 @@ fun MessageInfoListEntry(
 										
 										MessageBubbleAudio(
 											flow = attachmentFlow,
-											file = attachmentFile,
+											file = attachmentFile.wrapImmutableHolder(),
 											audioPlaybackState = playbackState,
 											onTogglePlayback = {
 												scope.launch {

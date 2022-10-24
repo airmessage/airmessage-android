@@ -5,6 +5,7 @@ import android.database.Cursor
 import android.net.Uri
 import android.provider.ContactsContract
 import androidx.collection.LruCache
+import androidx.compose.runtime.Immutable
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.core.SingleEmitter
@@ -69,6 +70,7 @@ class UserCacheHelper {
 	/**
 	 * Holds a user's name and lookup key
 	 */
+	@Immutable
 	data class UserInfo(
 		val contactID: Long,
 		val lookupKey: String,

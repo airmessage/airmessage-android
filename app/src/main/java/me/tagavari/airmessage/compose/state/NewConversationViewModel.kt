@@ -301,11 +301,12 @@ data class SelectedRecipient(
 	override fun hashCode() = address.hashCode()
 }
 
+@Immutable
 sealed class NewConversationContactsState {
 	object Loading : NewConversationContactsState()
 	object NeedsPermission : NewConversationContactsState()
-	class Error(val exception: Throwable) : NewConversationContactsState()
-	class Loaded(val contacts: List<ContactInfo>) : NewConversationContactsState()
+	@Immutable class Error(val exception: Throwable) : NewConversationContactsState()
+	@Immutable class Loaded(val contacts: List<ContactInfo>) : NewConversationContactsState()
 }
 
 private class LinkedHashSetSaver<T> : Saver<LinkedHashSet<T>, List<T>> {

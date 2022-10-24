@@ -4,6 +4,7 @@ import android.media.MediaCodec
 import android.media.MediaCodecList
 import android.media.MediaExtractor
 import android.media.MediaFormat
+import androidx.compose.runtime.Immutable
 import java.io.File
 import java.io.IOException
 import java.lang.IllegalArgumentException
@@ -99,6 +100,7 @@ object AudioDecodeHelper {
 	}
 }
 
+@Immutable
 data class AudioPreviewData(
 	val amplitude: List<Int>,
 	val duration: Long

@@ -1,6 +1,7 @@
 package me.tagavari.airmessage.helper
 
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 import ezvcard.Ezvcard
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -8,6 +9,7 @@ import me.tagavari.airmessage.util.LatLngInfo
 import java.io.File
 import java.io.IOException
 
+@Immutable
 data class LocationAttachmentData(
 	val uri: Uri,
 	val coords: LatLngInfo

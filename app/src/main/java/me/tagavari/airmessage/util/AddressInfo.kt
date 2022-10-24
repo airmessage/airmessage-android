@@ -1,10 +1,12 @@
 package me.tagavari.airmessage.util
 
 import android.content.res.Resources
+import androidx.compose.runtime.Immutable
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.helper.AddressHelper
 
 //Represents a presentable and searchable user address
+@Immutable
 class AddressInfo(
 	val address: String, //Address as-is
 	val addressLabel: String? //Gets the label of the address

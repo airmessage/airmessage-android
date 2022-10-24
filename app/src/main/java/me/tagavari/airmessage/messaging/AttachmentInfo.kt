@@ -2,6 +2,7 @@ package me.tagavari.airmessage.messaging
 
 import android.os.Parcel
 import android.os.Parcelable
+import androidx.compose.runtime.Immutable
 import androidx.core.os.ParcelCompat
 import java.io.File
 
@@ -9,6 +10,7 @@ import java.io.File
  * An object that represents an attachment file
  * associated with a message
  */
+@Immutable
 class AttachmentInfo : MessageComponent {
 	val fileName: String?
 	val contentType: String?

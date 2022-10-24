@@ -203,6 +203,7 @@ class AudioPlaybackControlsEmpty : AudioPlaybackControls {
 	}
 }
 
+@Immutable
 data class AudioPlaybackSession(
 	val key: Any?,
 	val state: AudioPlaybackState
