@@ -21,10 +21,15 @@ fun deriveAmplitudeList(
 			amplitudeList.clear()
 			
 			//Repeatedly add the max amplitude
-			while(enable) {
+			while(true) {
+				try {
+					val amplitude = mediaRecorder.maxAmplitude
+					amplitudeList.add(amplitude)
+				} catch(exception: IllegalStateException) {
+					exception.printStackTrace()
+				}
+				
 				delay(interval)
-				val amplitude = mediaRecorder.maxAmplitude
-				amplitudeList.add(amplitude)
 			}
 		}
 	}
