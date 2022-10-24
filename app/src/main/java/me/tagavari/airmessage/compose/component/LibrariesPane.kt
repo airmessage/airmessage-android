@@ -33,6 +33,8 @@ import com.mikepenz.aboutlibraries.util.withContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.R
+import me.tagavari.airmessage.compose.util.ImmutableHolder
+import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 
 /**
  * A pane that displays all libraries
@@ -74,7 +76,7 @@ fun LibrariesPane(
 				LibrariesList(
 					modifier = Modifier.fillMaxSize(),
 					contentPadding = innerPadding,
-					libs = localLibs
+					libs = localLibs.wrapImmutableHolder()
 				)
 			}
 		}
@@ -89,7 +91,7 @@ fun LibrariesList(
 	modifier: Modifier = Modifier,
 	lazyListState: LazyListState = rememberLazyListState(),
 	contentPadding: PaddingValues = PaddingValues(0.dp),
-	libs: Libs
+	libs: ImmutableHolder<Libs>
 ) {
 	var openDialog by rememberSaveable { mutableStateOf<Library?>(null) }
 	
@@ -99,7 +101,7 @@ fun LibrariesList(
 		contentPadding = contentPadding
 	) {
 		items(
-			items = libs.libraries,
+			items = libs.item.libraries,
 			key = { it.uniqueId }
 		) { library ->
 			Row(
@@ -127,7 +129,7 @@ fun LibrariesList(
 	
 	openDialog?.let { library ->
 		LicenseDialog(
-			library = library,
+			library = library.wrapImmutableHolder(),
 			onDismiss = { openDialog = null }
 		)
 	}
@@ -136,9 +138,12 @@ fun LibrariesList(
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun LicenseDialog(
-	library: Library,
+	library: ImmutableHolder<Library>,
 	onDismiss: () -> Unit,
 ) {
+	@Suppress("NAME_SHADOWING")
+	val library by library
+	
 	val license = library.licenses.firstOrNull()
 	
 	val scrollState = rememberScrollState()
