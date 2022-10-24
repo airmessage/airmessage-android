@@ -14,8 +14,7 @@ import androidx.core.content.ContextCompat
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.withContext
 import me.tagavari.airmessage.BuildConfig
 import java.io.File
@@ -58,7 +57,7 @@ fun <Payload> rememberAudioCapture(): AudioCaptureState<Payload> {
 	}
 	
 	val isRecording = remember { mutableStateOf(false) }
-	val recordingStopFlow = remember { MutableSharedFlow<AudioRecordResult<Payload>>(
+	val recordingStopFlow = remember { MutableSharedFlow<AudioCaptureUpdate<Payload>>(
 		extraBufferCapacity = 1,
 		onBufferOverflow = BufferOverflow.DROP_OLDEST
 	) }
@@ -77,7 +76,8 @@ fun <Payload> rememberAudioCapture(): AudioCaptureState<Payload> {
 		}
 	}
 	
-	fun stopAudioRecording(forceDiscard: Boolean = false, payload: Payload? = null): Boolean {
+	//Stops audio recording, and returns whether the recording was stopped cleanly
+	fun stopAudioRecording() {
 		if(BuildConfig.DEBUG && !isRecording.value) {
 			Log.w(TAG, "Tried to stop audio recording while no recording is present!")
 		}
@@ -86,33 +86,47 @@ fun <Payload> rememberAudioCapture(): AudioCaptureState<Payload> {
 		isRecording.value = false
 		
 		//Stop recording
-		val cleanStop: Boolean = try {
-			mediaRecorder.stop()
-			true
-		} catch(exception: RuntimeException) {
-			//Media couldn't be captured, file is invalid
-			exception.printStackTrace()
-			false
-		}
-		
-		//Return the result
-		val recordingOK = cleanStop && !forceDiscard
-		recordingStopFlow.tryEmit(AudioRecordResult(
-			success = recordingOK,
-			payload = payload
-		))
-		return recordingOK
+		mediaRecorder.stop()
 	}
 	
-	suspend fun startAudioRecording(targetFile: File): AudioRecordResult<Payload> {
+	fun cancelAudioRecording() {
+		//Stop the recording
+		try {
+			stopAudioRecording()
+		} catch(exception: RuntimeException) {
+			exception.printStackTrace()
+		}
+		
+		//Return a failed result
+		recordingStopFlow.tryEmit(AudioCaptureUpdate.Error(RecordingCancellationException("Audio recording cancelled")))
+	}
+	
+	fun completeAudioRecording(payload: Payload): Boolean {
+		//Stop the recording
+		try {
+			stopAudioRecording()
+		} catch(exception: RuntimeException) {
+			//Emit the exception
+			recordingStopFlow.tryEmit(AudioCaptureUpdate.Error(exception))
+			return false
+		}
+		
+		//Emit a successful result
+		recordingStopFlow.tryEmit(AudioCaptureUpdate.Success(payload))
+		return true
+	}
+	
+	suspend fun startAudioRecording(targetFile: File): Flow<AudioCaptureUpdate<Payload>> = flow {
 		if(BuildConfig.DEBUG && isRecording.value) {
 			Log.w(TAG, "Tried to start audio recording while already recording!")
+			Thread.dumpStack()
 		}
 		
 		//Check if we have permission
 		if(!audioPermissionGranted) {
 			requestAudioPermission.launch(Manifest.permission.RECORD_AUDIO)
-			return AudioRecordResult(false, null)
+			emit(AudioCaptureUpdate.Error(RecordingCancellationException("REQUEST_AUDIO permission not granted")))
+			return@flow
 		}
 		
 		//Configure the media recorder
@@ -146,21 +160,18 @@ fun <Payload> rememberAudioCapture(): AudioCaptureState<Payload> {
 				}
 			} catch(exception: IOException) {
 				exception.printStackTrace()
-				return AudioRecordResult(false, null)
+				emit(AudioCaptureUpdate.Error(exception))
+				return@flow
 			}
 		}
 		
 		//Start recording
 		mediaRecorder.start()
 		isRecording.value = true
+		emit(AudioCaptureUpdate.Started())
 		
 		//Wait until we finish recording
-		return try {
-			recordingStopFlow.first()
-		} catch(exception: InterruptedException) {
-			Log.w(TAG, "Interrupted while recording audio!")
-			throw exception
-		}
+		emit(recordingStopFlow.first())
 	}
 	
 	return AudioCaptureStateImpl(
@@ -168,7 +179,8 @@ fun <Payload> rememberAudioCapture(): AudioCaptureState<Payload> {
 		isRecording = isRecording,
 		duration = recordingDuration,
 		startRecordingCallback = ::startAudioRecording,
-		stopRecordingCallback = ::stopAudioRecording
+		cancelRecordingCallback = ::cancelAudioRecording,
+		completeRecordingCallback = ::completeAudioRecording
 	)
 }
 
@@ -182,31 +194,38 @@ abstract class AudioCaptureState<Payload> {
 	 * @param file The file to write to
 	 * @return Whether the recording succeeded or not
 	 */
-	abstract suspend fun startRecording(file: File): AudioRecordResult<Payload>
+	abstract suspend fun startRecording(file: File): Flow<AudioCaptureUpdate<Payload>>
 	
 	/**
-	 * Stops audio recording. If recording was successful, a reference to the
+	 * Cancels recording with an unsuccessful result.
+	 */
+	abstract fun cancelRecording()
+	
+	/**
+	 * Finishes audio recording. If recording was successful, a reference to the
 	 * output file is returned.
-	 * @param forceDiscard Whether to deliberately fail this recording
 	 * @return Whether the recording succeeded or not
 	 */
-	abstract fun stopRecording(forceDiscard: Boolean = false, payload: Payload?): Boolean
+	abstract fun completeRecording(payload: Payload): Boolean
 }
 
-data class AudioRecordResult<Payload>(
-	val success: Boolean,
-	val payload: Payload?
-)
+sealed class AudioCaptureUpdate<Payload> {
+	class Started<Payload> : AudioCaptureUpdate<Payload>()
+	class Success<Payload>(val payload: Payload) : AudioCaptureUpdate<Payload>()
+	class Error<Payload>(val error: Throwable) : AudioCaptureUpdate<Payload>()
+}
 
 private class AudioCaptureStateImpl<Payload>(
 	override val mediaRecorder: MediaRecorder,
 	override val isRecording: State<Boolean>,
 	override val duration: State<Int>,
-	private val startRecordingCallback: suspend (file: File) -> AudioRecordResult<Payload>,
-	private val stopRecordingCallback: (forceDiscard: Boolean, payload: Payload?) -> Boolean
+	private val startRecordingCallback: suspend (file: File) -> Flow<AudioCaptureUpdate<Payload>>,
+	private val cancelRecordingCallback: () -> Unit,
+	private val completeRecordingCallback: (payload: Payload) -> Boolean
 ) : AudioCaptureState<Payload>() {
 	override suspend fun startRecording(file: File) = startRecordingCallback(file)
-	override fun stopRecording(forceDiscard: Boolean, payload: Payload?) = stopRecordingCallback(forceDiscard, payload)
+	override fun cancelRecording() = cancelRecordingCallback()
+	override fun completeRecording(payload: Payload) = completeRecordingCallback(payload)
 }
 
 private class NoOpAudioCaptureState<Payload> : AudioCaptureState<Payload>() {
@@ -215,8 +234,15 @@ private class NoOpAudioCaptureState<Payload> : AudioCaptureState<Payload>() {
 	override val isRecording: State<Boolean> = mutableStateOf(false)
 	override val duration: State<Int> = mutableStateOf(0)
 	
-	private val payloadFlow = MutableSharedFlow<Payload?>()
+	private val payloadFlow = MutableSharedFlow<Payload>()
 	
-	override suspend fun startRecording(file: File) = AudioRecordResult(true, payloadFlow.first())
-	override fun stopRecording(forceDiscard: Boolean, payload: Payload?): Boolean = payloadFlow.tryEmit(payload)
+	override suspend fun startRecording(file: File) = flowOf(AudioCaptureUpdate.Success(payloadFlow.first()))
+	override fun cancelRecording() = Unit
+	override fun completeRecording(payload: Payload) = true
+}
+
+class RecordingCancellationException: Exception {
+	constructor(message: String?) : super(message)
+	constructor(message: String?, cause: Throwable?) : super(message, cause)
+	constructor(cause: Throwable?) : super(cause)
 }
