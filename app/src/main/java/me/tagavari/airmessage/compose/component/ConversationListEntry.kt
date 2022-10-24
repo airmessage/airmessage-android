@@ -71,13 +71,13 @@ fun ConversationListEntry(
 				.align(Alignment.Center)
 				.padding(horizontal = 4.dp, vertical = 2.dp)
 				.clip(MaterialTheme.shapes.large)
-				/* .combinedClickable(
+				.combinedClickable(
 					onClick = onClick,
 					onLongClick = onLongClick?.let { callback -> {
 						haptic.performHapticFeedback(HapticFeedbackType.LongPress)
 						callback()
 					} }
-				) */,
+				),
 			color = backgroundColor,
 			contentColor = contentColor
 		) {
