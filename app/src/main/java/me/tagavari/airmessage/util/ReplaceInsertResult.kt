@@ -14,8 +14,8 @@ class ReplaceInsertResult(
 	val targetItem: ConversationItem,
 	val newItems: List<ConversationItem>,
 	val updatedItems: List<MessageInfo>,
-	val deletedItems: List<Long>) {
-	
+	val deletedItems: List<Long>
+) {
 	companion object {
 		/**
 		 * Creates a [ReplaceInsertResult] for the addition of a single conversation item
