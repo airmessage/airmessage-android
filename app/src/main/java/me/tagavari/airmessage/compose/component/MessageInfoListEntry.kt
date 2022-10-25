@@ -93,6 +93,7 @@ fun MessageInfoListEntry(
 	scrollProgress: Float = 0F,
 	horizontalDragProgress: Float = 0F,
 	onDownloadAttachment: (MessageInfo, AttachmentInfo) -> Unit,
+	onOpenVisualAttachment: (AttachmentInfo) -> Unit,
 	isPlayingEffect: Boolean,
 	onPlayEffect: (String) -> Unit
 ) {
@@ -312,13 +313,7 @@ fun MessageInfoListEntry(
 											flow = attachmentFlow,
 											file = attachmentFile,
 											type = attachment.contentType,
-											onClick = {
-												IntentHelper.openAttachmentFile(
-													context,
-													attachmentFile,
-													attachment.computedContentType
-												)
-											},
+											onClick = { onOpenVisualAttachment(attachment) },
 											onSetSelected = { selected ->
 												selectionState.setSelectionAttachmentID(attachment.localID, selected)
 											},

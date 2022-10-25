@@ -1,6 +1,8 @@
 package me.tagavari.airmessage.compose.component
 
+import android.content.Intent
 import android.os.SystemClock
+import android.util.Log
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -17,12 +19,16 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
+import me.tagavari.airmessage.activity.MediaViewer
 import me.tagavari.airmessage.compose.state.MessageLazyLoadState
 import me.tagavari.airmessage.compose.state.MessageSelectionState
+import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.constants.TimingConstants
+import me.tagavari.airmessage.helper.FileHelper
 import me.tagavari.airmessage.messaging.*
 import me.tagavari.airmessage.util.MessageFlow
 import me.tagavari.airmessage.util.MessageFlowSpacing
@@ -169,6 +175,8 @@ fun MessageList(
 				}
 				val scrollProgress = scrollOffsetMap[conversationItem.localID] ?: 1F
 				
+				val context = LocalContext.current
+				
 				MessageInfoListEntry(
 					conversationInfo = conversation,
 					messageInfo = conversationItem,
@@ -180,6 +188,31 @@ fun MessageList(
 					scrollProgress = scrollProgress,
 					horizontalDragProgress = dragProgress,
 					onDownloadAttachment = onDownloadAttachment,
+					onOpenVisualAttachment = { targetAttachment ->
+						//Collect attachment files
+						val loadedAttachments = messages
+							.filterIsInstance<MessageInfo>()
+							.flatMap { it.attachments }
+							.filter { attachment ->
+								attachment.file != null
+										&& (FileHelper.compareMimeTypes(attachment.computedContentType, MIMEConstants.mimeTypeImage)
+										|| FileHelper.compareMimeTypes(attachment.computedContentType, MIMEConstants.mimeTypeVideo))
+							}
+							.let { ArrayList(it) }
+						
+						//Get the target attachment index
+						val index = loadedAttachments.indexOf(targetAttachment)
+						if(index == -1) {
+							Log.e("MessageList", "Failed to match requested attachment file ${targetAttachment.localID} (${targetAttachment.file})")
+							return@MessageInfoListEntry
+						}
+						
+						//Open the media viewer
+						Intent(context, MediaViewer::class.java).apply {
+							putParcelableArrayListExtra(MediaViewer.intentParamDataList, loadedAttachments)
+							putExtra(MediaViewer.intentParamIndex, index)
+						}.let { context.startActivity(it) }
+					},
 					isPlayingEffect = isPlayingEffect,
 					onPlayEffect = onPlayEffect
 				)
