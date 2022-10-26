@@ -281,6 +281,11 @@ fun MessagingScreen(
 											
 											//Copy the text to the clipboard
 											clipboardManager.setPrimaryClip(ClipData.newPlainText(null, text))
+											
+											//Show a confirmation toast
+											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+												Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+											}
 										}
 									
 									viewModel.messageSelectionState.selectedAttachmentIDs.firstOrNull()
@@ -292,15 +297,15 @@ fun MessagingScreen(
 											//Copy the file to the clipboard
 											clipboardManager.setPrimaryClip(ClipData.newUri(
 												context.contentResolver,
-												null,
+												attachment.computedFileName,
 												fileUri
 											))
+											
+											//Show a confirmation toast
+											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+												Toast.makeText(context, R.string.message_attachmentcopied, Toast.LENGTH_SHORT).show()
+											}
 										}
-									
-									//Show a confirmation toast
-									if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-										Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
-									}
 									
 									stopActionMode()
 								}) {
@@ -320,6 +325,7 @@ fun MessagingScreen(
 												action = Intent.ACTION_SEND
 												putExtra(Intent.EXTRA_TEXT, text)
 												type = "text/plain"
+												clipData = ClipData.newPlainText(null, text)
 											}
 												.let { Intent.createChooser(it, null) }
 												.let { context.startActivity(it) }
@@ -335,6 +341,12 @@ fun MessagingScreen(
 												action = Intent.ACTION_SEND
 												putExtra(Intent.EXTRA_STREAM, fileUri)
 												type = attachment.contentType
+												clipData = ClipData.newUri(
+													context.contentResolver,
+													attachment.computedFileName,
+													fileUri
+												)
+												flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
 											}
 												.let { Intent.createChooser(it, null) }
 												.let { context.startActivity(it) }

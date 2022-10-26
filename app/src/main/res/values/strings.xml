@@ -338,6 +338,7 @@
 	
 	<string name="message_searchresults">%d/%d results</string>
 	<string name="message_textcopied">Text copied to clipboard</string>
+	<string name="message_attachmentcopied">Attachment copied to clipboard</string>
 	<string name="message_conversationcreated">New conversation created</string>
 	<plurals name="message_multipledestinations">
 		<item quantity="other">%s (%s more)</item>

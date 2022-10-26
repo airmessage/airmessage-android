@@ -3,6 +3,7 @@ package me.tagavari.airmessage.activity;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.animation.ValueAnimator;
+import android.content.ClipData;
 import android.content.Intent;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
@@ -308,8 +309,14 @@ public class MediaViewer extends AppCompatActivity {
 		//Setting the intent file
 		intent.putExtra(Intent.EXTRA_STREAM, content);
 		
+		//Setting the clip data
+		intent.setClipData(ClipData.newUri(getContentResolver(), attachment.getComputedFileName(), content));
+		
 		//Setting the type
 		intent.setType(attachment.getComputedContentType());
+		
+		//Enabling read access
+		intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 		
 		//Starting the activity
 		startActivity(Intent.createChooser(intent, getResources().getText(R.string.action_sharemessage)));
