@@ -1,9 +1,73 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.exoplayer2.ui.PlayerView
+<FrameLayout
 	xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:app="http://schemas.android.com/apk/res-auto"
-	android:id="@+id/playerview"
+	xmlns:tools="http://schemas.android.com/tools"
 	android:layout_width="match_parent"
-	android:layout_height="match_parent"
-	app:controller_layout_id="@layout/ext_mediaviewer_exoplayer"
-	app:surface_type="texture_view" />
+	android:layout_height="match_parent">
+	<com.google.android.exoplayer2.ui.StyledPlayerView
+		android:id="@+id/playerview"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent"
+		app:use_controller="false" />
+	
+	<FrameLayout
+		android:id="@+id/player_controls"
+		android:layout_width="match_parent"
+		android:layout_height="match_parent">
+		<ImageButton
+			android:id="@+id/player_play"
+			android:layout_width="100dp"
+			android:layout_height="100dp"
+			android:layout_gravity="center"
+			android:src="@drawable/button_mediaplayer_play"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:contentDescription="@string/action_play"
+			tools:ignore="DuplicateClickableBoundsCheck" />
+		
+		<ImageButton android:id="@+id/player_pause"
+			android:layout_width="100dp"
+			android:layout_height="100dp"
+			android:layout_gravity="center"
+			android:src="@drawable/button_mediaplayer_pause"
+			android:background="?android:attr/selectableItemBackgroundBorderless"
+			android:contentDescription="@string/action_pause"
+			tools:ignore="DuplicateClickableBoundsCheck" />
+		
+		<LinearLayout
+			android:id="@+id/player_bottom_bar"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:padding="8dp"
+			android:layout_gravity="bottom"
+			android:gravity="center_vertical"
+			android:orientation="horizontal">
+			<TextView
+				android:id="@+id/player_progress"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:includeFontPadding="false"
+				android:paddingLeft="8dp"
+				android:paddingRight="8dp"
+				android:textColor="@android:color/white" />
+			
+			<com.google.android.material.slider.Slider
+				android:id="@+id/player_slider"
+				android:layout_width="0dp"
+				android:layout_height="wrap_content"
+				android:layout_weight="1"
+				android:paddingLeft="8dp"
+				android:paddingRight="8dp"
+				app:labelBehavior="gone" />
+			
+			<TextView
+				android:id="@+id/player_duration"
+				android:layout_width="wrap_content"
+				android:layout_height="wrap_content"
+				android:includeFontPadding="false"
+				android:paddingLeft="8dp"
+				android:paddingRight="8dp"
+				android:textColor="@android:color/white" />
+		</LinearLayout>
+	</FrameLayout>
+</FrameLayout>

@@ -91,6 +91,8 @@
 	<string name="action_showpassword">Show password</string>
 	<string name="action_hidepassword">Hide password</string>
 	<string name="action_enablelocation">Enable location</string>
+	<string name="action_play">Play</string>
+	<string name="action_pause">Pause</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>

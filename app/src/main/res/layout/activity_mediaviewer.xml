@@ -5,17 +5,11 @@
 	android:layout_width="match_parent"
 	android:layout_height="match_parent"
 	android:background="@android:color/black">
-	<me.tagavari.airmessage.view.RoundedFrameLayout
-		android:id="@+id/frame_round"
+	<androidx.viewpager2.widget.ViewPager2
+		android:id="@+id/viewpager"
 		android:layout_width="match_parent"
 		android:layout_height="match_parent"
-		android:transitionName="mediaViewer">
-		<androidx.viewpager2.widget.ViewPager2
-			android:id="@+id/viewpager"
-			android:layout_width="match_parent"
-			android:layout_height="match_parent"
-			android:theme="@style/OverscrollNeutralizer" />
-	</me.tagavari.airmessage.view.RoundedFrameLayout>
+		android:theme="@style/OverscrollNeutralizer" />
 
 	<View
 		android:id="@+id/scrim_top"
@@ -30,11 +24,17 @@
 		android:layout_height="0px"
 		android:layout_gravity="bottom"
 		android:background="@drawable/appear_bottomscrim" />
-
-	<com.google.android.material.appbar.MaterialToolbar
-		android:id="@+id/toolbar"
+	
+	<com.google.android.material.appbar.AppBarLayout
+		android:id="@+id/appbar"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="@android:color/transparent"
-		android:layout_gravity="top" />
+		android:layout_gravity="top"
+		android:background="@android:color/transparent">
+		<com.google.android.material.appbar.MaterialToolbar
+			android:id="@+id/toolbar"
+			android:layout_width="match_parent"
+			android:layout_height="?attr/actionBarSize"
+			android:background="@android:color/transparent" />
+	</com.google.android.material.appbar.AppBarLayout>
 </FrameLayout>
