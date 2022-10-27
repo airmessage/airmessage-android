@@ -11,9 +11,14 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowCompat
@@ -76,51 +81,57 @@ class ConversationDetailsCompose : ComponentActivity() {
 			}
 			
 			AirMessageAndroidTheme {
-				viewModel.conversation?.let { conversation ->
-					ConversationDetails(
-						conversation = conversation,
-						onClickMember = { memberInfo, userInfo ->
-							if(userInfo != null) {
-								//If the user exists, jump right to them
-								Intent(Intent.ACTION_VIEW).apply {
-									data = userInfo.contactLookupUri
-								}
-							} else {
-								//If the user doesn't exist, prompt the user to create a new contact
-								Intent(Intent.ACTION_INSERT_OR_EDIT).apply {
-									type = ContactsContract.Contacts.CONTENT_ITEM_TYPE
-									
-									if(validateEmail(memberInfo.address)) {
-										putExtra(ContactsContract.Intents.Insert.EMAIL, memberInfo.address)
-									} else if(validatePhoneNumber(memberInfo.address)) {
-										putExtra(ContactsContract.Intents.Insert.PHONE, memberInfo.address)
+				Box(
+					modifier = Modifier
+						.background(MaterialTheme.colorScheme.background)
+						.fillMaxSize()
+				) {
+					viewModel.conversation?.let { conversation ->
+						ConversationDetails(
+							conversation = conversation,
+							onClickMember = { memberInfo, userInfo ->
+								if(userInfo != null) {
+									//If the user exists, jump right to them
+									Intent(Intent.ACTION_VIEW).apply {
+										data = userInfo.contactLookupUri
 									}
+								} else {
+									//If the user doesn't exist, prompt the user to create a new contact
+									Intent(Intent.ACTION_INSERT_OR_EDIT).apply {
+										type = ContactsContract.Contacts.CONTENT_ITEM_TYPE
+										
+										if(validateEmail(memberInfo.address)) {
+											putExtra(ContactsContract.Intents.Insert.EMAIL, memberInfo.address)
+										} else if(validatePhoneNumber(memberInfo.address)) {
+											putExtra(ContactsContract.Intents.Insert.PHONE, memberInfo.address)
+										}
+									}
+								}.let { startActivity(it) }
+							},
+							onSendCurrentLocation = {
+								//Check if the app has access to the user's location
+								if(ContextCompat.checkSelfPermission(this@ConversationDetailsCompose, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+									!= PackageManager.PERMISSION_GRANTED) {
+									locationPermissionLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION))
+									return@ConversationDetails
 								}
-							}.let { startActivity(it) }
-						},
-						onSendCurrentLocation = {
-							//Check if the app has access to the user's location
-							if(ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
-								!= PackageManager.PERMISSION_GRANTED) {
-								locationPermissionLauncher.launch(arrayOf(android.Manifest.permission.ACCESS_COARSE_LOCATION, android.Manifest.permission.ACCESS_FINE_LOCATION))
-								return@ConversationDetails
+								
+								viewModel.loadCurrentLocation(this@ConversationDetailsCompose)
+							},
+							isLoadingCurrentLocation = viewModel.isLoadingCurrentLocation,
+							noLocationDialog = currentLocationResult?.exceptionOrNull() is LocationUnavailableException,
+							onHideNoLocationDialog = { viewModel.clearCurrentLocation() },
+							locationDisabledDialog = currentLocationResult?.exceptionOrNull() is LocationDisabledException,
+							onHideLocationDisabledDialog = { viewModel.clearCurrentLocation() },
+							onPromptEnableLocationServices = {
+								startActivity(Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+							},
+							onFinish = {
+								setResult(RESULT_CANCELED)
+								finish()
 							}
-							
-							viewModel.loadCurrentLocation(this)
-						},
-						isLoadingCurrentLocation = viewModel.isLoadingCurrentLocation,
-						noLocationDialog = currentLocationResult?.exceptionOrNull() is LocationUnavailableException,
-						onHideNoLocationDialog = { viewModel.clearCurrentLocation() },
-						locationDisabledDialog = currentLocationResult?.exceptionOrNull() is LocationDisabledException,
-						onHideLocationDisabledDialog = { viewModel.clearCurrentLocation() },
-						onPromptEnableLocationServices = {
-							startActivity(Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-						},
-						onFinish = {
-							setResult(RESULT_CANCELED)
-							finish()
-						}
-					)
+						)
+					}
 				}
 			}
 		}
