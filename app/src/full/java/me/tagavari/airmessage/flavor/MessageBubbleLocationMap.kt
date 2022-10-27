@@ -2,7 +2,6 @@ package me.tagavari.airmessage.flavor
 
 import android.os.Bundle
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
@@ -26,6 +25,7 @@ import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.compose.component.MessageBubbleLocationContentGeocoder
+import me.tagavari.airmessage.compose.ui.theme.isAppDarkTheme
 import me.tagavari.airmessage.util.LatLngInfo
 
 /**
@@ -50,7 +50,7 @@ fun MessageBubbleLocationMap(
 		val mapView = rememberMapViewWithLifecycle()
 		
 		//Initialize map
-		val isDarkTheme = isSystemInDarkTheme()
+		val isDarkTheme = isAppDarkTheme()
 		LaunchedEffect(mapView) {
 			val googleMap = mapView.awaitMap()
 			

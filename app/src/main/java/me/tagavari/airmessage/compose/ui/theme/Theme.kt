@@ -5,6 +5,7 @@ import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -100,3 +101,7 @@ fun AirMessageAndroidTheme(
 		content = content
 	)
 }
+
+@Composable
+@ReadOnlyComposable
+fun isAppDarkTheme() = ThemeHelper.darkModeOverride ?: isSystemInDarkTheme()
