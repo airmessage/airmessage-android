@@ -57,11 +57,7 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		}
 	}
 	
-	private val messagingViewModelCache = object : LruCache<Long, MessagingViewModelData>(2) {
-		override fun entryRemoved(evicted: Boolean, key: Long, oldValue: MessagingViewModelData, newValue: MessagingViewModelData?) {
-			oldValue.onCleared()
-		}
-	}
+	private var messagingViewModelCache by mutableStateOf(MessagingViewModelCache())
 	
 	init {
 		//Load conversations
@@ -121,6 +117,16 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 						&& conversations.none { it.localID == localDetailPage.conversationID }) {
 						detailPage = null
 					}
+				}
+		}
+		
+		//Clear message data on re-sync
+		viewModelScope.launch {
+			ReduxEmitterNetwork.massRetrievalUpdateSubject.asFlow()
+				.filter { it is ReduxEventMassRetrieval.Complete || it is ReduxEventMassRetrieval.Error }
+				.collect {
+					messagingViewModelCache.evictAll()
+					messagingViewModelCache = MessagingViewModelCache()
 				}
 		}
 	}
@@ -512,4 +518,10 @@ sealed class ConversationsSinglePaneTarget(val depth: Int) {
 	object Conversations : ConversationsSinglePaneTarget(0)
 	object ArchivedConversations : ConversationsSinglePaneTarget(1)
 	class Detail(val page: ConversationsDetailPage) : ConversationsSinglePaneTarget(2)
+}
+
+private class MessagingViewModelCache : LruCache<Long, MessagingViewModelData>(2) {
+	override fun entryRemoved(evicted: Boolean, key: Long, oldValue: MessagingViewModelData, newValue: MessagingViewModelData?) {
+		oldValue.onCleared()
+	}
 }
