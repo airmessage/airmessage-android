@@ -25,6 +25,7 @@ import androidx.window.layout.FoldingFeature
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.runningFold
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
@@ -58,7 +59,7 @@ fun ConversationMessagingPane(
 	val scrollStateConversationsArchived = rememberLazyListState()
 	val topAppBarStateConversationsArchived = rememberTopAppBarState()
 	
-	val scrollStateDetail = key(viewModel.lastSelectedDetailPage.collectAsState()) {
+	val scrollStateDetail = key(viewModel.lastSelectedDetailPage.collectAsState().value) {
 		rememberLazyListState()
 	}
 	
@@ -79,6 +80,8 @@ fun ConversationMessagingPane(
 			}
 	}.collectAsState(initial = null)
 	
+	val scope = rememberCoroutineScope()
+	
 	val conversationPaneProps = ConversationPaneProps(
 		scrollState = scrollStateConversations,
 		topAppBarState = topAppBarStateConversations,
@@ -97,7 +100,12 @@ fun ConversationMessagingPane(
 			}
 		},
 		onSelectConversation = { conversationID ->
-			viewModel.detailPage = ConversationsDetailPage.Messaging(conversationID)
+			viewModel.setSelectedConversation(conversationID)
+			
+			//Reset the scroll position
+			scope.launch {
+				scrollStateDetail.scrollToItem(0)
+			}
 		},
 		onReloadConversations = {
 			viewModel.loadConversations()
