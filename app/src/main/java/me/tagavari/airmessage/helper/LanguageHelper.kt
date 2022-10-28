@@ -33,8 +33,6 @@ import kotlin.math.pow
  * Helper class for constructing human-readable strings from data
  */
 object LanguageHelper {
-	const val bulletSeparator = " • "
-	
 	/**
 	 * Creates a list of items localized for the user's device
 	 * @param resources The Android resources to use
@@ -341,24 +339,6 @@ object LanguageHelper {
 		//Only subject
 			?: textComponent.subject
 	}
-	
-	/**
-	 * Generates the display data required to render a tapback
-	 * @param code The tapback's value code
-	 */
-	@JvmStatic
-	fun getTapbackDisplay(@TapbackType code: Int): TapbackDisplayData? {
-		return when(code) {
-			TapbackType.heart -> TapbackDisplayData(R.drawable.love_rounded, R.color.tapback_love, R.string.part_tapback_heart)
-			TapbackType.like -> TapbackDisplayData(R.drawable.like_rounded, R.color.tapback_like, R.string.part_tapback_like)
-			TapbackType.dislike -> TapbackDisplayData(R.drawable.dislike_rounded, R.color.tapback_dislike, R.string.part_tapback_dislike)
-			TapbackType.laugh -> TapbackDisplayData(R.drawable.excited_rounded, R.color.tapback_laugh, R.string.part_tapback_laugh)
-			TapbackType.exclamation -> TapbackDisplayData(R.drawable.exclamation_rounded, R.color.tapback_exclamation, R.string.part_tapback_exclamation)
-			TapbackType.question -> TapbackDisplayData(R.drawable.question_rounded, R.color.tapback_question, R.string.part_tapback_question)
-			else -> null
-		}
-	}
-	
 	/**
 	 * Gets a summary message for a tapback
 	 * @param context The context to use
