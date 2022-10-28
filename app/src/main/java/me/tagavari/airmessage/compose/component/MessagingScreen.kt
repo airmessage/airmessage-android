@@ -38,8 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.ConversationDetailsCompose
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
@@ -59,6 +62,7 @@ import me.tagavari.airmessage.helper.*
 import me.tagavari.airmessage.messaging.AttachmentInfo
 import me.tagavari.airmessage.messaging.MessageComponentText
 import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.task.ConversationActionTask
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -125,19 +129,27 @@ fun MessagingScreen(
 			}
 	}
 	
-	//Save the draft input when the activity goes to the background
-	val lifecycle = LocalLifecycleOwner.current
-	DisposableEffect(Unit) {
+	val lifecycleOwner = LocalLifecycleOwner.current
+	DisposableEffect(lifecycleOwner) {
 		val observer = object : DefaultLifecycleObserver {
 			override fun onPause(owner: LifecycleOwner) {
+				//Save the draft input when the activity goes to the background
 				viewModel.saveInputDraft()
+			}
+			
+			override fun onResume(owner: LifecycleOwner) {
+				//Clear unread messages when we return to the foreground
+				@OptIn(DelicateCoroutinesApi::class)
+				GlobalScope.launch {
+					ConversationActionTask.unreadConversations(listOf(viewModel.conversationID), 0).await()
+				}
 			}
 		}
 		
-		lifecycle.lifecycle.addObserver(observer)
+		lifecycleOwner.lifecycle.addObserver(observer)
 		
 		onDispose {
-			lifecycle.lifecycle.removeObserver(observer)
+			lifecycleOwner.lifecycle.removeObserver(observer)
 		}
 	}
 	
