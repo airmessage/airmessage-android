@@ -252,8 +252,6 @@
 	<string name="preference_server_dropreconnect_description">接続を切断された直後に再接続を試みます</string>
 	<string name="preference_server_dropreconnect_title">接続を切断の時に再接続</string>
 	<string name="preference_appearance_theme_title">テーマ</string>
-	<string name="preference_appearance_showreadreceipts_title">既読通知の表示</string>
-	<string name="preference_appearance_showreadreceipts_description">相手はメッセージを読んだ時、インジケータを表示。すべての会話に適用。</string>
 	<string name="preference_server_foregroundservice_title">フォアグラウンドでサービスを実行</string>
 	<string name="preference_server_foregroundservice_description">通知を表示し、起動時に接続を許可します</string>
 	<string name="preference_server_disconnectionnotification_title">切断の通知</string>
@@ -561,4 +559,7 @@
 	<string name="message_locationerror_unavailable_desc">後でやり直してください</string>
 	<string name="message_endpoint_connected">接続済み</string>
 	<string name="message_endpoint_notreachable">到達不能</string>
+	<string name="preferencegroup_appearance_title">外観</string>
+	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
+	<string name="preference_appearance_amoled_description">AMOLED 互換の黒テーマの利用</string>
 </resources>

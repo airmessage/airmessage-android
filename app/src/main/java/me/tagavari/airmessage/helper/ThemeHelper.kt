@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.constants.ColorConstants
@@ -28,6 +29,8 @@ object ThemeHelper {
 		}
 	)
 		private set
+	
+	var amoledMode by mutableStateOf(Preferences.getPreferenceAMOLED(MainApplication.instance))
 	
 	/**
 	 * Gets if the app is currently being displayed in night mode
@@ -73,18 +76,5 @@ object ThemeHelper {
 	@JvmStatic
 	fun setActivityAMOLEDBase(activity: AppCompatActivity) {
 		activity.findViewById<View>(android.R.id.content).rootView.setBackgroundColor(ColorConstants.colorAMOLED)
-		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) activity.window.navigationBarColor = ColorConstants.colorAMOLED //Leaving the transparent navigation bar on Android 10
-		activity.window.statusBarColor = ColorConstants.colorAMOLED
-		activity.supportActionBar!!.setBackgroundDrawable(ColorDrawable(ColorConstants.colorAMOLED))
-		
-		for(view in ViewHelper.getViewsByTag(activity.findViewById(android.R.id.content), activity.resources.getString(R.string.tag_amoleddivider))) {
-			view.visibility = View.VISIBLE
-		}
-		if(Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
-			//The bottom divider is only necessary for actual navigation bars
-			for(view in ViewHelper.getViewsByTag(activity.findViewById(android.R.id.content), activity.resources.getString(R.string.tag_amoleddivider_bottom))) {
-				view.visibility = View.VISIBLE
-			}
-		}
 	}
 }

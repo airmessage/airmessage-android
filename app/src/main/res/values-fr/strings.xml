@@ -333,8 +333,6 @@
 	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
 	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
 	<string name="preference_appearance_theme_title">Thème</string>
-	<string name="preference_appearance_showreadreceipts_title">Afficher les accusés de lecture</string>
-	<string name="preference_appearance_showreadreceipts_description">Afficher un indicateur lorsque vos messages ont été lus. S\'applique à toutes les conversations.</string>
 	<string name="preference_server_foregroundservice_title">Exécuter le service au premier plan</string>
 	<string name="preference_server_foregroundservice_description">Affiche une notification et permet de connecter au démarrage</string>
 	<string name="preference_server_disconnectionnotification_title">Notification de déconnexion</string>
@@ -570,4 +568,7 @@
 	<string name="message_locationerror_unavailable_desc">Veuillez réessayer plus tard</string>
 	<string name="message_endpoint_connected">Connecté</string>
 	<string name="message_endpoint_notreachable">Inaccessible</string>
+	<string name="preferencegroup_appearance_title">Apparence</string>
+	<string name="preference_appearance_amoled_title">Thème noir</string>
+	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
 </resources>

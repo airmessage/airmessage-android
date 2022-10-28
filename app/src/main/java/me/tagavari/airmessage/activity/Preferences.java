@@ -52,6 +52,7 @@ import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreference;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 import com.google.android.material.slider.Slider;
 import com.google.android.material.snackbar.Snackbar;
@@ -165,7 +166,8 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 	
 	private void setDarkAMOLED() {
 		ThemeHelper.setActivityAMOLEDBase(this);
-		findViewById(R.id.appbar).setBackgroundColor(ColorConstants.colorAMOLED);
+		AppBarLayout appBar = findViewById(R.id.appbar);
+		appBar.setBackgroundColor(ColorConstants.colorAMOLED);
 	}
 	
 	public static class SettingsFragment extends PreferenceFragmentCompat {
@@ -449,6 +451,19 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) themePreference.setEntries(R.array.preference_appearance_theme_entries_androidQ);
 				else themePreference.setEntries(R.array.preference_appearance_theme_entries_old);
 				
+				//Updating the AMOLED switch option
+				SwitchPreference amoledSwitch = findPreference(getResources().getString(R.string.preference_appearance_amoled_key));
+				amoledSwitch.setOnPreferenceChangeListener((preference, newValue) -> {
+					//Updating the state
+					ThemeHelper.INSTANCE.setAmoledMode((boolean) newValue);
+					
+					//Recreating the activity
+					getActivity().recreate();
+					
+					return true;
+				});
+				amoledSwitch.setEnabled(!themePreference.getValue().equals(ThemeHelper.darkModeLight));
+				
 				//Checking if the device is running below Android 7.0 (API 24), or doesn't support telephony
 				if(Build.VERSION.SDK_INT < Build.VERSION_CODES.N || !getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY)) {
 					//Removing the text message preference group
@@ -542,15 +557,6 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 			
 			//Cancelling task subscriptions
 			if(syncSubscription != null && !syncSubscription.isDisposed()) syncSubscription.dispose();
-		}
-		
-		void setDarkAMOLEDSamsung() {
-			//Configuring the list
-			RecyclerView list = getListView();
-			
-			list.setBackgroundResource(R.drawable.background_amoledsamsung);
-			list.setClipToOutline(true);
-			list.invalidate();
 		}
 		
 		@RequiresApi(api = Build.VERSION_CODES.O)
@@ -1051,18 +1057,12 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		else return Uri.parse(selectedSound);
 	}
 	
-	@Deprecated
 	public static boolean getPreferenceAMOLED(Context context) {
-		return false;
+		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_appearance_amoled_key), false);
 	}
 	
 	public static boolean getPreferenceReplySuggestions(Context context) {
 		return PreferenceManager.getDefaultSharedPreferences(context).getBoolean(context.getResources().getString(R.string.preference_features_replysuggestions_key), true);
-	}
-	
-	@Deprecated
-	public static boolean getPreferenceAdvancedColor(Context context) {
-		return false;
 	}
 	
 	public static boolean getPreferenceMessagePreviews(Context context) {
