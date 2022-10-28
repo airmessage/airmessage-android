@@ -461,8 +461,10 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 	 * Sets the selected conversation, along with its associated received content
 	 */
 	fun setSelectedConversation(conversationID: Long, content: ConversationReceivedContent? = null) {
+		//Set the detail page
 		detailPage = ConversationsDetailPage.Messaging(conversationID)
 		
+		//Update the pending content
 		if(content != null) {
 			viewModelScope.launch {
 				pendingReceivedContent.emit(
