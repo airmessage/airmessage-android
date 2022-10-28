@@ -332,20 +332,14 @@ object LanguageHelper {
 	 */
 	@JvmStatic
 	fun textComponentToString(resources: Resources, textComponent: MessageComponentText): String? {
-		return if(textComponent.text != null && textComponent.subject != null) {
+		if(textComponent.text != null && textComponent.subject != null) {
 			//Subject + text
-			resources.getString(R.string.prefix_wild,
-				textComponent.subject.replace('\n', ' '),
-				textComponent.text.replace('\n', ' '))
-		} else if(textComponent.text != null) {
-			//Only text
-			textComponent.text.replace('\n', ' ')
-		} else if(textComponent.subject != null) {
-			//Only subject
-			textComponent.subject.replace('\n', ' ')
-		} else {
-			null
+			return resources.getString(R.string.prefix_wild, textComponent.subject, textComponent.text)
 		}
+		//Only text
+		return textComponent.text
+		//Only subject
+			?: textComponent.subject
 	}
 	
 	/**
