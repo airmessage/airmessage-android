@@ -105,7 +105,8 @@ fun MessageInfoListEntry(
 	}
 	val isOutgoing = messageInfo.isOutgoing
 	val displaySenderSpace = !isOutgoing && conversationInfo.isGroupChat
-	val displaySender = displaySenderSpace && !flow.anchorTop
+	val displaySenderLabel = displaySenderSpace && !flow.anchorTop
+	val displaySenderIcon = displaySenderSpace && !flow.anchorBottom
 	val isUnconfirmed = messageInfo.messageState == MessageState.ghost
 	
 	//Load the message contact
@@ -143,14 +144,14 @@ fun MessageInfoListEntry(
 		val timeIndicatorWidth = targetTimeIndicatorWidth * horizontalDragProgress
 		
 		//Sender name
-		if(displaySender) {
+		if(displaySenderLabel) {
 			(userInfo?.contactName ?: messageInfo.sender)?.let { sender ->
 				Text(
 					modifier = Modifier
 						.padding(start = 60.dp, bottom = 2.5.dp)
 						.offset(x = userInfoOffset),
 					text = sender,
-					style = MaterialTheme.typography.bodyMedium,
+					style = MaterialTheme.typography.bodySmall,
 					color = MaterialTheme.colorScheme.onSurfaceVariant
 				)
 			}
@@ -173,8 +174,12 @@ fun MessageInfoListEntry(
 			) {
 				//User indicator
 				if(displaySenderSpace) {
-					Box(modifier = Modifier.size(avatarSize)) {
-						if(displaySender) {
+					Box(
+						modifier = Modifier
+							.size(avatarSize)
+							.align(Alignment.Bottom)
+					) {
+						if(displaySenderIcon) {
 							MemberImage(
 								modifier = Modifier.fillMaxSize(),
 								color = Color(senderMember?.color ?: ConversationColorHelper.backupUserColor),
