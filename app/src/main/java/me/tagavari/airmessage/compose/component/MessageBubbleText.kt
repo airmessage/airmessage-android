@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -65,13 +66,16 @@ fun MessageBubbleText(
 		onSetSelected(!flow.isSelected)
 	}
 	
-	val isSingleEmoji = remember(subject, text) {
-		subject == null && text != null && StringHelper.stringContainsOnlyEmoji(text)
+	val showLargeEmoji = remember(subject, text) {
+		subject == null
+				&& text != null
+				&& text.codePointCount(0, text.length) <= 3
+				&& StringHelper.stringContainsOnlyEmoji(text)
 	}
 	
 	val isInvisibleInk = sendStyle == SendStyleHelper.appleSendStyleBubbleInvisibleInk
 	
-	if(isSingleEmoji) {
+	if(showLargeEmoji) {
 		Text(
 			modifier = if(flow.isSelected) {
 				Modifier.background(colors.background, RoundedCornerShape(MessageFlowRadius.large))
@@ -88,7 +92,10 @@ fun MessageBubbleText(
 					}
 				),
 			text = text!!,
-			fontSize = 48.sp
+			style = LocalTextStyle.current.copy(
+				fontSize = 48.sp,
+				lineHeight = 48.sp
+			)
 		)
 	} else {
 		Surface(
