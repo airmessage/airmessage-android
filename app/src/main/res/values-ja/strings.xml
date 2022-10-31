@@ -562,4 +562,5 @@
 	<string name="preferencegroup_appearance_title">外観</string>
 	<string name="preference_appearance_amoled_title">真っ黒のテーマ</string>
 	<string name="preference_appearance_amoled_description">AMOLED 互換の黒テーマの利用</string>
+	<string name="message_onboardinginstructions_privacypolicy">続行すると、AirMessage の*プライバシー ポリシー*に同意したことになります。</string>
 </resources>

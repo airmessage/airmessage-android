@@ -571,4 +571,5 @@
 	<string name="preferencegroup_appearance_title">Apparence</string>
 	<string name="preference_appearance_amoled_title">Thème noir</string>
 	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
+	<string name="message_onboardinginstructions_privacypolicy">En continuant, vous acceptez la *politique de confidentialité d\'AirMessage*.</string>
 </resources>

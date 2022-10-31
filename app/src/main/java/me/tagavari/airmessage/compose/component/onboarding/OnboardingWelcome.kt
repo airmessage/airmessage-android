@@ -20,10 +20,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.UrlAnnotation
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.*
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -230,6 +228,48 @@ fun OnboardingWelcome(
 							Text(stringResource(R.string.action_manualconfiguration))
 						}
 					}
+				}
+				
+				Spacer(modifier = Modifier.weight(1F))
+				
+				//Privacy policy
+				stringResource(id = R.string.message_onboardinginstructions_privacypolicy).let { string ->
+					val stringRegions = string.split('*')
+					
+					val annotatedText = buildAnnotatedString {
+						//Set text color
+						pushStyle(SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant))
+						
+						stringRegions.forEachIndexed { index, stringPart ->
+							if(index % 2 == 0) {
+								//Normal text
+								append(stringPart)
+							} else {
+								//URL
+								withStyle(SpanStyle(
+									color = MaterialTheme.colorScheme.primary,
+									textDecoration = TextDecoration.Underline
+								)) {
+									withAnnotation(UrlAnnotation("https://airmessage.org/privacy-policy")) {
+										append(stringPart)
+									}
+								}
+							}
+						}
+					}
+					
+					val context = LocalContext.current
+					ClickableText(
+						text = annotatedText,
+						style = MaterialTheme.typography.labelSmall,
+						
+						onClick = { index ->
+							annotatedText.getUrlAnnotations(index, index)
+								.firstOrNull()?.let { annotation ->
+									IntentHelper.launchUri(context, Uri.parse(annotation.item.url))
+								}
+						}
+					)
 				}
 			}
 		}

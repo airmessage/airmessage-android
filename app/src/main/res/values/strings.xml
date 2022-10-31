@@ -403,6 +403,8 @@
 	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
 	<string name="message_onboardinginstructions_airmessage_desc">Log in with your account to get your messages on this device.</string>
 	
+	<string name="message_onboardinginstructions_privacypolicy">By continuing, you agree to AirMessage\'s *privacy policy*.</string>
+	
 	<string name="message_manualconfigurationstatus">Manual configuration in progress</string>
 	<string name="message_temporarymodestatus">Checking for new messages</string>
 	
