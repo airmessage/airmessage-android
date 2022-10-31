@@ -318,6 +318,7 @@
 	<string name="message_onboardinginstructions_macmini_desc">Une application installée sur un ordinateur Mac est nécessaire pour acheminer vos messages pour vous.\n\nVisitez airmessage.org sur votre ordinateur pour télécharger l\'application.</string>
 	<string name="message_onboardinginstructions_airmessage_title">Se connecter</string>
 	<string name="message_onboardinginstructions_airmessage_desc">Connectez-vous avec votre compte pour recevoir vos messages sur cet appareil.</string>
+	<string name="message_onboardinginstructions_privacypolicy">En continuant, vous acceptez la <a href="https://airmessage.org/privacy-policy">politique de confidentialité d\'AirMessage</a>.</string>
 
 	<string name="action_signin_google">Se connecter avec Google</string>
 	<string name="action_signin_email">Se connecter avec une address e-mail</string>

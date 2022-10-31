@@ -205,5 +205,17 @@
 			android:text="@string/action_manualconfiguration"
 			android:textColor="?android:attr/textColorPrimary"
 			app:iconTint="?android:attr/textColorPrimary" />
+		
+		<TextView
+			style="@style/TextAppearance.MaterialComponents.Caption"
+			android:id="@+id/label_privacypolicy"
+			android:layout_width="0px"
+			android:layout_height="wrap_content"
+			app:layout_constraintLeft_toLeftOf="parent"
+			app:layout_constraintRight_toRightOf="parent"
+			app:layout_constraintTop_toBottomOf="@id/button_manual"
+			android:layout_marginTop="10dp"
+			android:text="@string/message_onboardinginstructions_privacypolicy"
+			android:textColor="?android:attr/textColorTertiary" />
 	</androidx.constraintlayout.widget.ConstraintLayout>
 </ScrollView>

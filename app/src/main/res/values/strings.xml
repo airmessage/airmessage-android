@@ -390,6 +390,8 @@
 	<string name="message_onboardinginstructions_macmini_desc">A server installed on a Mac computer is required to route your messages for you.\n\nVisit airmessage.org on your computer to download.</string>
 	<string name="message_onboardinginstructions_airmessage_title">Connect your account</string>
 	<string name="message_onboardinginstructions_airmessage_desc">Log in with your account to get your messages on this device.</string>
+	
+	<string name="message_onboardinginstructions_privacypolicy">By continuing, you agree to AirMessage\'s <a href="https://airmessage.org/privacy-policy">privacy policy</a>.</string>
 
 	<string name="message_manualconfigurationstatus">Manual configuration in progress</string>
 	<string name="message_temporarymodestatus">Checking for new messages</string>

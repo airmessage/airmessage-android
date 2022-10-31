@@ -343,6 +343,7 @@
 	<string name="message_onboardinginstructions_macmini_desc">メッセージをルーティングするには、Macコンピューターにインストールされているサーバーが必要です。\n\nairmessage.org にアクセスしてダウンロードしてください。</string>
 	<string name="message_onboardinginstructions_airmessage_title">アカウントの接続</string>
 	<string name="message_onboardinginstructions_airmessage_desc">アカウントでログインして、このデバイスでメッセージを受け取る。</string>
+	<string name="message_onboardinginstructions_privacypolicy">続行すると、AirMessage の<a href="https://airmessage.org/privacy-policy">プライバシー ポリシー</a>に同意したことになります。</string>
 
 	<string name="action_signin_google">Google でログイン</string>
 	<string name="action_signin_email">メールアドレスでログイン</string>

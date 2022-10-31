@@ -1,9 +1,11 @@
 package me.tagavari.airmessage.fragment;
 
 import android.os.Bundle;
+import android.text.method.LinkMovementMethod;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
@@ -40,6 +42,7 @@ public class FragmentOnboardingWelcome extends FragmentCommunication<FragmentCom
 		view.findViewById(R.id.button_connect_email).setOnClickListener(this::launchAuthEmail);
 		view.findViewById(R.id.button_manual).setOnClickListener(this::launchManualConnect);
 		view.findViewById(R.id.button_manual).setOnLongClickListener(this::launchSkipConfig);
+		((TextView) view.findViewById(R.id.label_privacypolicy)).setMovementMethod(LinkMovementMethod.getInstance());
 		
 		//Setting up Firebase sign-in
 		welcomeGoogleSignIn = new WelcomeGoogleSignIn(this);
