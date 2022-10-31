@@ -114,7 +114,7 @@ public class Conversations extends AppCompatCompositeActivity {
 	
 	//Creating the view model and info bar values
 	private ActivityViewModel viewModel;
-	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarServerUpdate, infoBarServerUpdateRequired, infoBarSecurityUpdate, infoBarPR;
+	private PluginMessageBar.InfoBar infoBarConnection, infoBarContacts, infoBarServerUpdate, infoBarServerUpdateRequired, infoBarSecurityUpdate;
 	
 	//Creating the menu values
 	private MenuItem menuItemMarkAllRead = null;
@@ -312,12 +312,6 @@ public class Conversations extends AppCompatCompositeActivity {
 		infoBarServerUpdateRequired.setButton(R.string.action_details, view -> showServerUpdateRequiredDialog());
 		infoBarSecurityUpdate = pluginMessageBar.create(R.drawable.lock_alert, getResources().getString(R.string.message_securityupdate));
 		infoBarSecurityUpdate.setButton(R.string.action_resolve, view -> PlaySecurityBridge.showDialog(this, viewModel.playServicesErrorCode.getValue(), activityResultPlayServices));
-		infoBarPR = pluginMessageBar.create(R.drawable.feedback, getResources().getString(R.string.message_freeimessage_title));
-		infoBarPR.setButton(R.string.action_details, view -> showPRDialog());
-		
-		if(!SharedPreferencesManager.getPRDismissed(this)) {
-			infoBarPR.show();
-		}
 		
 		//Configuring the normal / archived view
 		if(isViewArchived) {
@@ -867,26 +861,6 @@ public class Conversations extends AppCompatCompositeActivity {
 				.setTitle(R.string.message_serverupdaterequired)
 				.setMessage(R.string.message_serverupdaterequired_desc)
 				.setPositiveButton(android.R.string.ok, (dialog, which) -> dialog.dismiss())
-				.create()
-				.show();
-	}
-	
-	/**
-	 * Shows a dialog that informs the user of AirMessage's PR
-	 */
-	private void showPRDialog() {
-		new MaterialAlertDialogBuilder(this)
-				.setTitle(R.string.message_freeimessage_title)
-				.setMessage(R.string.message_freeimessage_description)
-				.setPositiveButton(R.string.action_helpthecause, (dialog, which) -> {
-					Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://airmessage.org/free-imessage"));
-					startActivity(browserIntent);
-				})
-				.setNeutralButton(android.R.string.cancel, (dialog, which) -> dialog.dismiss())
-				.setNegativeButton(R.string.action_dontshowagain, (dialog, which) -> {
-					SharedPreferencesManager.setPRDismissed(this, true);
-					infoBarPR.hide();
-				})
 				.create()
 				.show();
 	}

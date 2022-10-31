@@ -87,8 +87,6 @@
 	<string name="action_answercall">Answer</string>
 	<string name="action_declinecall">Decline</string>
 	<string name="action_endcall">End call</string>
-	<string name="action_dontshowagain">Don\'t show again</string>
-	<string name="action_helpthecause">Help the cause</string>
 
 	<!-- Short actions are infinitive constructs with no verbs (picture -> take a picture) -->
 	<string name="action_short_picture">Photo</string>
@@ -198,9 +196,6 @@
 	<string name="message_permissiondetails_microphone_failedrequest">AirMessage must be able to record audio to send audio messages</string>
 
 	<string name="message_textmessageimport">Started importing text messages</string>
-	
-	<string name="message_freeimessage_title">Let\'s free iMessage - #FreeiMessage</string>
-	<string name="message_freeimessage_description">iMessage has always been locked down to Apple platforms, disrupting the communication and degrading the experiences of Apple users, as well as Android and Windows users.\n\nWe deserve better.\n\niMessage deserves to be an open ecosystem.\n\nHelp us let Tim Cook and Apple know.</string>
 
 	<string name="message_serverstatus_limitedfunctionality">%s. Functionality will be limited.</string>
 	<string name="message_serverstatus_noconnection">No connection to server</string>

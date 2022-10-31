@@ -21,7 +21,6 @@ object SharedPreferencesManager {
 	private const val sharedPreferencesDefaultKeySchemaVersion = "schema_version"
 	private const val sharedPreferencesDefaultKeyInstallationID = "installation_id"
 
-	private const val sharedPreferencesDefaultKey2208PRDismiss = "22_08_pr_dismiss" //Whether the user dismissed the PR
 	private const val sharedPreferencesDefaultUserName = "user_name" //A cached value of the server's user name
 	private const val sharedPreferencesDefaultServerSupportsFaceTime = "server_supports_facetime" //A cached value of whether the server supports FaceTime
 	
@@ -296,16 +295,6 @@ object SharedPreferencesManager {
 			.putString(sharedPreferencesDefaultKeyInstallationID, installationID)
 			.apply()
 		return installationID
-	}
-	
-	@JvmStatic
-	fun getPRDismissed(context: Context): Boolean {
-		return getInstallationSharedPrefs(context).getBoolean(sharedPreferencesDefaultKey2208PRDismiss, false)
-	}
-	
-	@JvmStatic
-	fun setPRDismissed(context: Context, prDismissed: Boolean) {
-		getInstallationSharedPrefs(context).edit().putBoolean(sharedPreferencesDefaultKey2208PRDismiss, prDismissed).apply()
 	}
 	
 	@JvmStatic

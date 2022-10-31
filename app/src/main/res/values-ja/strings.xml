@@ -553,10 +553,4 @@
 	<string name="error_badmembers">参加者は FaceTime では利用できません</string>
 	<string name="notificationchannel_incomingcall">着信</string>
 	<string name="notificationchannel_incomingcall_desc">FaceTime 通話の着信に関する通知</string>
-	
-	<string name="action_dontshowagain">今後表示しない</string>
-	<string name="action_helpthecause">支援する</string>
-	
-	<string name="message_freeimessage_title">iMessage を解放しましょう - #FreeiMessage</string>
-	<string name="message_freeimessage_description">iMessage は常に Apple のプラットフォームにロックダウンされており、コミュニケーションを妨害し、Apple のユーザーだけでなく、Android および Windows のユーザーのエクスペリエンスを低下させてきました。\n\nもっと良い待遇を受けるべきです。\n\niMessage はオープンなエコシステムであるべきです。\n\nTim Cook と Apple に知らせるために、ご協力ください。</string>
 </resources>
