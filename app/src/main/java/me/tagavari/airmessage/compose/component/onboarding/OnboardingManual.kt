@@ -52,8 +52,10 @@ import soup.compose.material.motion.MaterialSharedAxisY
 fun OnboardingManual(
 	modifier: Modifier = Modifier,
 	connectionManager: ConnectionManager?,
+	allowSkip: Boolean = false,
 	onCancel: () -> Unit,
-	onFinish: (ConnectionParams.Direct) -> Unit
+	onFinish: (ConnectionParams.Direct) -> Unit,
+	onSkip: () -> Unit = {}
 ) {
 	var connectionState by remember { mutableStateOf<OnboardingManualState>(OnboardingManualState.Idle) }
 	val currentConnectionManager by rememberUpdatedState(connectionManager)
@@ -86,6 +88,7 @@ fun OnboardingManual(
 	OnboardingManualLayout(
 		modifier = modifier,
 		state = connectionState,
+		allowSkip = allowSkip,
 		onConnect = { connectionParams ->
 			connectionManager?.let { connectionManager ->
 				connectionState = OnboardingManualState.Connecting
@@ -97,7 +100,8 @@ fun OnboardingManual(
 			connectionManager?.disconnect(ConnectionErrorCode.user)
 		},
 		onCancel = onCancel,
-		onFinish = onFinish
+		onFinish = onFinish,
+		onSkip = onSkip
 	)
 }
 
@@ -106,10 +110,12 @@ fun OnboardingManual(
 private fun OnboardingManualLayout(
 	modifier: Modifier = Modifier,
 	state: OnboardingManualState,
+	allowSkip: Boolean,
 	onConnect: (ConnectionParams.Direct) -> Unit,
 	onReset: () -> Unit,
 	onCancel: () -> Unit,
-	onFinish: (ConnectionParams.Direct) -> Unit
+	onFinish: (ConnectionParams.Direct) -> Unit,
+	onSkip: () -> Unit
 ) {
 	val context = LocalContext.current
 	val initialDetails = remember { SharedPreferencesManager.getDirectConnectionDetails(context) }
@@ -117,6 +123,12 @@ private fun OnboardingManualLayout(
 	var inputAddress by rememberSaveable { mutableStateOf(initialDetails.address ?: "") }
 	var inputFallbackAddress by rememberSaveable { mutableStateOf(initialDetails.fallbackAddress ?: "") }
 	var inputPassword by rememberSaveable { mutableStateOf(initialDetails.password ?: "") }
+	
+	val skipOK by remember {
+		derivedStateOf {
+			allowSkip && inputAddress == "skip!"
+		}
+	}
 	
 	val connectionParams by remember {
 		derivedStateOf {
@@ -136,7 +148,11 @@ private fun OnboardingManualLayout(
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
 	fun submitInput() {
-		connectionParams?.let(onConnect)
+		if(skipOK) {
+			onSkip()
+		} else {
+			connectionParams?.let(onConnect)
+		}
 	}
 	
 	//Whether input fields can be modified
@@ -308,9 +324,13 @@ private fun OnboardingManualLayout(
 							) {
 								Button(
 									onClick = ::submitInput,
-									enabled = connectionParams != null
+									enabled = connectionParams != null || skipOK
 								) {
-									Text(stringResource(R.string.action_checkconnection))
+									if(skipOK) {
+										Text(stringResource(R.string.action_skip))
+									} else {
+										Text(stringResource(R.string.action_checkconnection))
+									}
 								}
 							}
 						}
@@ -384,10 +404,12 @@ private fun PreviewOnboardingWelcomeInitial() {
 		) {
 			OnboardingManualLayout(
 				state = OnboardingManualState.Idle,
+				allowSkip = false,
 				onConnect = {},
 				onReset = {},
 				onCancel = {},
-				onFinish = {}
+				onFinish = {},
+				onSkip = {}
 			)
 		}
 	}
@@ -402,10 +424,12 @@ private fun PreviewOnboardingWelcomeConnecting() {
 		) {
 			OnboardingManualLayout(
 				state = OnboardingManualState.Connecting,
+				allowSkip = false,
 				onConnect = {},
 				onReset = {},
 				onCancel = {},
-				onFinish = {}
+				onFinish = {},
+				onSkip = {}
 			)
 		}
 	}
@@ -420,10 +444,12 @@ private fun PreviewOnboardingWelcomeConnected() {
 		) {
 			OnboardingManualLayout(
 				state = OnboardingManualState.Connected(deviceName = "My Computer", fallback = true),
+				allowSkip = false,
 				onConnect = {},
 				onReset = {},
 				onCancel = {},
-				onFinish = {}
+				onFinish = {},
+				onSkip = {}
 			)
 		}
 	}
@@ -438,10 +464,12 @@ private fun PreviewOnboardingWelcomeError() {
 		) {
 			OnboardingManualLayout(
 				state = OnboardingManualState.Error(errorCode = ConnectionErrorCode.unauthorized),
+				allowSkip = false,
 				onConnect = {},
 				onReset = {},
 				onCancel = {},
-				onFinish = {}
+				onFinish = {},
+				onSkip = {}
 			)
 		}
 	}

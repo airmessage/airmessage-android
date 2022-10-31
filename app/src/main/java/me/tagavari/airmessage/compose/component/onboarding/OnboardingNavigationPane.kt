@@ -131,21 +131,29 @@ fun OnboardingNavigationPane(
 				)
 			}
 			OnboardingComposeScreen.MANUAL -> {
+				val submitConnectionParams = { connectionParams: ConnectionParams.Direct ->
+					//Save the connection data to shared preferences
+					SharedPreferencesManager.setProxyType(context, ProxyType.direct)
+					SharedPreferencesManager.setDirectConnectionDetails(context, connectionParams)
+					SharedPreferencesManager.setConnectionConfigured(context, true)
+					
+					//Enable connection on boot
+					Preferences.updateConnectionServiceBootEnabled(context, Preferences.getPreferenceStartOnBoot(context))
+					
+					//Start the conversations activity
+					onComplete()
+				}
+				
 				OnboardingManual(
 					modifier = Modifier.fillMaxSize(),
 					connectionManager = connectionManager,
+					allowSkip = true,
 					onCancel = ::navigateWelcome,
-					onFinish = { connectionParams ->
-						//Save the connection data to shared preferences
-						SharedPreferencesManager.setProxyType(context, ProxyType.direct)
-						SharedPreferencesManager.setDirectConnectionDetails(context, connectionParams)
-						SharedPreferencesManager.setConnectionConfigured(context, true)
-						
-						//Enable connection on boot
-						Preferences.updateConnectionServiceBootEnabled(context, Preferences.getPreferenceStartOnBoot(context))
-						
-						//Start the conversations activity
-						onComplete()
+					onFinish = submitConnectionParams,
+					onSkip = {
+						//Save invalid connection values
+						val connectionParams = ConnectionParams.Direct("127.0.0.1", null, "password")
+						submitConnectionParams(connectionParams)
 					}
 				)
 			}
