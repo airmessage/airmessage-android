@@ -1,4 +1,16 @@
+pluginManagement {
+	repositories {
+		google()
+		gradlePluginPortal()
+		mavenCentral()
+		maven {
+			url "https://maven.pkg.jetbrains.space/public/p/compose/dev"
+		}
+	}
+}
+
 include ':app'
+include ':common'
 
 include ":android-smsmms"
 project(":android-smsmms").projectDir = file("lib/android-smsmms/library")
