@@ -268,6 +268,7 @@ private fun OnboardingManualLayout(
 									ErrorDetailsHelper.getErrorDetails(state.errorCode, true)
 								}
 								
+								@Suppress("NAME_SHADOWING")
 								val context = LocalContext.current
 								fun recoverError() {
 									val button = errorDetails.button ?: return
