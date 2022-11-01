@@ -312,8 +312,8 @@
 		</receiver>
 
 		<!-- Android Auto integration -->
-		<meta-data
+		<!-- <meta-data
 			android:name="com.google.android.gms.car.application"
-			android:resource="@xml/automotive_app_desc" />
+			android:resource="@xml/automotive_app_desc" /> -->
 	</application>
 </manifest>
