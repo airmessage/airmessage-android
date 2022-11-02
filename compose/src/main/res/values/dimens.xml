@@ -1,0 +1,10 @@
+<resources>
+	<!-- The width and height of profile images -->
+    <dimen name="profile_size">40dp</dimen>
+	
+	<!-- The maximum width of floating app dialogs -->
+	<dimen name="dialogwidth_max">500dp</dimen>
+	
+	<!-- The maximum width of the screen content before side margins are added -->
+	<dimen name="contentwidth_max">1000dp</dimen>
+</resources>

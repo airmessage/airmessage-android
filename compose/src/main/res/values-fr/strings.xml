@@ -1,0 +1,575 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<string name="action_search">Rechercher</string>
+	<string name="screen_details">Détails</string>
+	<string name="screen_settings">Paramètres</string>
+	<string name="action_sendfeedback">Envoyer des commentaires</string>
+	<string name="screen_archived">Archivés</string>
+	<string name="screen_blockedcontacts">Contacts bloqués</string>
+	<string name="screen_newconversation">Nouvelle conversation</string>
+	<string name="dialog_feedback_message">Avez-vous un bogue à signaler, une fonction à suggérer, ou quelque chose d\'autre à dire? Contactez-nous ou discutez avec les autres par les liens ci-dessous.</string>
+	<string name="dialog_feedback_email">Envoyer un courriel</string>
+	<string name="dialog_feedback_discord">Joindre le serveur Discord</string>
+	<string name="dialog_feedback_reddit">Ouvrir le subreddit de la communauté</string>
+	<string name="dialog_skipsetup_message">Sauter la mise en place?</string>
+	<string name="title_conversation_members">Participants à cette conversation</string>
+	<string name="title_conversation_files">Fichiers à cette conversation</string>
+	<string name="message_permissionrejected">Demande d\'autorisation rejetée</string>
+	<string name="progress_loadingmessages">Chargement des messages&#8230;</string>
+	<string name="progress_loading">Chargment&#8230;</string>
+	<string name="progress_sync">Obtention des messages&#8230;</string>
+	<string name="message_loaderror_messages">Échec de chargement des messages</string>
+	<string name="message_loaderror_contacts">Échec de chargement des contacts</string>
+	<string name="message_blankstate_conversations">Aucune conversation</string>
+	<string name="message_blankstate_conversations_description">Lorsque vous commencez une conversation, elle s\'affiche ici</string>
+	<string name="message_blankstate_conversations_archived">Aucune conversation archivée</string>
+	<string name="message_blankstate_conversations_archived_description">Les conversations archivées s\'affichent ici</string>
+	<string name="message_blankstate_conversations_basic">Aucune conversation</string>
+	<string name="time_today">Aujourd\'hui</string>
+	<string name="time_yesterday">Hier</string>
+	<string name="imperative_messageinput">Saisissez un message</string>
+	<string name="imperative_selectfile">Sélectionnez un fichier</string>
+	<string name="message_permissiondetails_microphone_failedrequest">AirMessage doit être capable d\'enregistrer de l\'audio pour envoyer des messages audio</string>
+	<string name="preference_messagenotifications_title">Notifications de message</string>
+	<string name="preferencegroup_messagenotifications_title">Notifications</string>
+	<string name="preference_messagenotifications_getnotifications_title">Recevoir des notifications</string>
+	<string name="preference_messagenotifications_sound_title">Son de notification</string>
+	<string name="preference_messagenotifications_vibrate_title">Vibrer</string>
+	<string name="preferencegroup_storage_title">Stockage</string>
+	<string name="preference_storage_autodownload_title">Téléchargement automatique des pièces jointes</string>
+	<string name="preference_storage_autodownload_desc">Télécharger automatiquement les pièces jointes lorsqu\'elles arrivent</string>
+	<string name="preference_storage_deleteattachments_title">Supprimer les pièces jointes téléchargées</string>
+	<string name="preference_storage_deleteattachments_desc">Les pièces jointes peuvent être téléchargées à tout moment</string>
+	<string name="preferencegroup_server_title">Serveur</string>
+	<string name="preference_server_serverdetails_title">Modifier les informations du serveur</string>
+	<string name="preference_server_downloadmessages_title">Synchroniser les messages</string>
+	<string name="preference_server_downloadmessages_desc">Copier tous les messages du serveur à cet appareil</string>
+	<string name="preference_server_connectionboot_title">Connexion automatique au démarrage de l\'appareil</string>
+	<string name="preference_server_networkreconnect_title">Reconnexion de changement de réseau</string>
+	<string name="preference_server_networkreconnect_description">Essayer de vous reconnecter lorsque l\'appareil se connecte à un nouveau réseau (par exemple: Wi-Fi à cellulaire)</string>
+	<string name="message_serverstatus_limitedfunctionality">%s. La fonctionnalité sera limitée.</string>
+	<string name="message_serverstatus_internalexception">Une erreur interne s’est produite</string>
+	<string name="message_serverstatus_badrequest">Une erreur de compatibilité de connexion a eu lieu</string>
+	<string name="message_serverstatus_noconnection">Aucune connexion au serveur</string>
+	<string name="message_serverstatus_clientoutdated">L\'Appli n\'est pas à jour</string>
+	<string name="message_serverstatus_serveroutdated">Le serveur n\'est pas à jour</string>
+	<string name="message_serverstatus_unknown">Une erreur inconnue a eu lieu</string>
+	<string name="message_permissiondetails_contacts_listing">Autoriser l\'accès aux contacts pour afficher les noms et les images</string>
+	<string name="message_permissiondetails_contacts_suggestions">Autoriser l\'accès aux contacts pour avoir des suggestions</string>
+	<string name="state_sent">Envoyé</string>
+	<string name="state_read">Lu</string>
+	<string name="state_delivered">Distribué</string>
+	<string name="action_send">Envoyer</string>
+	<string name="action_next">Suivant</string>
+	<string name="action_done">OK</string>
+	<string name="action_back">Retour</string>
+	<string name="action_skip">Passer</string>
+	<string name="action_delete">Supprimer</string>
+	<string name="action_reply">Répondre</string>
+	<string name="action_retry">Réessayer</string>
+	<string name="action_update">Mettre à jour</string>
+	<string name="action_dismiss">Ignorer</string>
+	<string name="screen_help">Aide</string>
+	<string name="action_close">Fermer</string>
+	<string name="action_undo">Annuler</string>
+	<string name="action_replay">Revoir</string>
+	<string name="action_refresh">Rafraîchir</string>
+	<string name="action_resync">Resynchroniser</string>
+	<string name="action_sync">Synchroniser</string>
+	<string name="action_enable">Activer</string>
+	<string name="action_save">Enregistrer</string>
+	<string name="part_to">À</string>
+	<string name="part_you">"Vous"</string>
+	<string name="prefix_you">"Vous: %s"</string>
+	<string name="prefix_draft">"Broullion: %s"</string>
+	<string name="prefix_wild">%1$s : %2$s</string>
+	<string name="part_content_text">Texte</string>
+	<string name="part_content_image">Image</string>
+	<string name="part_content_video">Vidéo</string>
+	<string name="part_content_audio">Audio</string>
+	<string name="part_content_other">Fichier</string>
+	<string name="message_searchresults">%d/%d résultats</string>
+	<string name="message_intenterror_open">N\'a pas pu ouvrir le fichier</string>
+	<string name="message_intenterror_camera">Aucune appli de caméra trouvée</string>
+	<string name="message_intenterror_browser">Aucune appli de navigateur web trouvée</string>
+	<string name="message_intenterror_email">Aucune appli de courriel trouvée</string>
+	<string name="message_eventtype_chatrename_change">%1$s a nommé la conversation \"%2$s\"</string>
+	<string name="message_eventtype_chatrename_change_you">Vous avez nommé la conversation \"%s\"</string>
+	<string name="message_eventtype_chatrename_remove">%s a enlevé le nom de la conversation</string>
+	<string name="message_eventtype_chatrename_remove_you">Vous avez enlevé le nom de la conversation</string>
+	<string name="message_eventtype_join">%s a joint la conversation</string>
+	<string name="message_eventtype_join_you">Vous avez joint la conversation</string>
+	<string name="message_eventtype_invite">%s a ajouté %s à la conversation</string>
+	<string name="message_eventtype_invite_you_agent">Vous avez ajouté %s à la conversation</string>
+	<string name="message_eventtype_invite_you_object">%s vous a ajouté à la conversation</string>
+	<string name="message_eventtype_leave">%s a quitté la conversation</string>
+	<string name="message_eventtype_leave_you">Vous avez quitté la conversation</string>
+	<string name="message_eventtype_unknown">Événement inconnu</string>
+	<string name="message_messageeffect_invisibleink">Message envoyé avec une encre invisible</string>
+	<string name="message_setup_connect_address">L\'Adresse du serveur</string>
+	<string name="message_setup_connect_fallbackaddress">Addresse alternative (facultatif)</string>
+	<string name="message_setup_connect_noserver">N\'avez-vous pas de serveur?</string>
+	<string name="message_setup_connect_serverguidelink">Lisez le manuel d\'installation</string>
+	<string name="message_setup_connect_connectionerror">La connexion a échoué</string>
+	<string name="message_setup_connect_password">Mot de passe</string>
+
+	<string name="message_generalloading">Veuillez patienter&#8230;</string>
+	
+	<string name="message_setup_sync_download_title">Télécharger l\'historique de messages</string>
+	<string name="message_setup_sync_download_description">Vous êtes maintenant connecté à <b>%s</b>. Voulez-vous copier vos messages récents de votre ordinateur vers cet appareil?</string>
+	<string name="action_downloadmessages">Télécharger les messages</string>
+	<string name="message_setup_sync_delete_description">Alternativement, vous pouvez commencer frais et simplement effacer vos anciens messages de cet appareil.</string>
+	<string name="action_deletemessages">Supprimer les messages</string>
+	<string name="message_setup_sync_warning_title">Passer la suppression des messages?</string>
+	<string name="message_setup_sync_description">Utilisez cet option uniquement si vous vous connectez au même ordinateur et au même compte Apple que celui utilisé auparavant.\n\nSi vous conservez vos anciennes conversations, elles risquent de mélanger avec vos nouvelles conversations ou de perdre des fonctionnalités.</string>
+	<string name="message_syncerror">Échec de téléchargement des messages (code d\'erreur %d)</string>
+	
+	<string name="imperative_recording_cancel">Glissez pour annuler</string>
+	<string name="imperative_recording_instructions">Tapez et maintenez pour enregistrer</string>
+	<string name="message_confirm_deletemessages">Supprimer tous les messages?</string>
+	<string name="message_confirm_deleteattachments">Supprimer toutes les pièces jointes?</string>
+	<string name="message_confirm_resyncmessages">Synchroniser les messages récents?</string>
+	<string name="message_confirm_resyncmessages_description">Cette action remplacera tous les messages actuellement stockés</string>
+	<string name="message_confirm_resyncmessages_started">Les messages récents sont en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_inprogress">Les messages récents sont déjà en cours de téléchargement</string>
+	<string name="message_confirm_resyncmessages_advanced">Synchronisation avancée</string>
+	<string name="action_copytext">Copier le texte</string>
+	<string name="action_advanced">Avancé</string>
+	<string name="action_share">Partager</string>
+	<string name="action_deletedata">Supprimer la pièce jointe</string>
+	<string name="action_archive">Archiver</string>
+	<string name="action_unarchive">Désarchiver</string>
+	<string name="action_mute">Désactiver les notifications</string>
+	<string name="action_unmute">Activer les notifications</string>
+	<string name="action_details">Détails</string>
+	<string name="action_viewdetails">Afficher les détails</string>
+	<string name="action_disconnect">Déconnecter</string>
+	<string name="action_reconnect">Reconnecter</string>
+	<string name="action_quit">Quitter</string>
+	<string name="action_sharemessage">Partager le message</string>
+	<string name="message_shareable_text">Le %1$s à %2$s, %3$s a écrit: %4$s</string>
+	<string name="message_shareable_text_you">Le %1$s à %2$s, j\'ai écrit: %3$s</string>
+	<string name="imperative_userinput">Saisissez un nom, un adresse de courriel ou un numéro de téléphone</string>
+	<string name="action_addcontent">Ajouter une pièce jointe</string>
+	<string name="action_takephoto">Prendre une photo</string>
+	<string name="action_choosephoto">Choisir une photo</string>
+	<string name="action_choosefile">Choisir un fichier</string>
+	<string name="action_recordaudio">Enregistrer de l\'audio</string>
+	<plurals name="message_confirm_deleteconversation">
+		<item quantity="one">Supprimer la conversation sélectionnée?</item>
+		<item quantity="other">Supprimer les conversations sélectionnées?</item>
+	</plurals>
+	<string name="message_confirm_deleteconversation_current">Supprimer cette conversation?</string>
+	<string name="servicedesc_connectionservice">Crée et maintient une connexion au serveur AirMessage pour envoyer et recevoir des messages</string>
+	<string name="notificationchannel_message">Messages</string>
+	<string name="notificationchannel_message_desc">Notifications concernant les messages entrants</string>
+	<string name="notificationchannel_status">Statut général</string>
+	<string name="notificationchannel_status_desc">Notifications concernant les messages de statut, tels que la connectivité du serveur</string>
+	<string name="notificationchannel_statusimportant">Alertes de statut importantes</string>
+	<string name="notificationchannel_statusimportant_desc">Notifications concernant les mises au point de statut importantes, telles que les connexions perdues et les temps d\'arrêt</string>
+
+	<string name="notificationchannel_messageerror">Défauts de livraison</string>
+	<string name="notificationchannel_messageerror_desc">Notifications concernant les messages en échec</string>
+	<string name="notificationchannel_messageerrorreception">Défauts de réception</string>
+	<string name="notificationchannel_messageerrorreception_desc">Concerne les notifications de problèmes qui affectent la réception des messages</string>
+
+	<string name="message_connectionerror">N\'a pas pu se connecter au serveur</string>
+	<string name="message_permissiondetails_microphone_missing">L\'autorisation d\'enregistrer de l\'audio est manquante</string>
+	<string name="action_draw">Dessiner</string>
+	<string name="action_addtext">Ajouter du texte</string>
+	<string name="action_markread">Marquer comme lu</string>
+	<string name="message_textcopied">Texte copié dans le presse-papiers</string>
+	<string name="notificationchannelimportance_1">Importance faible</string>
+	<string name="notificationchannelimportance_2">Importance moyenne</string>
+	<string name="notificationchannelimportance_3">Importance élevée</string>
+	<string name="notificationchannelimportance_4">Importance urgente</string>
+	<string name="progress_connectingtoserver">Connexion au serveur&#8230;</string>
+	<string name="message_connection_connected">Connecté au serveur</string>
+	<string name="message_connection_connectedfallback">Connecté au serveur par addresse alternative</string>
+	<string name="message_connection_connectedcomputer">Connecté à %s</string>
+	<string name="message_connection_disconnected">La connexion est perdue</string>
+	<string name="imperative_tapopenapp">Appuyez pour ouvrir l\'appli</string>
+	<string name="part_unknown">Inconnu</string>
+	<string name="message_messagedetails_title">Détails du message</string>
+	<string name="message_messagedetails_type">Type: %s</string>
+	<string name="message_messagedetails_sender">De: %s</string>
+	<string name="message_messagedetails_size">Taille: %s</string>
+	<string name="message_messagedetails_datesent">Envoyé: %s</string>
+	<string name="message_messagedetails_sendeffect">Effet d\'envoie: %s</string>
+	<string name="part_none">Aucun</string>
+	<string name="part_nodata">Pas de données</string>
+	<string name="screen_conversationdetails">Détails de la conversation</string>
+	<string name="action_editcontactcolor">Modifier la couleur du contact</string>
+	<string name="action_editconversationcolor">Modifier la couleur de la conversation</string>
+	<string name="action_confirmparticipants">Confirmer les participants</string>
+	<string name="message_conversationcreated">Nouvelle conversation est créé</string>
+	<string name="time_now">Maintenant</string>
+	<string name="time_minutes">%d min</string>
+	<string name="imperative_selectconversation">Sélectionnez une conversation</string>
+	<string name="screen_newmessage">Nouveau message</string>
+	<string name="message_messageerror_title">Votre message n\'a pas pu être envoyé</string>
+	<string name="message_unknownerror">Une erreur inconnue a eu lieu</string>
+	<string name="message_messageerror_desc_air_invalidcontent">Le contenu sélectionné est indisponible</string>
+	<string name="message_messageerror_desc_air_filetoolarge">Le contenu sélectionné est trop grand pour être envoyé</string>
+	<string name="message_messageerror_desc_air_io">N\'a pas pu traiter le contenu sélectionné</string>
+	<string name="message_messageerror_desc_air_network">N\'a pas pu se connecter au serveur AirMessage</string>
+	<string name="message_messageerror_desc_apple_network">N\'a pas pu se connecter au serveur iMessage</string>
+	<string name="message_messageerror_desc_air_external">Une erreur externe a eu lieu</string>
+	<string name="message_messageerror_desc_air_expired">Demande expirée</string>
+	<string name="message_messageerror_desc_air_references">Une erreur interne s\'est produite (références perdues)</string>
+	<string name="message_messageerror_desc_apple_unregistered">%s n\'est pas enregistré(e) avec iMessage</string>
+	<string name="message_messageerror_desc_apple_unregistered_generic">Le destinataire n\'est pas enregistré avec iMessage</string>
+	<string name="imperative_selectdestination">Sélectionnez une destination</string>
+	<string name="action_sendto">Envoyer à %s</string>
+	<string name="message_eventtype_kick">%1$s a enlevé %2$s de la conversation</string>
+	<string name="message_eventtype_kick_you_agent">Vous avez retiré %s de la conversation</string>
+	<string name="message_eventtype_kick_you_object">%s vous a retiré de la conversation</string>
+	<string name="message_loaderror_blocked">Échec du chargement des adresses bloquées</string>
+	<string name="action_remove">Enlever</string>
+	<string name="action_unblock">Débloquer</string>
+	<string name="notificationchannelimportance_0">Désactivé</string>
+	<string name="message_confirm_unblock">Débloquer %s?</string>
+	<string name="message_blankstate_blocked">Aucune adresse bloquée</string>
+	<string name="action_addaddress">Ajouter une addresse</string>
+	<string name="message_conversation_archived">La conversation a été archivée</string>
+	<string name="message_conversation_unarchived">La conversation a été desarchivée</string>
+	<string name="message_conversation_deleted">La conversation a été supprimée</string>
+	
+	<string name="message_advancedsync_downloadmessages">Télécharger les messages&#8230;</string>
+	<string name="message_advancedsync_downloadattachments">Télécharger les pièces jointes &#8230;</string>
+	<string name="message_advancedsync_constraint_time">Depuis %s</string>
+	<string name="message_advancedsync_constraint_size">Jusqu\'à %s</string>
+	<string name="message_advancedsync_downloadmessages_none">Ne télécharger aucun message</string>
+	<string name="message_advancedsync_downloadattachments_none">Ne télécharger aucune pièce jointe</string>
+	<string name="message_advancedsync_anytime">Depuis n\'importe quel temps</string>
+	<string name="message_advancedsync_anysize">De n\'importe quelle taille</string>
+	<string name="message_advancedsync_type_image">Images</string>
+	<string name="message_advancedsync_type_video">Vidéo</string>
+	<string name="message_advancedsync_type_audio">Messages audio</string>
+	<string name="message_advancedsync_type_document">Documents</string>
+	<string name="message_advancedsync_type_other">Autres fichiers</string>
+	<plurals name="message_advancedsync_time_hour">
+		<item quantity="one">%d heure</item>
+		<item quantity="other">%d heures</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_day">
+		<item quantity="one">%d jour</item>
+		<item quantity="other">%d jours</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_week">
+		<item quantity="one">%d semaine</item>
+		<item quantity="other">%d semaines</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_month">
+		<item quantity="one">%d mois</item>
+		<item quantity="other">%d mois</item>
+	</plurals>
+	<plurals name="message_advancedsync_time_year">
+		<item quantity="one">%d an</item>
+		<item quantity="other">%d ans</item>
+	</plurals>
+	
+	<string name="list_single">%s</string>
+	<string name="list_double">%s et %s</string>
+	<string name="list_n_start">%s</string>
+	<string name="list_n_middle">, %s</string>
+	<string name="list_n_end">, et %s</string>
+	
+	<plurals name="message_multipledestinations">
+		<item quantity="other">%s (%s de plus)</item>
+	</plurals>
+	<plurals name="message_blockedmessagecount">
+		<item quantity="one">%d message bloqué</item>
+		<item quantity="other">%d messages bloqués</item>
+	</plurals>
+	
+	<plurals name="message_conversationarchived">
+		<item quantity="one">%d conversation archivée</item>
+		<item quantity="other">%d conversations archivées</item>
+	</plurals>
+	<plurals name="message_conversationunarchived">
+		<item quantity="one">%d conversation desarchivée</item>
+		<item quantity="other">%d conversations desarchivées</item>
+	</plurals>
+	
+	<plurals name="message_multipleattachments">
+		<item quantity="other">%d pièces jointes</item>
+	</plurals>
+	
+	<plurals name="message_selectioncount">
+		<item quantity="one">%d sélectionnée</item>
+		<item quantity="other">%d sélectionnées</item>
+	</plurals>
+
+	<string-array name="preference_appearance_theme_entries_old">
+		<item>Lumineux</item>
+		<item>Sombre</item>
+		<item>Défini par l\'économie d\'énergie</item>
+	</string-array>
+
+	<string-array name="preference_appearance_theme_entries_androidQ">
+		<item>Lumineux</item>
+		<item>Sombre</item>
+		<item>Assortir le système</item>
+	</string-array>
+
+	<string name="message_onboardinginstructions_title">Commencer en 2 étapes faciles:</string>
+	<string name="message_onboardinginstructions_macmini_title">Configurer votre serveur</string>
+	<string name="message_onboardinginstructions_macmini_desc">Une application installée sur un ordinateur Mac est nécessaire pour acheminer vos messages pour vous.\n\nVisitez airmessage.org sur votre ordinateur pour télécharger l\'application.</string>
+	<string name="message_onboardinginstructions_airmessage_title">Se connecter</string>
+	<string name="message_onboardinginstructions_airmessage_desc">Connectez-vous avec votre compte pour recevoir vos messages sur cet appareil.</string>
+
+	<string name="action_signin_google">Se connecter avec Google</string>
+	<string name="action_signin_email">Se connecter avec une address e-mail</string>
+	<string name="screen_manualconfiguration">Configuration manuelle</string>
+	<string name="action_manualconfiguration">Utiliser la configuration manuelle</string>
+	<string name="action_checkconnection">Vérifier la connexion</string>
+
+	<string name="message_serverstatus_authfail">Le mot de passe a été rejeté</string>
+	<string name="message_serverupdate">Une mise à jour de serveur est disponible</string>
+	<string name="action_reconfigure">Reconfigurer</string>
+	<string name="action_short_picture">Photo</string>
+	<string name="action_short_video">Vidéo</string>
+	<string name="preference_server_dropreconnect_description">Essayer de vous reconnecter immédiatement après la perte de la connexion</string>
+	<string name="preference_server_dropreconnect_title">Reconnexion de connexion perdue</string>
+	<string name="preference_appearance_theme_title">Thème</string>
+	<string name="preference_server_foregroundservice_title">Exécuter le service au premier plan</string>
+	<string name="preference_server_foregroundservice_description">Affiche une notification et permet de connecter au démarrage</string>
+	<string name="preference_server_disconnectionnotification_title">Notification de déconnexion</string>
+	<string name="preference_server_disconnectionnotification_description">Afficher une notification lorsque la connexion est perdue</string>
+	<string name="message_loaderror_conversation">Échec du chargement de la conversation</string>
+	<string name="message_messageerror_desc_air_internal">Une erreur interne s\'est produite</string>
+	<string name="message_confirm_deletemessages_started">Tous les messages ont été supprimés</string>
+	<string name="message_confirm_deleteattachments_started">Toutes les pièces jointes ont été supprimées</string>
+	<string name="part_conversations">Conversations</string>
+	<string name="part_messages">Messages</string>
+	<string name="part_camera">Caméra</string>
+	<string name="action_deletemessage">Enlever le message</string>
+	<string name="action_getnotifications">Recevoir les notifications</string>
+	<string name="action_mutenotifications">Désactiver les notifications</string>
+	<string name="action_sendcurrentlocation">Envoyer ma position actuelle</string>
+	<string name="message_loaderror_gallery">Échec du chargement de la galerie de photos</string>
+	<string name="message_loaderror_documents">Échec du chargement des documents</string>
+	<string name="message_searchnoresults">Aucun résultat</string>
+	<string name="message_draft_limitreached">Limite de broullion atteinte</string>
+	<string name="imperative_mainsearch">Rechercher les messages</string>
+	<string name="imperative_drawerrecordinginstructions">Appuyez et maintenez</string>
+	<string name="imperative_permission_gallery">Appuyez sur pour donner accès à la galerie de photos</string>
+	<string name="imperative_permission_microphone">Appuyez sur pour donner accès au microphone</string>
+	<string name="imperative_permission_documents">Appuyez sur pour donner accès aux documents</string>
+	<string name="imperative_permission_location">Appuyez sur pour donner accès à l\'emplacement</string>
+	<string name="action_pinconversation">Épingler la conversation</string>
+	<string name="message_intenterror_contacts">Aucune application de contacts trouvée</string>
+	<string name="message_messageerror_desc_air_badrequest">Une erreur s\'est produite lors du traitement de ce message</string>
+	<string name="message_messageerror_desc_air_unauthorized">AirMessage Server n\'est pas autorisé à envoyer des messages</string>
+	<string name="message_messageerror_desc_air_noconversation">Cette conversation n\'est pas disponible</string>
+	<string name="message_messageerror_desc_air_serverexpired">Ce message n\'a pas pu être envoyé correctement</string>
+	<string name="action_copy">Copier</string>
+	<string name="action_copytoclipboard">Copier dans le presse-papier</string>
+	<string name="action_savetofile">Enregistrer dans un fichier</string>
+	<string name="action_relaunchapp">Relancer l\'application</string>
+	<string name="message_messageerror_details_title">Détails de l\'erreur</string>
+	<string name="message_messageerror_details_unavailable">Aucun détail d\'erreur disponible</string>
+	<string name="message_messageerror_details_loadfailed">Échec du chargement des détails d\'erreur</string>
+	<string name="message_messageerror_desc_air_externalunknown">Une erreur externe inconnue a eu lieu</string>
+	<string name="message_attachmentreqerror_desc">N\'a pas pu télécharger la pièce jointe: %s</string>
+	<string name="message_attachmentreqerror_timeout">Demande expirée</string>
+	<string name="message_attachmentreqerror_badresponse">Mauvaise réponse</string>
+	<string name="message_attachmentreqerror_referenceslost">Erreur interne (références perdues)</string>
+	<string name="message_attachmentreqerror_io">Erreur interne (I/O)</string>
+	<string name="message_attachmentreqerror_server_notfound">Message non trouvé</string>
+	<string name="message_attachmentreqerror_server_notsaved">Pièce jointe non trouvée</string>
+	<string name="message_attachmentreqerror_server_unreadable">Pièce jointe illisible</string>
+	<string name="message_attachmentreqerror_server_io">Erreur externe (I/O)</string>
+	<string name="action_markallread">Tout marquer comme lu</string>
+	<string name="message_fileexport_fail">Échec d\'enregistrement du fichier</string>
+	<string name="message_fileexport_success">Fichier enregistré sur l\'appareil</string>
+	<string name="servicedesc_fileexportservice">Copie les fichiers envoyés et reçus sur le stockage local, à la demande de l\'utilisateur</string>
+	<string name="action_newconversation">Nouvelle conversation</string>
+	<string name="preferencegroup_features_title">Messagerie</string>
+	<string name="preference_features_replysuggestions_title">Réponses intelligentes</string>
+	<string name="preference_features_replysuggestions_description">Afficher les suggestions de réponse lorsqu\'elles sont disponibles</string>
+	<string name="action_connectiontroubleshootingguide">Consulter l\'aide</string>
+	<string name="message_setup_connectionhelp">Problème de connection?</string>
+	<string name="preference_features_messagepreviews_description">Afficher des prévisualisations de liens Web et d\'endroits dans les conversations</string>
+	<string name="preference_features_messagepreviews_title">Prévisualisations de message</string>
+	<string name="imperative_enablelocationservices">Appuyez sur pour activer les services de location</string>
+	<string name="message_locationaddress_unknown">Adresse inconnue</string>
+	<string name="message_locationtitle_unknown">Emplacement sans nom</string>
+	<string name="message_crashreport_title">Quelque chose a mal tourné&#8230;</string>
+	<string name="message_crashreport_subtitle">Rapport de crash de débogage d\'AirMessage</string>
+	<string name="message_notsupported">Cette fonctionnalité n\'est pas disponible</string>
+	<string name="message_connecterror">Impossible d’atteindre votre serveur</string>
+	<string name="part_content_location">Détails d\'emplacement</string>
+	<string name="part_content_contact">Informations de contact</string>
+	<string name="preference_textmessage_deliveryreport_title">Accusés de réception textos</string>
+	<string name="preference_textmessage_enable_title">Intégration des messages texte</string>
+	<string name="preferencegroup_textmessage_title">Messagerie texte</string>
+	<string name="preference_textmessage_enable_desc">Utiliser AirMessage pour envoyer et recevoir des SMS et des MMS</string>
+	<string name="preference_textmessage_deliveryreport_desc">Vérifier quand un message text est distribué</string>
+	<string name="servicedesc_systemmessageimport">Permet d\'importer et de gérer la fonctionnalité d\'intégration de messagerie texte d\'AirMessage</string>
+	<string name="progress_importtextmessages">Importation des messages texte&#8230;</string>
+	<string name="message_textmessageimport">Commencé à importer les messages texte</string>
+	<string name="title_textmessage">Message texte</string>
+	<string name="title_textmessageforwarding">Transfert de SMS</string>
+	<string name="title_rcs">Message chat</string>
+	<string name="part_via">Via</string>
+
+	<string name="message_tapback_add_heart">%1$s a ajouté un « J\’adore » à « %2$s »</string>
+	<string name="message_tapback_add_heart_you">Vous avez ajouté un « J\’adore » à « %s »</string>
+	<string name="message_tapback_remove_heart">%1$s a retiré son « J\’adore » de « %2$s »</string>
+	<string name="message_tapback_remove_heart_you">Vous avez retiré votre « J\’adore » de « %s »</string>
+	<string name="message_tapback_add_like">%1$s a ajouté un « J\’aime » à « %2$s »</string>
+	<string name="message_tapback_add_like_you">Vous avez ajouté un « J\’aime » à « %s »</string>
+	<string name="message_tapback_remove_like">%1$s a retiré son « J\’aime » de « %2$s »</string>
+	<string name="message_tapback_remove_like_you">Vous avez retiré votre « J\’aime » de « %s »</string>
+	<string name="message_tapback_add_dislike">%1$s a ajouté un « Je n\’aime pas » à « %2$s »</string>
+	<string name="message_tapback_add_dislike_you">Vous avez ajouté un « Je n\’aime pas » à « %s »</string>
+	<string name="message_tapback_remove_dislike">%1$s a retiré son « Je n\’aime pas » de « %2$s »</string>
+	<string name="message_tapback_remove_dislike_you">Vous avez retiré votre « Je n\’aime pas » de « %s »</string>
+	<string name="message_tapback_add_laugh">%1$s a ajouté un rire à « %2$s »</string>
+	<string name="message_tapback_add_laugh_you">Vous avez ajouté un rire à « %s »</string>
+	<string name="message_tapback_remove_laugh">%1$s a retiré son rire de « %2$s »</string>
+	<string name="message_tapback_remove_laugh_you">Vous avez retiré votre rire de « %s »</string>
+	<string name="message_tapback_add_exclamation">%1$s a ajouté des points d\’exclamation à « %2$s »</string>
+	<string name="message_tapback_add_exclamation_you">Vous avez ajouté des points d\’exclamation à « %s »</string>
+	<string name="message_tapback_remove_exclamation">%1$s a retiré ses points d\’exclamation de « %2$s »</string>
+	<string name="message_tapback_remove_exclamation_you">Vous avez retiré vos points d\’exclamation de « %s »</string>
+	<string name="message_tapback_add_question">%1$s a ajouté un point d\’interrogation à « %2$s »</string>
+	<string name="message_tapback_add_question_you">Vous avez ajouté un point d\’interrogation à « %s »</string>
+	<string name="message_tapback_remove_question">%1$s a retiré son point d\’interrogation de « %2$s »</string>
+	<string name="message_tapback_remove_question_you">Vous avez retiré votre point d\’interrogation de « %s »</string>
+
+	<string name="part_tapback_heart">J\'adore</string>
+	<string name="part_tapback_like">J\'aime</string>
+	<string name="part_tapback_dislike">Je n\'aime pas</string>
+	<string name="part_tapback_laugh">Rire</string>
+	<string name="part_tapback_exclamation">Points d\'exclamation</string>
+	<string name="part_tapback_question">Point d\'interrogation</string>
+	<string name="progress_cleantextmessages">Nettoyage des messages texte locaux&#8230;</string>
+	<string name="progress_connectionverification">Vérification de votre connexion&#8230;</string>
+	<string name="action_tapbackdetails">Afficher les détails Tapback</string>
+
+	<string name="label_email_home">Domicile</string>
+	<string name="label_email_work">Bureau</string>
+	<string name="label_email_other">Autre</string>
+	<string name="label_phone_mobile">Mobile</string>
+	<string name="label_phone_work">Bureau</string>
+	<string name="label_phone_home">Domicile</string>
+	<string name="label_phone_main">Principal</string>
+	<string name="label_phone_workfax">Fax travail</string>
+	<string name="label_phone_homefax">Fax domicile</string>
+	<string name="label_phone_pager">Bipeur</string>
+	<string name="label_phone_other">Autre</string>
+	<string name="label_addressdetails">%1$s - %2$s</string>
+
+	<string name="message_senderrornotify">Un message n\'a pas été envoyé</string>
+	<string name="message_senderrornotify_desc">Votre message à %s n\'a pas pu être envoyé</string>
+	<string name="message_senderror">Non envoyé</string>
+	<string name="message_renamegroup_onlyyouvisibility">Vous êtes la seule personne qui puisse voir ce nom</string>
+	<string name="title_conversation_name">Nom du groupe</string>
+	<string name="action_renamegroup">Renommer ce groupe</string>
+	<string name="part_invalidaddress">Adresse invalide</string>
+
+	<string name="message_manualconfigurationstatus">Configuration manuelle en cours</string>
+	<string name="message_temporarymodestatus">Vérification de nouveaux messages</string>
+
+	<plurals name="message_newmessages">
+		<item quantity="one">%d nouveaux messages</item>
+		<item quantity="other">%d nouveau message</item>
+	</plurals>
+
+	<string name="message_newmessages_nocount">Nouveaux messages</string>
+	<string name="message_serverstatus_externalexception">Une erreur externe s’est produite</string>
+	<string name="message_serverstatus_nogroup">Votre serveur personnel n\'est pas disponible</string>
+	<string name="message_serverstatus_nocapacity">La limite de l\'appareil connecté a été atteinte</string>
+	<string name="message_serverstatus_accountvalidation">Le compte connecté ne peut pas être utilisé</string>
+	<string name="message_serverstatus_noactivation">Les nouveaux enregistrements sont désactivés</string>
+	<string name="message_serverstatus_otherlocation">L\'ordinateur serveur a été échangé</string>
+	<string name="message_serverstatus_nointernet">Pas de connexion Internet</string>
+	<string name="message_signinerror">Erreur de connexion</string>
+	<string name="action_signout">Déconnecter</string>
+	<string name="dialog_signout_message">Êtes-vous certain de vouloir vous déconnecter?</string>
+	<string name="preferencegroup_account_title">Compte</string>
+	<string name="preference_server_reset_title">Utiliser un compte</string>
+	<string name="preference_account_accountdetails_title">Compte connecté</string>
+	<string name="preference_account_reset_title">Déconnexion</string>
+	<string name="action_switchtoaccount">Utiliser un compte</string>
+	<string name="message_reset_direct">Utiliser un compte pour accéder à AirMessage?</string>
+	<string name="message_reset_connect">Vous déconnecter d\'AirMessage?</string>
+	<string name="preference_about_licenses_title">Licenses open source</string>
+	<string name="screen_licenses">Licenses open source</string>
+	<string name="preferencegroup_about_title">Informations sur l\'application</string>
+	<string name="message_loaderror_location">Échec du chargement de votre position</string>
+	<string name="message_securityupdate">AirMessage ne peut pas vérifier les mises à jour de sécurité</string>
+	<string name="label_videoplayback">Lire la vidéo</string>
+	<string name="action_resolve">Résoudre</string>
+	<string name="message_passwordrequired">Mot de passe du serveur requis</string>
+	<string name="action_continue">Continuer</string>
+	<string name="message_passwordupdated">Le mot de passe du serveur a été mis à jour</string>
+	<string name="action_updatepassword">Mise à jour du mot de passe du serveur</string>
+	<string name="message_decrypterrornotify">Un message illisible a été reçu</string>
+	<string name="message_decrypterrornotify_desc">Un message a été reçu qui n\'a pas pu être décrypté</string>
+	<string name="message_serverupdaterequired">Votre serveur doit être mis à jour</string>
+	<string name="message_serverupdaterequired_desc">Vous exécutez une version non prise en charge d\'AirMessage Server.\n\nLes versions non prises en charge d\'AirMessage Server peuvent présenter des problèmes de sécurité ou de stabilité et commenceront à refuser les connexions à partir de la fin janvier.\n\nVeuillez installer la dernière version d\'AirMessage Server depuis airmessage.org sur votre Mac.</string>
+	<string name="action_installupdate">Installer la mise à jour</string>
+	<string name="screen_serverupdate">Mise à jour du serveur</string>
+	<string name="message_serverupdate_version">AirMessage Server %s est disponible - vous avez %s</string>
+	<string name="message_serverupdate_remotenotice">
+		La dernière version d\'AirMessage Server sera installée sur %s.
+		Vous perdrez l\'accès à la fonctionnalité de messagerie pendant l\'installation de la mise à jour.
+		En cas d\'échec de l\'installation, assurez-vous d\'avoir l\'accès par ordinateur avant de procéder à l\'installation.
+	</string>
+	<string name="message_serverupdate_incompatible">
+		Cette mise à jour du serveur nécessite une version d\'AirMessage pour Android plus récente que celle installée sur cet appareil.
+		Veuillez mettre à jour l\'application avant d\'installer cette mise à jour du serveur.
+	</string>
+	<string name="message_serverupdate_manual">
+		Cette mise à jour du serveur ne peut pas être installée à distance.
+		Veuillez vérifier AirMessage Server sur %s pour plus de détails.
+	</string>
+	<string name="message_serverupdate_failed">Échec de l\'installation de la mise à jour</string>
+	<string name="error_noconnection">Aucune connexion au serveur</string>
+	<string name="error_timedout">Demande expirée</string>
+	<string name="error_unknown">Une erreur inconnue s\'est produite</string>
+	<string name="error_updatemismatch">Cette mise à jour n\'est plus applicable</string>
+	<string name="error_updatedownload">Une erreur s\'est produite lors du téléchargement de la mise à jour</string>
+	<string name="error_updatebadpackage">Une erreur s\'est produite lors du traitement de la mise à jour</string>
+	<string name="error_internal">Une erreur interne s\'est produite</string>
+	<string name="progress_installingupdate">Installation de la mise à jour&#8230;</string>
+	<string name="action_createlink">Créer un lien</string>
+	<string name="action_newfacetime">Nouveau FaceTime</string>
+	<string name="message_facetime_intro">Utilisez AirMessage pour passer et recevoir des appels FaceTime sur cet appareil</string>
+	<string name="message_facetimelink_error">Impossible d\'obtenir le lien FaceTime</string>
+	<string name="error_external">Une erreur externe s\'est produite</string>
+	<string name="screen_newfacetime">Nouveau FaceTime</string>
+	<string name="action_updateapp">Mettre à jour l\'application</string>
+	<string name="message_facetime_connecting">Connexion&#8230;</string>
+	<string name="message_facetime_unavailable">Échec de FaceTime</string>
+	<string name="action_declinecall">Refuser</string>
+	<string name="action_answercall">Répondre</string>
+	<string name="action_endcall">Raccrocher</string>
+	<string name="message_facetime_error_create">Échec de la création de l\'appel</string>
+	<string name="message_facetime_error_call">Votre appel n\'a pas pu aboutir</string>
+	<string name="message_facetime_incoming">Appel entrant FaceTime</string>
+	<string name="error_badmembers">Les participants ne sont pas disponibles sur FaceTime</string>
+	<string name="notificationchannel_incomingcall">Appels entrants</string>
+	<string name="notificationchannel_incomingcall_desc">Notifications concernant les appels FaceTime entrants</string>
+	<string name="message_locationfrom">Position du %s</string>
+	<string name="message_permissiondetails_notifications">Autoriser AirMessage à envoyer des notifications</string>
+	<string name="action_recordvideo">Enregistrer une vidéo</string>
+	<string name="action_showpassword">Afficher le mot de passe</string>
+	<string name="action_hidepassword">Masquer le mot de passe</string>
+	<string name="action_enablelocation">Activer les services de localisation</string>
+	<string name="screen_helpandfeedback">Aide et commentaires</string>
+	<string name="message_locationerror_unavailable">Votre position actuelle n\'a pas pu être trouvée</string>
+	<string name="message_locationerror_disabled_desc">Veuillez activer les services de localisation pour continuer</string>
+	<string name="message_locationerror_disabled">Les services de localisation sont désactivés</string>
+	<string name="message_locationerror_unavailable_desc">Veuillez réessayer plus tard</string>
+	<string name="message_endpoint_connected">Connecté</string>
+	<string name="message_endpoint_notreachable">Inaccessible</string>
+	<string name="preferencegroup_appearance_title">Apparence</string>
+	<string name="preference_appearance_amoled_title">Thème noir</string>
+	<string name="preference_appearance_amoled_description">Activer un thème noir compatible avec AMOLED</string>
+	<string name="message_onboardinginstructions_privacypolicy">En continuant, vous acceptez la *politique de confidentialité d\'AirMessage*.</string>
+</resources>

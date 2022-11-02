@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en">
+    <string name="preference_messagenotifications_key" translatable="false">pref_messagenotifications</string>
+    <string name="preference_messagenotifications_title">Message notifications</string>
+	
+	<string name="preferencegroup_appearance_key" translatable="false">pref_group_appearance</string>
+	<string name="preferencegroup_appearance_title">Appearance</string>
+	<string name="preference_appearance_theme_key" translatable="false">pref_key_appearance_theme</string>
+	<string name="preference_appearance_theme_title">Theme</string>
+	<string-array name="preference_appearance_theme_entries_old">
+		<item>Light</item>
+		<item>Dark</item>
+		<item>Set by Battery Saver</item>
+	</string-array>
+	<string-array name="preference_appearance_theme_entries_androidQ">
+		<item>Light</item>
+		<item>Dark</item>
+		<item>System default</item>
+	</string-array>
+	<string-array name="preference_appearance_theme_values" translatable="false">
+		<item>off</item>
+		<item>on</item>
+		<item>follow_system</item>
+	</string-array>
+	<string name="preference_appearance_amoled_key" translatable="false">pref_key_appearance_amoled</string>
+	<string name="preference_appearance_amoled_title">Black theme</string>
+	<string name="preference_appearance_amoled_description">Enable an AMOLED-friendly black theme</string>
+
+	<string name="preferencegroup_features_key" translatable="false">pref_group_features</string>
+	<string name="preferencegroup_features_title">Messaging</string>
+	<string name="preference_features_replysuggestions_key" translatable="false">pref_key_features_replysuggestions</string>
+	<string name="preference_features_replysuggestions_title">Smart reply</string>
+	<string name="preference_features_replysuggestions_description">Show reply suggestions in conversations and message notifications when available</string>
+	<string name="preference_features_messagepreviews_key" translatable="false">pref_key_features_messagepreviews</string>
+	<string name="preference_features_messagepreviews_title">Message previews</string>
+	<string name="preference_features_messagepreviews_description">Display web link and location previews in chats</string>
+
+    <string name="preferencegroup_messagenotifications_key" translatable="false">pref_group_notifications</string>
+    <string name="preferencegroup_messagenotifications_title">Notifications</string>
+    <string name="preference_messagenotifications_getnotifications_key" translatable="false">pref_key_notifications_getnotifications</string>
+    <string name="preference_messagenotifications_getnotifications_title">Get notifications</string>
+    <string name="preference_messagenotifications_sound_key" translatable="false">pref_key_notifications_sound</string>
+    <string name="preference_messagenotifications_sound_title">Notification sound</string>
+    <string name="preference_messagenotifications_vibrate_key" translatable="false">pref_key_notifications_vibrate</string>
+    <string name="preference_messagenotifications_vibrate_title">Vibrate</string>
+
+    <string name="preferencegroup_storage_key" translatable="false">pref_group_storage</string>
+    <string name="preferencegroup_storage_title">Storage</string>
+	<string name="preference_storage_autodownload_key" translatable="false">pref_key_storage_autodownload</string>
+	<string name="preference_storage_autodownload_title">Auto-download attachments</string>
+	<string name="preference_storage_autodownload_desc">Automatically download attachment files as they arrive</string>
+	<string name="preference_storage_deleteattachments_key" translatable="false">pref_key_storage_deleteattachments</string>
+	<string name="preference_storage_deleteattachments_title">Delete downloaded attachment files</string>
+	<string name="preference_storage_deleteattachments_desc">Attachments can be downloaded again at any time</string>
+	<string name="preference_server_downloadmessages_key" translatable="false">pref_key_server_resync</string>
+	<string name="preference_server_downloadmessages_title">Sync messages</string>
+	<string name="preference_server_downloadmessages_desc">Copy all messages from the server to this device</string>
+
+	<string name="preferencegroup_textmessage_key" translatable="false">pref_group_textmessage</string>
+	<string name="preferencegroup_textmessage_title">Text messaging</string>
+	<string name="preference_textmessage_enable_key" translatable="false">pref_key_textmessage_enable</string>
+	<string name="preference_textmessage_enable_title">Enable text message integration</string>
+	<string name="preference_textmessage_enable_desc">Use AirMessage to send and receive SMS and MMS messages</string>
+	<string name="preference_textmessage_deliveryreport_key" translatable="false">pref_key_textmessage_deliveryreport</string>
+	<string name="preference_textmessage_deliveryreport_title">SMS delivery reports</string>
+	<string name="preference_textmessage_deliveryreport_desc">Find out when an SMS message is delivered</string>
+
+    <string name="preferencegroup_server_key" translatable="false">pref_group_server</string>
+    <string name="preferencegroup_server_title">Server</string>
+    <string name="preference_server_serverdetails_key" translatable="false">pref_key_server_address</string>
+    <string name="preference_server_serverdetails_title">Edit server information</string>
+	<string name="preference_server_foregroundservice_key" translatable="false">pref_key_server_foregroundservice</string>
+	<string name="preference_server_foregroundservice_title">Run service in foreground</string>
+	<string name="preference_server_foregroundservice_description">Shows a notification and allows connecting on startup</string>
+	<string name="preference_server_connectionboot_key" translatable="false">pref_key_server_connectionboot</string>
+	<string name="preference_server_connectionboot_title">Automatically connect on device boot</string>
+	<string name="preference_server_disconnectionnotification_key" translatable="false">pref_key_server_disconnectionnotification</string>
+	<string name="preference_server_disconnectionnotification_title">Disconnected notification</string>
+	<string name="preference_server_disconnectionnotification_description">Display a notification when the connection is lost</string>
+	<string name="preference_server_dropreconnect_key" translatable="false">pref_key_server_dropreconnect</string>
+	<string name="preference_server_dropreconnect_title">Connection drop reconnect</string>
+	<string name="preference_server_dropreconnect_description">Attempt to reconnect immediately after the connection is lost</string>
+	<string name="preference_server_networkreconnect_key" translatable="false">pref_key_server_networkreconnect</string>
+	<string name="preference_server_networkreconnect_title">Network switch reconnect</string>
+	<string name="preference_server_networkreconnect_description">Attempt to reconnect when the device connects to a new network (ex. Wi-Fi to Cellular)</string>
+	<string name="preference_server_reset_key" translatable="false">pref_key_server_reset</string>
+	<string name="preference_server_reset_title">Switch to account</string>
+
+	<string name="preferencegroup_account_key" translatable="false">pref_group_account</string>
+	<string name="preferencegroup_account_title">Account</string>
+	<string name="preference_account_accountdetails_key" translatable="false">pref_key_account_details</string>
+	<string name="preference_account_accountdetails_title">Connected account</string>
+	<string name="preference_account_reset_key" translatable="false">pref_key_account_reset</string>
+	<string name="preference_account_reset_title">Sign out</string>
+
+	<string name="preferencegroup_about_key" translatable="false">pref_group_about</string>
+	<string name="preferencegroup_about_title">App info</string>
+	<string name="preference_about_licenses_key" translatable="false">pref_key_about_licenses</string>
+	<string name="preference_about_licenses_title">Open source licenses</string>
+</resources>

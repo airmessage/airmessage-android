@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.preference.PreferenceScreen
+	xmlns:android="http://schemas.android.com/apk/res/android"
+	xmlns:app="http://schemas.android.com/apk/res-auto">
+	<androidx.preference.PreferenceCategory
+		android:key="@string/preferencegroup_about_key"
+		android:title="@string/preferencegroup_about_title"
+		app:iconSpaceReserved="false">
+		<androidx.preference.Preference
+			android:key="@string/preference_about_licenses_key"
+			android:title="@string/preference_about_licenses_title"
+			app:iconSpaceReserved="false">
+			<intent
+				android:action="android.intent.action.VIEW"
+				android:targetPackage="@string/applicationId"
+				android:targetClass="me.tagavari.airmessage.compose.LibrariesCompose" />
+		</androidx.preference.Preference>
+	</androidx.preference.PreferenceCategory>
+</androidx.preference.PreferenceScreen>

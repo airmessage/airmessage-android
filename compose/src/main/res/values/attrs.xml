@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<!-- <declare-styleable name="AutoGridLayout">
+		<attr name="columnWidth" format="dimension" />
+	</declare-styleable> -->
+
+	<!-- <declare-styleable name="RoundedViewSimple">
+		<attr name="radius" format="dimension" />
+	</declare-styleable> -->
+
+	<declare-styleable name="RoundedView">
+		<attr name="radius" format="dimension" />
+		<attr name="radiusTop" format="dimension" />
+		<attr name="radiusBottom" format="dimension" />
+	</declare-styleable>
+	
+	<declare-styleable name="InvisibleInkView">
+		<attr name="backgroundColor" format="color" />
+	</declare-styleable>
+	
+	<declare-styleable name="VisualizerView">
+		<attr name="renderColor" format="color" />
+		<attr name="lineWidth" format="dimension" />
+		<attr name="lineSpacing" format="dimension" />
+	</declare-styleable>
+	
+	<declare-styleable name="EffectBalloon">
+		<attr name="effectballoon_color_light" format="color" />
+		<attr name="effectballoon_color_dark" format="color" />
+	</declare-styleable>
+</resources>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#448AFF</color>
+    <color name="colorPrimaryDark">#366FCC</color>
+	<color name="colorAccent">@color/colorPrimary</color>
+	
+	<color name="colorMessageTextMessageForwarding">#1ABC9C</color>
+	<color name="colorMessageTextMessage">#2ECC71</color>
+	<color name="colorMessageRCS">#FFAB00</color>
+	<color name="colorMessageDefault">#607D8B</color>
+
+	<color name="colorBackground">#FAFAFA</color>
+	
+	<color name="colorDivider">#1F000000</color>
+	
+	<color name="colorSubBackground">#EEEEEE</color>
+	
+	<color name="colorBackgroundSurface">#F5F5F5</color>
+	<color name="colorBackgroundClean">#FFF</color>
+	
+	<color name="colorError">#FF5252</color>
+	<color name="colorErrorDark">#D50000</color>
+	
+	<color name="colorServerDisconnected">#F44336</color>
+	
+	<color name="tapback_love">#F50057</color>
+	<color name="tapback_like">#FFEA00</color>
+	<color name="tapback_dislike">#FF9100</color>
+	<color name="tapback_laugh">#00E676</color>
+	<color name="tapback_exclamation">#2979FF</color>
+	<color name="tapback_question">#D500F9</color>
+</resources>
