@@ -5,7 +5,6 @@ package me.tagavari.airmessage.compose.component
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
@@ -152,7 +151,6 @@ fun ConversationPane(
 		floatingActionButton = {
 			if(!props.isFloatingPane && allowNewConversation) {
 				FloatingActionButton(
-					modifier = Modifier.navigationBarsPadding(),
 					onClick = props.onNewConversation
 				) {
 					Icon(Icons.Outlined.Message, stringResource(id = R.string.action_newconversation))
