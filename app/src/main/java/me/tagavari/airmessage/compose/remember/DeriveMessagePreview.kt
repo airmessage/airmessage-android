@@ -7,7 +7,6 @@ import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import me.saket.unfurl.Unfurler
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.constants.DataSizeConstants
 import me.tagavari.airmessage.data.DatabaseManager
@@ -20,11 +19,13 @@ import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.messaging.MessagePreviewInfo
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.task.fetchRichMetadata
 import java.io.BufferedInputStream
 import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.net.MalformedURLException
+import java.net.URL
 
-private val unfurler = Unfurler()
 private val activeJobs = mutableSetOf<String>()
 private val activeJobsMutex = Mutex()
 
@@ -39,7 +40,6 @@ private val messagePreviewCacheMutex = Mutex()
  * @param messageInfo The message to check for previews for
  * @return The message preview to display, or null if none should be displayed
  */
-@OptIn(DelicateCoroutinesApi::class)
 @Composable
 fun deriveMessagePreview(messageInfo: MessageInfo): State<MessagePreviewInfo?> {
 	//Ignore if previews are disabled
@@ -92,36 +92,39 @@ fun deriveMessagePreview(messageInfo: MessageInfo): State<MessagePreviewInfo?> {
 					activeJobs.add(text)
 				}
 				
-				GlobalScope.launch(Dispatchers.IO) {
+				try {
+					//Fetch the link preview
+					val metadata = fetchRichMetadata(text)
+					
+					//Validate generic information
+					val title: String
+					val domain: String
 					try {
-						//Fetch the link preview
-						val result = unfurler.unfurl(text) ?: return@launch
+						title = metadata.title
+							?: throw IllegalStateException("No title available")
+						domain = LanguageHelper.getDomainName(text)
+							?: throw IllegalStateException("No domain available for $text")
+					} catch(exception: IllegalStateException) {
+						//Mark the preview as unavailable
+						DatabaseManager.getInstance().setMessagePreviewState(messageInfo.localID, MessagePreviewState.unavailable)
 						
-						//Validate generic information
-						val title: String
-						val domain: String
-						try {
-							title = result.title ?: throw IllegalStateException("No title available")
-							domain = LanguageHelper.getDomainName(result.url.toString())
-								?: throw IllegalStateException("No domain available for ${result.url}")
-						} catch(exception: IllegalStateException) {
-							//Mark the preview as unavailable
-							DatabaseManager.getInstance().setMessagePreviewState(messageInfo.localID, MessagePreviewState.unavailable)
-							
-							//Emit an update
-							withContext(Dispatchers.Main) {
-								ReduxEmitterNetwork.messageUpdateSubject.onNext(
-									ReduxEventMessaging.PreviewUpdate(messageInfo.localID, Result.failure(exception))
-								)
-							}
-							
-							return@launch
+						//Emit an update
+						withContext(Dispatchers.Main) {
+							ReduxEmitterNetwork.messageUpdateSubject.onNext(
+								ReduxEventMessaging.PreviewUpdate(messageInfo.localID, Result.failure(exception))
+							)
 						}
 						
-						//Download the image
-						val imageBytes: ByteArray? = result.thumbnail?.let { thumbnail ->
+						return@LaunchedEffect
+					}
+					
+					val description = metadata.description
+					
+					//Download the image
+					val imageBytes: ByteArray? = metadata.imageURL?.let { url ->
+						withContext(Dispatchers.IO) {
 							try {
-								BufferedInputStream(thumbnail.toUrl().openStream()).use { inputStream ->
+								BufferedInputStream(URL(url).openStream()).use { inputStream ->
 									ByteArrayOutputStream().use { outputStream ->
 										DataStreamHelper.copyStream(inputStream, outputStream)
 										val downloadedImageBytes = outputStream.toByteArray()
@@ -141,43 +144,46 @@ fun deriveMessagePreview(messageInfo: MessageInfo): State<MessagePreviewInfo?> {
 							} catch(exception: IOException) {
 								exception.printStackTrace()
 								null
+							} catch(exception: MalformedURLException) {
+								exception.printStackTrace()
+								null
 							}
 						}
-						
-						//Create the preview info
-						val preview = MessagePreviewInfo(
-							type = MessagePreviewType.link,
-							localID = -1,
-							data = imageBytes,
-							target = result.url.toString(),
-							title = title,
-							subtitle = result.description ?: "",
-							caption = domain
+					}
+					
+					//Create the preview info
+					val preview = MessagePreviewInfo(
+						type = MessagePreviewType.link,
+						localID = -1,
+						data = imageBytes,
+						target = text,
+						title = title,
+						subtitle = description ?: "",
+						caption = domain
+					)
+					
+					//Write the metadata to disk
+					val previewLocalID = DatabaseManager.getInstance().setMessagePreviewData(messageInfo.localID, preview)
+					preview.localID = previewLocalID
+					
+					//Emit an update
+					withContext(Dispatchers.Main) {
+						ReduxEmitterNetwork.messageUpdateSubject.onNext(
+							ReduxEventMessaging.PreviewUpdate(messageInfo.localID, Result.success(preview))
 						)
-						
-						//Write the metadata to disk
-						val previewLocalID = DatabaseManager.getInstance().setMessagePreviewData(messageInfo.localID, preview)
-						preview.localID = previewLocalID
-						
-						//Emit an update
-						withContext(Dispatchers.Main) {
-							ReduxEmitterNetwork.messageUpdateSubject.onNext(
-								ReduxEventMessaging.PreviewUpdate(messageInfo.localID, Result.success(preview))
-							)
-						}
-						
-						//Save the item in the cache
-						messagePreviewCacheMutex.withLock {
-							messagePreviewCache.put(preview.localID, preview)
-						}
-						
-						//Set the preview state
-						messagePreview.value = preview
-					} finally {
-						//Unregister the job
-						activeJobsMutex.withLock {
-							activeJobs.remove(text)
-						}
+					}
+					
+					//Save the item in the cache
+					messagePreviewCacheMutex.withLock {
+						messagePreviewCache.put(preview.localID, preview)
+					}
+					
+					//Set the preview state
+					messagePreview.value = preview
+				} finally {
+					//Unregister the job
+					activeJobsMutex.withLock {
+						activeJobs.remove(text)
 					}
 				}
 			}
