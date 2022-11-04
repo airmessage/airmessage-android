@@ -298,6 +298,8 @@ fun MessageInfoListEntry(
 									}
 								)
 							} else {
+								val contentType = attachment.computedContentType
+								
 								val fallbackComponent = @Composable {
 									MessageBubbleFile(
 										flow = attachmentFlow,
@@ -312,12 +314,12 @@ fun MessageInfoListEntry(
 								}
 								
 								when {
-									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeImage)
-											|| compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVideo) -> {
+									compareMimeTypes(contentType, MIMEConstants.mimeTypeImage)
+											|| compareMimeTypes(contentType, MIMEConstants.mimeTypeVideo) -> {
 										MessageBubbleVisual(
 											flow = attachmentFlow,
 											file = attachmentFile,
-											type = attachment.contentType,
+											type = contentType,
 											onClick = { onOpenVisualAttachment(attachment) },
 											onSetSelected = { selected ->
 												selectionState.setSelectionAttachmentID(attachment.localID, selected)
@@ -326,7 +328,7 @@ fun MessageInfoListEntry(
 											fallback = fallbackComponent
 										)
 									}
-									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeAudio) -> {
+									compareMimeTypes(contentType, MIMEConstants.mimeTypeAudio) -> {
 										val playbackManager = LocalAudioPlayback.current
 										val playbackState by playbackManager.stateForKey(key = attachmentFile)
 										val scope = rememberCoroutineScope()
@@ -355,7 +357,7 @@ fun MessageInfoListEntry(
 											}
 										)
 									}
-									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVCard) -> {
+									compareMimeTypes(contentType, MIMEConstants.mimeTypeVCard) -> {
 										MessageBubbleContact(
 											flow = attachmentFlow,
 											file = attachmentFile,
@@ -371,7 +373,7 @@ fun MessageInfoListEntry(
 											}
 										)
 									}
-									compareMimeTypes(attachment.contentType, MIMEConstants.mimeTypeVLocation) -> {
+									compareMimeTypes(contentType, MIMEConstants.mimeTypeVLocation) -> {
 										MessageBubbleLocation(
 											flow = attachmentFlow,
 											file = attachmentFile,
