@@ -3,22 +3,19 @@ package me.tagavari.airmessage.compose.component
 import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.runtime.*
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import coil.compose.SubcomposeAsyncImage
-import kotlinx.coroutines.rx3.await
-import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.compose.remember.deriveContactUpdates
+import me.tagavari.airmessage.compose.remember.deriveUserInfo
 import me.tagavari.airmessage.compose.util.ImmutableHolder
 import me.tagavari.airmessage.compose.util.wrapImmutableHolder
-import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.messaging.MemberInfo
 
 /**
@@ -31,16 +28,7 @@ fun MemberImage(
 	highRes: Boolean = false
 ) {
 	//Get the user
-	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(null, member.address, deriveContactUpdates()) {
-		value = try {
-			MainApplication.instance.userCacheHelper
-				.getUserInfo(context, member.address).await()
-		} catch(exception: Throwable) {
-			exception.printStackTrace()
-			return@produceState
-		}
-	}
+	val userInfo by deriveUserInfo(member.address)
 	
 	MemberImage(
 		modifier = modifier,

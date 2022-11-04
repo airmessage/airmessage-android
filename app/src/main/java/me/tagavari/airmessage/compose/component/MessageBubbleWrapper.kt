@@ -14,6 +14,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import me.tagavari.airmessage.enums.TapbackType
+import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.messaging.StickerInfo
 import me.tagavari.airmessage.messaging.TapbackInfo
 
@@ -82,15 +83,7 @@ fun MessageBubbleWrapper(
 			) {
 				Box(contentAlignment = Alignment.Center) {
 					Text(
-						text = when(tapback.code) {
-							TapbackType.heart -> "\u2764"
-							TapbackType.like -> "\uD83D\uDC4D"
-							TapbackType.dislike -> "\uD83D\uDC4E"
-							TapbackType.laugh -> "\uD83D\uDE02"
-							TapbackType.exclamation -> "\u203C\uFE0F"
-							TapbackType.question -> "\u2753"
-							else -> ""
-						}
+						text = LanguageHelper.getTapbackEmoji(tapback.code) ?: ""
 					)
 				}
 			}

@@ -6,24 +6,19 @@ import androidx.compose.material.icons.filled.Cancel
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
-import kotlinx.coroutines.rx3.await
-import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.compose.remember.deriveContactUpdates
+import me.tagavari.airmessage.compose.remember.deriveUserInfo
 import me.tagavari.airmessage.compose.state.SelectedRecipient
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.compose.util.wrapImmutableHolder
-import me.tagavari.airmessage.data.UserCacheHelper
 
 @Composable
 fun UserChipPopup(
@@ -66,17 +61,7 @@ private fun UserChipLayout(
 	recipient: SelectedRecipient,
 	onRemove: () -> Unit
 ) {
-	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, recipient.address, deriveContactUpdates()) {
-		//Get the user
-		try {
-			value = MainApplication.instance.userCacheHelper
-				.getUserInfo(context, recipient.address)
-				.await()
-		} catch(exception: Throwable) {
-			exception.printStackTrace()
-		}
-	}
+	val userInfo by deriveUserInfo(recipient.address)
 	
 	Row(
 		modifier = Modifier

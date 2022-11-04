@@ -22,7 +22,6 @@ import me.tagavari.airmessage.helper.CalendarHelper.compareCalendarDates
 import me.tagavari.airmessage.messaging.MessageComponentText
 import me.tagavari.airmessage.messaging.MessageInfo
 import me.tagavari.airmessage.util.LatLngInfo
-import me.tagavari.airmessage.util.TapbackDisplayData
 import java.net.URI
 import java.net.URISyntaxException
 import java.util.*
@@ -437,5 +436,18 @@ object LanguageHelper {
 			//Returning a generic message
 			resources.getString(R.string.imperative_messageinput)
 		}
+	}
+	
+	/**
+	 * Gets the emoji string used to render a given tapback type
+	 */
+	fun getTapbackEmoji(@TapbackType tapbackCode: Int) = when(tapbackCode) {
+		TapbackType.heart -> "\u2764"
+		TapbackType.like -> "\uD83D\uDC4D"
+		TapbackType.dislike -> "\uD83D\uDC4E"
+		TapbackType.laugh -> "\uD83D\uDE02"
+		TapbackType.exclamation -> "\u203C\uFE0F"
+		TapbackType.question -> "\u2753"
+		else -> null
 	}
 }

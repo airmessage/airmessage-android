@@ -39,19 +39,17 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.*
 import kotlinx.coroutines.rx3.await
-import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.compose.provider.LocalAudioPlayback
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
 import me.tagavari.airmessage.compose.remember.AudioPlaybackState
-import me.tagavari.airmessage.compose.remember.deriveContactUpdates
 import me.tagavari.airmessage.compose.remember.deriveMessagePreview
+import me.tagavari.airmessage.compose.remember.deriveUserInfo
 import me.tagavari.airmessage.compose.state.MessageSelectionState
 import me.tagavari.airmessage.compose.state.NetworkState
 import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.constants.MIMEConstants
 import me.tagavari.airmessage.data.DatabaseManager
-import me.tagavari.airmessage.data.UserCacheHelper
 import me.tagavari.airmessage.enums.MessageSendErrorCode
 import me.tagavari.airmessage.enums.MessageState
 import me.tagavari.airmessage.helper.ConversationColorHelper
@@ -110,16 +108,7 @@ fun MessageInfoListEntry(
 	val isUnconfirmed = messageInfo.messageState == MessageState.ghost
 	
 	//Load the message contact
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, messageInfo.sender, deriveContactUpdates()) {
-		messageInfo.sender?.let { sender ->
-			//Get the user
-			try {
-				value = MainApplication.instance.userCacheHelper.getUserInfo(context, sender).await()
-			} catch(exception: Throwable) {
-				exception.printStackTrace()
-			}
-		}
-	}
+	val userInfo by deriveUserInfo(messageInfo.sender)
 	
 	Column(
 		modifier = Modifier
