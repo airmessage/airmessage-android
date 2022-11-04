@@ -8,9 +8,12 @@ import android.os.Build
 import android.view.View
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
@@ -30,7 +33,21 @@ object ThemeHelper {
 	)
 		private set
 	
-	var amoledMode by mutableStateOf(Preferences.getPreferenceAMOLED(MainApplication.instance))
+	var amoledMode by mutableStateOf<Boolean?>(null)
+	
+	val resolvedAmoledMode: Boolean
+		@Composable get() {
+			//Always return false in previews
+			if(LocalInspectionMode.current) return false
+			
+			//If we have a valid value, return it
+			amoledMode?.let { return it }
+			
+			//Load the value from preferences
+			val value = Preferences.getPreferenceAMOLED(LocalContext.current)
+			amoledMode = value
+			return value
+		}
 	
 	/**
 	 * Gets if the app is currently being displayed in night mode
