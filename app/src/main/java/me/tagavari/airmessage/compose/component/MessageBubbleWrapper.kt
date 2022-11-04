@@ -3,23 +3,18 @@ package me.tagavari.airmessage.compose.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import me.tagavari.airmessage.enums.TapbackType
-import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.messaging.StickerInfo
 import me.tagavari.airmessage.messaging.TapbackInfo
-
-private val tapbackSize = 28.dp
-private val tapbackOffset = 14.dp
 
 /**
  * A wrapper around a bubble component that
@@ -34,7 +29,7 @@ fun MessageBubbleWrapper(
 	content: @Composable () -> Unit
 ) {
 	Box(
-		modifier = if(tapbacks.isEmpty()) Modifier else Modifier.padding(top = tapbackOffset)
+		modifier = if(tapbacks.isEmpty()) Modifier else Modifier.padding(top = TapbackIndicator.tapbackOffset)
 	) {
 		content()
 		
@@ -68,25 +63,31 @@ fun MessageBubbleWrapper(
 			}
 		}
 		
-		tapbacks.firstOrNull()?.let { tapback ->
-			Surface(
+		//Display the last 2 tapbacks
+		tapbacks.getOrNull(0)?.let { tapback ->
+			TapbackIndicator(
 				modifier = Modifier
-					.size(tapbackSize)
 					.align(if(isOutgoing) Alignment.TopStart else Alignment.TopEnd)
 					.offset(
-						x = tapbackOffset * ((if(isOutgoing) -1 else 1)),
-						y = -tapbackOffset
+						x = (TapbackIndicator.tapbackOffset * 1.2F * ((if(isOutgoing) -1 else 1))),
+						y = -TapbackIndicator.tapbackOffset
 					),
-				shape = CircleShape,
-				tonalElevation = 2.dp,
-				shadowElevation = 2.dp
-			) {
-				Box(contentAlignment = Alignment.Center) {
-					Text(
-						text = LanguageHelper.getTapbackEmoji(tapback.code) ?: ""
-					)
-				}
-			}
+				tapbackCode = tapback.code,
+				isOutgoing = tapback.sender == null
+			)
+		}
+		
+		tapbacks.getOrNull(1)?.let { tapback ->
+			TapbackIndicator(
+				modifier = Modifier
+					.align(if(isOutgoing) Alignment.TopStart else Alignment.TopEnd)
+					.offset(
+						x = TapbackIndicator.tapbackOffset * ((if(isOutgoing) -1 else 1)),
+						y = -TapbackIndicator.tapbackOffset
+					),
+				tapbackCode = tapback.code,
+				isOutgoing = tapback.sender == null
+			)
 		}
 	}
 }
