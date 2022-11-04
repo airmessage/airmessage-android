@@ -94,7 +94,12 @@ fun deriveMessagePreview(messageInfo: MessageInfo): State<MessagePreviewInfo?> {
 				
 				try {
 					//Fetch the link preview
-					val metadata = fetchRichMetadata(text)
+					val metadata = try {
+						fetchRichMetadata(text)
+					} catch(exception: IOException) {
+						exception.printStackTrace()
+						return@LaunchedEffect
+					}
 					
 					//Validate generic information
 					val title: String
