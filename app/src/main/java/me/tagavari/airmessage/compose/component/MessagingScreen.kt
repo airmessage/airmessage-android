@@ -35,6 +35,9 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -52,6 +55,7 @@ import me.tagavari.airmessage.compose.remember.rememberAudioPlayback
 import me.tagavari.airmessage.compose.remember.rememberMediaCapture
 import me.tagavari.airmessage.compose.remember.rememberMediaRequest
 import me.tagavari.airmessage.compose.state.MessagingViewModelData
+import me.tagavari.airmessage.compose.util.ImmutableHolder
 import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.container.ConversationReceivedContent
 import me.tagavari.airmessage.container.LocalFile
@@ -60,6 +64,7 @@ import me.tagavari.airmessage.contract.ContractCreateDynamicDocument
 import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.helper.*
 import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.messaging.TapbackInfo
 import me.tagavari.airmessage.task.ConversationActionTask
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
@@ -527,6 +532,49 @@ fun MessagingScreen(
 				floating = !isScrolledToBottom,
 				rounded = floatingPane
 			)
+		}
+		
+		//Collect the tapback details of the selected messages
+		val selectedContentTapbacks: ImmutableHolder<Collection<TapbackInfo>> by remember {
+			derivedStateOf {
+				if(viewModel.messageSelectionState.size != 1) {
+					//Don't show anything if multiple messages are selected
+					emptyList<TapbackInfo>().wrapImmutableHolder()
+				} else {
+					(
+							selectedMessageData?.tapbacks
+								?: selectedAttachmentData?.tapbacks
+								?: emptyList()
+							).wrapImmutableHolder()
+				}
+			}
+		}
+		
+		//Show tapback details at the bottom of the screen
+		if(selectedContentTapbacks.item.isNotEmpty()) {
+			Popup(
+				popupPositionProvider = object : PopupPositionProvider {
+					override fun calculatePosition(
+						anchorBounds: IntRect,
+						windowSize: IntSize,
+						layoutDirection: LayoutDirection,
+						popupContentSize: IntSize
+					): IntOffset {
+						return IntOffset(0, windowSize.height)
+					}
+				},
+				properties = PopupProperties(
+					dismissOnBackPress = false,
+					dismissOnClickOutside = false,
+					excludeFromSystemGesture = false,
+					clippingEnabled = true
+				)
+			) {
+				TapbackDetailsPanel(
+					modifier = Modifier.padding(8.dp),
+					tapbacks = selectedContentTapbacks
+				)
+			}
 		}
 	}
 }

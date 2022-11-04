@@ -142,7 +142,7 @@ private fun TapbackDetailsDetailPanel(
 		Text(
 			modifier = Modifier.padding(start = 16.dp, end = 2.dp),
 			text = "${reactionGroup.senders.size} ${LanguageHelper.getTapbackEmoji(reactionGroup.code) ?: ""}",
-			style = MaterialTheme.typography.labelSmall
+			style = MaterialTheme.typography.labelLarge
 		)
 		
 		//User list
