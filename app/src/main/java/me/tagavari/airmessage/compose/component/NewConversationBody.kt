@@ -12,7 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -87,6 +89,42 @@ fun NewConversationBody(
 					}
 				}
 				
+				//Group contacts by first letter
+				val groupedContacts = remember(contactsState.contacts) {
+					val groupedContactsList = mutableListOf<ContactsListGroup>()
+					var activeGroup: Pair<Char, MutableList<ContactInfo>>? = null
+					
+					fun applyActiveGroup() {
+						val group = activeGroup ?: return
+						val contactsListGroup = ContactsListGroup(
+							key = group.first,
+							contacts = group.second
+						)
+						groupedContactsList.add(contactsListGroup)
+					}
+					
+					//Contacts are sorted in order, so we can iterate
+					//linearly and check for differences
+					val contactsList = contactsState.contacts
+					for(contact in contactsList) {
+						val contactKey = getNameHeader(contact.name)
+						
+						//If this contact is part of the same group, add it
+						if(activeGroup != null && activeGroup.first == contactKey) {
+							activeGroup.second.add(contact)
+						} else {
+							//Refresh the list
+							applyActiveGroup()
+							activeGroup = Pair(contactKey, mutableListOf(contact))
+						}
+					}
+					
+					//Add the last contact group
+					applyActiveGroup()
+					
+					return@remember groupedContactsList.toList()
+				}
+				
 				Box(modifier = Modifier.fillMaxSize()) {
 					LazyColumn(
 						contentPadding = contentPadding,
@@ -101,42 +139,37 @@ fun NewConversationBody(
 							}
 						}
 						
-						var lastContact: ContactInfo? = null
-						for(contact in contactsState.contacts) {
-							val nameHeader = getNameHeader(contact.name)
-							val showNameHeader = getNameHeader(lastContact?.name) != nameHeader
-							
+						for(group in groupedContacts) {
 							//Show name headers between names that start with a different letter
-							if(showNameHeader) {
-								item(
-									key = nameHeader
+							println("Using key ${group.key} for group ${group.contacts.firstOrNull()?.name}")
+							item(
+								key = group.key
+							) {
+								Box(
+									modifier = Modifier
+										.padding(horizontal = 16.dp)
+										.size(40.dp),
+									contentAlignment = Alignment.Center
 								) {
-									Box(
-										modifier = Modifier
-											.padding(horizontal = 16.dp)
-											.size(40.dp),
-										contentAlignment = Alignment.Center
-									) {
-										Text(
-											text = nameHeader.toString(),
-											color = MaterialTheme.colorScheme.onSurfaceVariant,
-											fontSize = 20.sp
-										)
-									}
+									Text(
+										text = group.key.toString(),
+										color = MaterialTheme.colorScheme.onSurfaceVariant,
+										fontSize = 20.sp
+									)
 								}
 							}
 							
-							item(
-								key = contact.contactID
-							) {
-								ContactRow(
-									requiredService = requiredService,
-									contact = contact,
-									onSelectAddress = { addressInfo -> onAddRecipient(contact, addressInfo) }
-								)
+							for(contact in group.contacts) {
+								item(
+									key = contact.contactID
+								) {
+									ContactRow(
+										requiredService = requiredService,
+										contact = contact,
+										onSelectAddress = { addressInfo -> onAddRecipient(contact, addressInfo) }
+									)
+								}
 							}
-							
-							lastContact = contact
 						}
 					}
 					
@@ -210,6 +243,12 @@ private fun MessageButtonCombo(
 		}
 	}
 }
+
+@Immutable
+private data class ContactsListGroup(
+	val key: Char,
+	val contacts: List<ContactInfo>
+)
 
 @Preview(name = "Loading", showBackground = true, widthDp = 400, heightDp = 600)
 @Composable
