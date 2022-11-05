@@ -21,6 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -46,6 +47,7 @@ import me.tagavari.airmessage.helper.IntentHelper
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
 import me.tagavari.airmessage.util.ConnectionParams
+import me.tagavari.airmessage.util.DirectConnectionDetails
 import soup.compose.material.motion.MaterialSharedAxisY
 
 @Composable
@@ -118,7 +120,11 @@ private fun OnboardingManualLayout(
 	onSkip: () -> Unit
 ) {
 	val context = LocalContext.current
-	val initialDetails = remember { SharedPreferencesManager.getDirectConnectionDetails(context) }
+	val initialDetails: DirectConnectionDetails = if(LocalInspectionMode.current) {
+		remember { DirectConnectionDetails(address = null, fallbackAddress = null, password = null) }
+	} else {
+		remember { SharedPreferencesManager.getDirectConnectionDetails(context) }
+	}
 	
 	var inputAddress by rememberSaveable { mutableStateOf(initialDetails.address ?: "") }
 	var inputFallbackAddress by rememberSaveable { mutableStateOf(initialDetails.fallbackAddress ?: "") }
