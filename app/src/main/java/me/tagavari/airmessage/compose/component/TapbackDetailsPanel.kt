@@ -95,7 +95,8 @@ private fun TapbackDetailsMasterPanel(
 		modifier = Modifier
 			.fillMaxWidth()
 			.height(76.dp)
-			.padding(4.dp),
+			.horizontalScroll(state = rememberScrollState())
+			.padding(horizontal = 32.dp, vertical = 4.dp),
 		horizontalArrangement = Arrangement.spacedBy(space = 32.dp, alignment = Alignment.CenterHorizontally),
 		verticalAlignment = Alignment.CenterVertically
 	) {
