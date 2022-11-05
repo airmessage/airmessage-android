@@ -153,7 +153,7 @@ private fun OnboardingManualLayout(
 	
 	val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
 	
-	fun submitInput() {
+	val submitInput: () -> Unit = {
 		if(skipOK) {
 			onSkip()
 		} else {
@@ -292,8 +292,8 @@ private fun OnboardingManualLayout(
 								
 								@Suppress("NAME_SHADOWING")
 								val context = LocalContext.current
-								fun recoverError() {
-									val button = errorDetails.button ?: return
+								val recoverError: () -> Unit = recoverError@{
+									val button = errorDetails.button ?: return@recoverError
 									when(button.action) {
 										ErrorDetailsAction.UPDATE_APP -> {
 											Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=${context.packageName}"))
@@ -329,7 +329,7 @@ private fun OnboardingManualLayout(
 								horizontalArrangement = Arrangement.End
 							) {
 								Button(
-									onClick = ::submitInput,
+									onClick = submitInput,
 									enabled = connectionParams != null || skipOK
 								) {
 									if(skipOK) {
