@@ -63,26 +63,15 @@ fun MessageBubbleWrapper(
 			}
 		}
 		
-		//Display the last 2 tapbacks
-		tapbacks.getOrNull(0)?.let { tapback ->
+		//Display the last 3 tapbacks
+		tapbacks.takeLast(tapbackShowCount).forEachIndexed { index, tapback ->
+			//Show the most recent (last) tapback on top,
+			//apply an offset of 20% for tapbacks on the bottom
 			TapbackIndicator(
 				modifier = Modifier
 					.align(if(isOutgoing) Alignment.TopStart else Alignment.TopEnd)
 					.offset(
-						x = (TapbackIndicator.tapbackOffset * 1.2F * ((if(isOutgoing) -1 else 1))),
-						y = -TapbackIndicator.tapbackOffset
-					),
-				tapbackCode = tapback.code,
-				isOutgoing = tapback.sender == null
-			)
-		}
-		
-		tapbacks.getOrNull(1)?.let { tapback ->
-			TapbackIndicator(
-				modifier = Modifier
-					.align(if(isOutgoing) Alignment.TopStart else Alignment.TopEnd)
-					.offset(
-						x = TapbackIndicator.tapbackOffset * ((if(isOutgoing) -1 else 1)),
+						x = (TapbackIndicator.tapbackOffset * (1F + (tapbackShowCount - 1 - index) * 0.2F) * ((if(isOutgoing) -1 else 1))),
 						y = -TapbackIndicator.tapbackOffset
 					),
 				tapbackCode = tapback.code,
@@ -91,3 +80,6 @@ fun MessageBubbleWrapper(
 		}
 	}
 }
+
+//Show up to 3 tapback indicators on a message
+private const val tapbackShowCount = 3
