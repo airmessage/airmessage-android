@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.util
 
+import io.reactivex.rxjava3.exceptions.UndeliverableException
 import io.reactivex.rxjava3.subjects.CompletableSubject
 import io.reactivex.rxjava3.subjects.PublishSubject
 import io.reactivex.rxjava3.subjects.SingleSubject
@@ -42,7 +43,11 @@ abstract class RequestSubject<S, T>(
 		}
 		
 		override fun onError(error: Throwable) {
-			get().onError(error)
+			try {
+				get().onError(error)
+			} catch(exception: UndeliverableException) {
+				exception.printStackTrace()
+			}
 		}
 	}
 	
@@ -51,7 +56,11 @@ abstract class RequestSubject<S, T>(
 	 */
 	class Single<S, T>(subject: SingleSubject<S>, expiryException: Throwable, requestData: T) : RequestSubject<SingleSubject<S>, T>(subject, expiryException, requestData) {
 		override fun onError(error: Throwable) {
-			get().onError(error)
+			try {
+				get().onError(error)
+			} catch(exception: UndeliverableException) {
+				exception.printStackTrace()
+			}
 		}
 	}
 	
@@ -64,7 +73,11 @@ abstract class RequestSubject<S, T>(
 		}
 		
 		override fun onError(error: Throwable) {
-			get().onError(error)
+			try {
+				get().onError(error)
+			} catch(exception: UndeliverableException) {
+				exception.printStackTrace()
+			}
 		}
 	}
 }
