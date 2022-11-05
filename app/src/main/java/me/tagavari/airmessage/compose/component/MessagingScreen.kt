@@ -8,7 +8,7 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -35,9 +35,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
-import androidx.compose.ui.window.Popup
-import androidx.compose.ui.window.PopupPositionProvider
-import androidx.compose.ui.window.PopupProperties
 import androidx.core.content.FileProvider
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -206,26 +203,43 @@ fun MessagingScreen(
 	CompositionLocalProvider(
 		LocalAudioPlayback provides rememberAudioPlayback()
 	) {
-		Column(
-			modifier = modifier.then(
-				if(floatingPane) Modifier.background(MaterialTheme.colorScheme.surface)
-				else Modifier
-			)
-		) {
-			Crossfade(targetState = isActionMode) { isActionMode ->
-				if(!isActionMode) {
-					CenterAlignedTopAppBar(
-						title = {
-							val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
-								if(location == null) return@rememberLauncherForActivityResult
+		Box {
+			Column(
+				modifier = modifier.then(
+					if(floatingPane) Modifier.background(MaterialTheme.colorScheme.surface)
+					else Modifier
+				)
+			) {
+				Crossfade(targetState = isActionMode) { isActionMode ->
+					if(!isActionMode) {
+						CenterAlignedTopAppBar(
+							title = {
+								val conversationDetailsLauncher = rememberLauncherForActivityResult(contract = ConversationDetailsCompose.ResultContract) { location ->
+									if(location == null) return@rememberLauncherForActivityResult
+									
+									viewModel.sendLocation(connectionManager, location)
+								}
 								
-								viewModel.sendLocation(connectionManager, location)
-							}
-							
-							if(floatingPane) {
-								viewModel.conversationTitle?.let { title ->
-									Text(
+								if(floatingPane) {
+									viewModel.conversationTitle?.let { title ->
+										Text(
+											modifier = Modifier
+												.clip(RoundedCornerShape(12.dp))
+												.clickable(onClick = {
+													conversationDetailsLauncher.launch(
+														conversationID
+													)
+												})
+												.padding(horizontal = 8.dp, vertical = 4.dp),
+											text = title,
+											overflow = TextOverflow.Ellipsis,
+											maxLines = 1,
+										)
+									}
+								} else {
+									Column(
 										modifier = Modifier
+											.padding(horizontal = 24.dp)
 											.clip(RoundedCornerShape(12.dp))
 											.clickable(onClick = {
 												conversationDetailsLauncher.launch(
@@ -233,346 +247,326 @@ fun MessagingScreen(
 												)
 											})
 											.padding(horizontal = 8.dp, vertical = 4.dp),
-										text = title,
-										overflow = TextOverflow.Ellipsis,
-										maxLines = 1,
+										horizontalAlignment = Alignment.CenterHorizontally,
+										verticalArrangement = Arrangement.Top
+									) {
+										viewModel.conversation?.let { conversation ->
+											UserIconGroup(members = conversation.members.wrapImmutableHolder())
+										}
+										
+										Spacer(modifier = Modifier.height(1.dp))
+										
+										viewModel.conversationTitle?.let { title ->
+											Text(
+												text = title,
+												style = MaterialTheme.typography.bodySmall,
+												overflow = TextOverflow.Ellipsis,
+												maxLines = 1
+											)
+										}
+									}
+								}
+							},
+							navigationIcon = navigationIcon,
+							colors = TopAppBarDefaults.smallTopAppBarColors(
+								containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+							)
+						)
+					} else {
+						val selectionCount = viewModel.messageSelectionState.size
+						
+						TopAppBar(
+							title = {
+								Text(pluralStringResource(id = R.plurals.message_selectioncount, selectionCount, selectionCount))
+							},
+							navigationIcon = {
+								IconButton(onClick = { stopActionMode() }) {
+									Icon(
+										imageVector = Icons.Filled.Close,
+										contentDescription = stringResource(id = android.R.string.cancel)
 									)
 								}
-							} else {
-								Column(
-									modifier = Modifier
-										.padding(horizontal = 24.dp)
-										.clip(RoundedCornerShape(12.dp))
-										.clickable(onClick = {
-											conversationDetailsLauncher.launch(
-												conversationID
+							},
+							actions = {
+								if(selectionCount == 1) {
+									val context = LocalContext.current
+									
+									//Get selected information
+									val messageData = selectedMessageData
+									val attachmentData = selectedAttachmentData
+									
+									//Save to file (show if we have an attachment with a downloaded file selected)
+									if(attachmentData?.file != null) {
+										val saveFileLauncher = rememberLauncherForActivityResult(contract = ContractCreateDynamicDocument()) { result ->
+											//Check the result of the intent
+											val exportURI = result ?: return@rememberLauncherForActivityResult
+											
+											//Get the attachment file
+											val attachmentFile = attachmentData.file
+											
+											//Export the file
+											ExternalStorageHelper.exportFile(context, attachmentFile, exportURI)
+											
+											stopActionMode()
+										}
+										
+										IconButton(onClick = {
+											saveFileLauncher.launch(
+												ContractCreateDynamicDocument.Params(
+													name = attachmentData.computedFileName,
+													type = attachmentData.computedContentType
+												)
 											)
-										})
-										.padding(horizontal = 8.dp, vertical = 4.dp),
-									horizontalAlignment = Alignment.CenterHorizontally,
-									verticalArrangement = Arrangement.Top
-								) {
-									viewModel.conversation?.let { conversation ->
-										UserIconGroup(members = conversation.members.wrapImmutableHolder())
-									}
-									
-									Spacer(modifier = Modifier.height(1.dp))
-									
-									viewModel.conversationTitle?.let { title ->
-										Text(
-											text = title,
-											style = MaterialTheme.typography.bodySmall,
-											overflow = TextOverflow.Ellipsis,
-											maxLines = 1
-										)
-									}
-								}
-							}
-						},
-						navigationIcon = navigationIcon,
-						colors = TopAppBarDefaults.smallTopAppBarColors(
-							containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
-						)
-					)
-				} else {
-					val selectionCount = viewModel.messageSelectionState.size
-					
-					TopAppBar(
-						title = {
-							Text(pluralStringResource(id = R.plurals.message_selectioncount, selectionCount, selectionCount))
-						},
-						navigationIcon = {
-							IconButton(onClick = { stopActionMode() }) {
-								Icon(
-									imageVector = Icons.Filled.Close,
-									contentDescription = stringResource(id = android.R.string.cancel)
-								)
-							}
-						},
-						actions = {
-							if(selectionCount == 1) {
-								val context = LocalContext.current
-								
-								//Get selected information
-								val messageData = selectedMessageData
-								val attachmentData = selectedAttachmentData
-								
-								//Save to file (show if we have an attachment with a downloaded file selected)
-								if(attachmentData?.file != null) {
-									val saveFileLauncher = rememberLauncherForActivityResult(contract = ContractCreateDynamicDocument()) { result ->
-										//Check the result of the intent
-										val exportURI = result ?: return@rememberLauncherForActivityResult
-										
-										//Get the attachment file
-										val attachmentFile = attachmentData.file
-										
-										//Export the file
-										ExternalStorageHelper.exportFile(context, attachmentFile, exportURI)
-										
-										stopActionMode()
-									}
-									
-									IconButton(onClick = {
-										saveFileLauncher.launch(
-											ContractCreateDynamicDocument.Params(
-												name = attachmentData.computedFileName,
-												type = attachmentData.computedContentType
+										}) {
+											Icon(
+												imageVector = Icons.Outlined.SaveAlt,
+												contentDescription = stringResource(id = R.string.action_save)
 											)
-										)
-									}) {
-										Icon(
-											imageVector = Icons.Outlined.SaveAlt,
-											contentDescription = stringResource(id = R.string.action_save)
-										)
+										}
 									}
-								}
-								
-								//Copy to clipboard
-								if(messageData != null || attachmentData?.file != null) {
-									IconButton(onClick = {
-										//Get the clipboard manager
-										val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@IconButton
-										
-										messageData?.let { message ->
-											val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+									
+									//Copy to clipboard
+									if(messageData != null || attachmentData?.file != null) {
+										IconButton(onClick = {
+											//Get the clipboard manager
+											val clipboardManager = context.getSystemService(ClipboardManager::class.java) ?: return@IconButton
 											
-											//Copy the text to the clipboard
-											clipboardManager.setPrimaryClip(ClipData.newPlainText(null, text))
-											
-											//Show a confirmation toast
-											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-												Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+											messageData?.let { message ->
+												val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+												
+												//Copy the text to the clipboard
+												clipboardManager.setPrimaryClip(ClipData.newPlainText(null, text))
+												
+												//Show a confirmation toast
+												if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+													Toast.makeText(context, R.string.message_textcopied, Toast.LENGTH_SHORT).show()
+												}
 											}
-										}
-										
-										attachmentData?.let { attachment ->
-											val file = attachment.file ?: return@IconButton
-											val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
 											
-											//Copy the file to the clipboard
-											clipboardManager.setPrimaryClip(ClipData.newUri(
-												context.contentResolver,
-												attachment.computedFileName,
-												fileUri
-											))
-											
-											//Show a confirmation toast
-											if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-												Toast.makeText(context, R.string.message_attachmentcopied, Toast.LENGTH_SHORT).show()
-											}
-										}
-										
-										stopActionMode()
-									}) {
-										Icon(
-											imageVector = Icons.Outlined.ContentCopy,
-											contentDescription = stringResource(id = R.string.action_copy)
-										)
-									}
-								}
-								
-								//Share
-								if(messageData != null || attachmentData?.file != null) {
-									IconButton(onClick = {
-										messageData?.let { message ->
-											val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
-											
-											Intent().apply {
-												action = Intent.ACTION_SEND
-												putExtra(Intent.EXTRA_TEXT, text)
-												type = "text/plain"
-												clipData = ClipData.newPlainText(null, text)
-											}
-												.let { Intent.createChooser(it, null) }
-												.let { context.startActivity(it) }
-										}
-										
-										attachmentData?.let { attachment ->
-											val file = attachment.file ?: return@IconButton
-											val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
-											
-											Intent().apply {
-												action = Intent.ACTION_SEND
-												putExtra(Intent.EXTRA_STREAM, fileUri)
-												type = attachment.contentType
-												clipData = ClipData.newUri(
+											attachmentData?.let { attachment ->
+												val file = attachment.file ?: return@IconButton
+												val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+												
+												//Copy the file to the clipboard
+												clipboardManager.setPrimaryClip(ClipData.newUri(
 													context.contentResolver,
 													attachment.computedFileName,
 													fileUri
-												)
-												flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+												))
+												
+												//Show a confirmation toast
+												if(Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+													Toast.makeText(context, R.string.message_attachmentcopied, Toast.LENGTH_SHORT).show()
+												}
 											}
-												.let { Intent.createChooser(it, null) }
-												.let { context.startActivity(it) }
+											
+											stopActionMode()
+										}) {
+											Icon(
+												imageVector = Icons.Outlined.ContentCopy,
+												contentDescription = stringResource(id = R.string.action_copy)
+											)
 										}
-										
-										stopActionMode()
-									}) {
-										Icon(
-											imageVector = Icons.Outlined.Share,
-											contentDescription = stringResource(id = R.string.action_sharemessage)
-										)
+									}
+									
+									//Share
+									if(messageData != null || attachmentData?.file != null) {
+										IconButton(onClick = {
+											messageData?.let { message ->
+												val text = LanguageHelper.textComponentToString(context.resources, message) ?: return@IconButton
+												
+												Intent().apply {
+													action = Intent.ACTION_SEND
+													putExtra(Intent.EXTRA_TEXT, text)
+													type = "text/plain"
+													clipData = ClipData.newPlainText(null, text)
+												}
+													.let { Intent.createChooser(it, null) }
+													.let { context.startActivity(it) }
+											}
+											
+											attachmentData?.let { attachment ->
+												val file = attachment.file ?: return@IconButton
+												val fileUri = FileProvider.getUriForFile(context, AttachmentStorageHelper.getFileAuthority(context), file)
+												
+												Intent().apply {
+													action = Intent.ACTION_SEND
+													putExtra(Intent.EXTRA_STREAM, fileUri)
+													type = attachment.contentType
+													clipData = ClipData.newUri(
+														context.contentResolver,
+														attachment.computedFileName,
+														fileUri
+													)
+													flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+												}
+													.let { Intent.createChooser(it, null) }
+													.let { context.startActivity(it) }
+											}
+											
+											stopActionMode()
+										}) {
+											Icon(
+												imageVector = Icons.Outlined.Share,
+												contentDescription = stringResource(id = R.string.action_sharemessage)
+											)
+										}
 									}
 								}
-							}
-						},
-						colors = TopAppBarDefaults.smallTopAppBarColors(
-							containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+							},
+							colors = TopAppBarDefaults.smallTopAppBarColors(
+								containerColor = MaterialTheme.colorScheme.surfaceColorAtElevation(2.dp)
+							)
+						)
+					}
+				}
+				
+				Box(modifier = Modifier.weight(1F)) {
+					val sendEffectState = rememberSendEffectPaneState()
+					
+					viewModel.conversation?.let { conversation ->
+						MessageList(
+							modifier = Modifier.fillMaxSize(),
+							conversation = conversation,
+							messages = viewModel.messages,
+							messageStateIndices = viewModel.messageStateIndices,
+							scrollState = scrollState,
+							onDownloadAttachment = { messageInfo, attachmentInfo ->
+								viewModel.downloadAttachment(connectionManager, messageInfo, attachmentInfo)
+							},
+							messageSelectionState = viewModel.messageSelectionState,
+							onLoadPastMessages = { viewModel.loadPastMessages() },
+							lazyLoadState = viewModel.lazyLoadState,
+							actionSuggestions = viewModel.conversationSuggestions.collectAsState(initial = listOf()).value,
+							onSelectActionSuggestion = { action ->
+								action.replyString?.let { message ->
+									viewModel.sendTextMessage(connectionManager, message)
+								}
+								
+								action.remoteAction?.let { remoteAction ->
+									try {
+										remoteAction.actionIntent.send()
+									} catch(exception: PendingIntent.CanceledException) {
+										exception.printStackTrace()
+									}
+								}
+							},
+							isPlayingEffect = sendEffectState.activeEffect != null,
+							onPlayEffect = sendEffectState.playEffect
+						)
+					}
+					
+					SendEffectPane(
+						modifier = Modifier.fillMaxSize(),
+						activeEffect = sendEffectState.activeEffect,
+						onFinishEffect = sendEffectState.clearEffect
+					)
+				}
+				
+				val scope = rememberCoroutineScope()
+				val attachmentsScrollState = rememberScrollState()
+				val captureMedia = rememberMediaCapture { file ->
+					viewModel.addQueuedFile(
+						LocalFile(
+							file = file,
+							fileName = file.name,
+							fileType = FileHelper.getMimeType(file),
+							fileSize = file.length(),
+							directoryID = AttachmentStorageHelper.dirNameDraftPrepare
 						)
 					)
-				}
-			}
-			
-			Box(modifier = Modifier.weight(1F)) {
-				val sendEffectState = rememberSendEffectPaneState()
-				
-				viewModel.conversation?.let { conversation ->
-					MessageList(
-						modifier = Modifier.fillMaxSize(),
-						conversation = conversation,
-						messages = viewModel.messages,
-						messageStateIndices = viewModel.messageStateIndices,
-						scrollState = scrollState,
-						onDownloadAttachment = { messageInfo, attachmentInfo ->
-							viewModel.downloadAttachment(connectionManager, messageInfo, attachmentInfo)
-						},
-						messageSelectionState = viewModel.messageSelectionState,
-						onLoadPastMessages = { viewModel.loadPastMessages() },
-						lazyLoadState = viewModel.lazyLoadState,
-						actionSuggestions = viewModel.conversationSuggestions.collectAsState(initial = listOf()).value,
-						onSelectActionSuggestion = { action ->
-							action.replyString?.let { message ->
-								viewModel.sendTextMessage(connectionManager, message)
-							}
-							
-							action.remoteAction?.let { remoteAction ->
-								try {
-									remoteAction.actionIntent.send()
-								} catch(exception: PendingIntent.CanceledException) {
-									exception.printStackTrace()
-								}
-							}
-						},
-						isPlayingEffect = sendEffectState.activeEffect != null,
-						onPlayEffect = sendEffectState.playEffect
-					)
-				}
-				
-				SendEffectPane(
-					modifier = Modifier.fillMaxSize(),
-					activeEffect = sendEffectState.activeEffect,
-					onFinishEffect = sendEffectState.clearEffect
-				)
-			}
-			
-			val scope = rememberCoroutineScope()
-			val attachmentsScrollState = rememberScrollState()
-			val captureMedia = rememberMediaCapture { file ->
-				viewModel.addQueuedFile(
-					LocalFile(
-						file = file,
-						fileName = file.name,
-						fileType = FileHelper.getMimeType(file),
-						fileSize = file.length(),
-						directoryID = AttachmentStorageHelper.dirNameDraftPrepare
-					)
-				)
-				
-				scope.launch {
-					attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
-				}
-			}
-			val requestMedia = rememberMediaRequest { uriList ->
-				if(uriList.isNotEmpty()) {
-					viewModel.addQueuedFileBlobs(uriList.map { ReadableBlobUri(it) })
 					
 					scope.launch {
 						attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
 					}
 				}
+				val requestMedia = rememberMediaRequest { uriList ->
+					if(uriList.isNotEmpty()) {
+						viewModel.addQueuedFileBlobs(uriList.map { ReadableBlobUri(it) })
+						
+						scope.launch {
+							attachmentsScrollState.animateScrollTo(Int.MAX_VALUE)
+						}
+					}
+				}
+				
+				MessageInputBar(
+					modifier = Modifier
+						.navigationBarsPadding()
+						.imePadding(),
+					messageText = viewModel.inputText,
+					onMessageTextChange = { viewModel.inputText = it },
+					attachments = viewModel.queuedFiles,
+					onRemoveAttachment = { attachment ->
+						viewModel.removeQueuedFile(attachment)
+					},
+					onAddAttachments = { attachments ->
+						viewModel.addQueuedFileBlobs(attachments)
+					},
+					attachmentsScrollState = attachmentsScrollState,
+					onSend = {
+						val messagePrepared = viewModel.submitInput(connectionManager)
+						if(messagePrepared) {
+							SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing)
+						}
+					},
+					onSendFile = { file ->
+						viewModel.submitFileDirect(connectionManager, file)
+					},
+					onTakePhoto = {
+						if(viewModel.conversation == null) return@MessageInputBar
+						
+						captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
+					},
+					onOpenContentPicker = {
+						scope.launch {
+							requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
+						}
+					},
+					collapseButtons = viewModel.collapseInputButtons,
+					onChangeCollapseButtons = { viewModel.collapseInputButtons = it },
+					serviceHandler = viewModel.conversation?.serviceHandler,
+					serviceType = viewModel.conversation?.serviceType,
+					floating = !isScrolledToBottom,
+					rounded = floatingPane
+				)
 			}
 			
-			MessageInputBar(
-				modifier = Modifier
-					.navigationBarsPadding()
-					.imePadding(),
-				messageText = viewModel.inputText,
-				onMessageTextChange = { viewModel.inputText = it },
-				attachments = viewModel.queuedFiles,
-				onRemoveAttachment = { attachment ->
-					viewModel.removeQueuedFile(attachment)
-				},
-				onAddAttachments = { attachments ->
-					viewModel.addQueuedFileBlobs(attachments)
-				},
-				attachmentsScrollState = attachmentsScrollState,
-				onSend = {
-					val messagePrepared = viewModel.submitInput(connectionManager)
-					if(messagePrepared) {
-						SoundHelper.playSound(viewModel.soundPool, viewModel.soundIDMessageOutgoing)
+			//Collect the tapback details of the selected messages
+			val selectedContentTapbacks: ImmutableHolder<Collection<TapbackInfo>> by remember {
+				derivedStateOf {
+					if(viewModel.messageSelectionState.size != 1) {
+						//Don't show anything if multiple messages are selected
+						emptyList<TapbackInfo>().wrapImmutableHolder()
+					} else {
+						(
+								selectedMessageData?.tapbacks
+									?: selectedAttachmentData?.tapbacks
+									?: emptyList()
+								).wrapImmutableHolder()
 					}
-				},
-				onSendFile = { file ->
-					viewModel.submitFileDirect(connectionManager, file)
-				},
-				onTakePhoto = {
-					if(viewModel.conversation == null) return@MessageInputBar
-					
-					captureMedia.requestCamera(MessagingMediaCaptureType.PHOTO)
-				},
-				onOpenContentPicker = {
-					scope.launch {
-						requestMedia.requestMedia(10 - viewModel.queuedFiles.size)
-					}
-				},
-				collapseButtons = viewModel.collapseInputButtons,
-				onChangeCollapseButtons = { viewModel.collapseInputButtons = it },
-				serviceHandler = viewModel.conversation?.serviceHandler,
-				serviceType = viewModel.conversation?.serviceType,
-				floating = !isScrolledToBottom,
-				rounded = floatingPane
-			)
-		}
-		
-		//Collect the tapback details of the selected messages
-		val selectedContentTapbacks: ImmutableHolder<Collection<TapbackInfo>> by remember {
-			derivedStateOf {
-				if(viewModel.messageSelectionState.size != 1) {
-					//Don't show anything if multiple messages are selected
-					emptyList<TapbackInfo>().wrapImmutableHolder()
-				} else {
-					(
-							selectedMessageData?.tapbacks
-								?: selectedAttachmentData?.tapbacks
-								?: emptyList()
-							).wrapImmutableHolder()
 				}
 			}
-		}
-		
-		//Show tapback details at the bottom of the screen
-		if(selectedContentTapbacks.item.isNotEmpty()) {
-			Popup(
-				popupPositionProvider = object : PopupPositionProvider {
-					override fun calculatePosition(
-						anchorBounds: IntRect,
-						windowSize: IntSize,
-						layoutDirection: LayoutDirection,
-						popupContentSize: IntSize
-					): IntOffset {
-						return IntOffset(0, windowSize.height)
-					}
-				},
-				properties = PopupProperties(
-					dismissOnBackPress = false,
-					dismissOnClickOutside = false,
-					excludeFromSystemGesture = false,
-					clippingEnabled = true
-				)
+			var selectedContentTapbacksCache by remember { mutableStateOf<ImmutableHolder<Collection<TapbackInfo>>>(emptyList<TapbackInfo>().wrapImmutableHolder()) }
+			LaunchedEffect(selectedContentTapbacks) {
+				if(selectedContentTapbacks.item.isNotEmpty()) {
+					selectedContentTapbacksCache = selectedContentTapbacks
+				}
+			}
+			
+			//Show tapback details at the bottom of the screen
+			AnimatedVisibility(
+				modifier = Modifier.align(Alignment.BottomCenter),
+				visible = selectedContentTapbacks.item.isNotEmpty(),
+				enter = slideInVertically(initialOffsetY = { height -> height }),
+				exit = slideOutVertically(targetOffsetY = { height -> height })
 			) {
 				TapbackDetailsPanel(
-					modifier = Modifier.padding(8.dp),
-					tapbacks = selectedContentTapbacks
+					modifier = Modifier
+						.widthIn(max = 512.dp)
+						.padding(8.dp)
+						.navigationBarsPadding(),
+					tapbacks = selectedContentTapbacksCache
 				)
 			}
 		}
