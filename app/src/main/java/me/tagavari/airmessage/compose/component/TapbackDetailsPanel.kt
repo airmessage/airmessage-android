@@ -26,7 +26,7 @@ import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.enums.TapbackType
 import me.tagavari.airmessage.helper.LanguageHelper
 import me.tagavari.airmessage.messaging.TapbackInfo
-import soup.compose.material.motion.MaterialSharedAxisX
+import soup.compose.material.motion.MaterialSharedAxisZ
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
@@ -57,7 +57,7 @@ fun TapbackDetailsPanel(
 		//Resolve the selected reaction group
 		val selectedReactionGroup = selectedTapbackType?.let { reactionGroupsMap[it] }
 		
-		MaterialSharedAxisX(
+		MaterialSharedAxisZ(
 			targetState = selectedReactionGroup,
 			forward = selectedReactionGroup != null
 		) { reactionGroup ->
