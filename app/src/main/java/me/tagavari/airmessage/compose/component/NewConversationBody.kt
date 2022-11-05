@@ -91,38 +91,10 @@ fun NewConversationBody(
 				
 				//Group contacts by first letter
 				val groupedContacts = remember(contactsState.contacts) {
-					val groupedContactsList = mutableListOf<ContactsListGroup>()
-					var activeGroup: Pair<Char, MutableList<ContactInfo>>? = null
-					
-					fun applyActiveGroup() {
-						val group = activeGroup ?: return
-						val contactsListGroup = ContactsListGroup(
-							key = group.first,
-							contacts = group.second
-						)
-						groupedContactsList.add(contactsListGroup)
-					}
-					
-					//Contacts are sorted in order, so we can iterate
-					//linearly and check for differences
-					val contactsList = contactsState.contacts
-					for(contact in contactsList) {
-						val contactKey = getNameHeader(contact.name)
-						
-						//If this contact is part of the same group, add it
-						if(activeGroup != null && activeGroup.first == contactKey) {
-							activeGroup.second.add(contact)
-						} else {
-							//Refresh the list
-							applyActiveGroup()
-							activeGroup = Pair(contactKey, mutableListOf(contact))
-						}
-					}
-					
-					//Add the last contact group
-					applyActiveGroup()
-					
-					return@remember groupedContactsList.toList()
+					contactsState.contacts
+						.groupBy { getNameHeader(it.name) }
+						.map { (key, contacts) -> ContactsListGroup(key, contacts) }
+						.sortedBy { it.key }
 				}
 				
 				Box(modifier = Modifier.fillMaxSize()) {
@@ -141,7 +113,6 @@ fun NewConversationBody(
 						
 						for(group in groupedContacts) {
 							//Show name headers between names that start with a different letter
-							println("Using key ${group.key} for group ${group.contacts.firstOrNull()?.name}")
 							item(
 								key = group.key
 							) {
