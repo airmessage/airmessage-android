@@ -24,12 +24,14 @@ import androidx.compose.material.icons.outlined.PhotoCamera
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.PointerEventTimeoutCancellationException
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -54,7 +56,7 @@ import me.tagavari.airmessage.messaging.QueuedFile
 private const val messageLengthButtonsCollapse = 16
 private const val messageLengthButtonsExpand = 12
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun MessageInputBarText(
 	messageText: String,
@@ -237,7 +239,6 @@ fun MessageInputBarText(
 					) */
 					
 					val context = LocalContext.current
-					MaterialTheme.typography.labelMedium.letterSpacing
 					val textColor = MaterialTheme.colorScheme.onSurface
 					val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
 					AndroidView(
@@ -300,6 +301,17 @@ fun MessageInputBarText(
 							)
 						}
 					)
+					
+					//Dismiss the software keyboard when the text field is unmounted
+					val keyboardController = LocalSoftwareKeyboardController.current
+					val currentInputFieldHasFocus by rememberUpdatedState(inputFieldFocus)
+					DisposableEffect(Unit) {
+						onDispose {
+							if(currentInputFieldHasFocus) {
+								keyboardController?.hide()
+							}
+						}
+					}
 					
 					//Send button
 					CompositionLocalProvider(
