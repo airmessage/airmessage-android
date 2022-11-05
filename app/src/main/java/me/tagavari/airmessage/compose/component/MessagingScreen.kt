@@ -532,42 +532,44 @@ fun MessagingScreen(
 				)
 			}
 			
-			//Collect the tapback details of the selected messages
-			val selectedContentTapbacks: ImmutableHolder<Collection<TapbackInfo>> by remember {
-				derivedStateOf {
-					if(viewModel.messageSelectionState.size != 1) {
-						//Don't show anything if multiple messages are selected
-						emptyList<TapbackInfo>().wrapImmutableHolder()
-					} else {
-						(
-								selectedMessageData?.tapbacks
-									?: selectedAttachmentData?.tapbacks
-									?: emptyList()
-								).wrapImmutableHolder()
+			if(viewModel.conversation?.isGroupChat == true) {
+				//Collect the tapback details of the selected messages
+				val selectedContentTapbacks: ImmutableHolder<Collection<TapbackInfo>> by remember {
+					derivedStateOf {
+						if(viewModel.messageSelectionState.size != 1) {
+							//Don't show anything if multiple messages are selected
+							emptyList<TapbackInfo>().wrapImmutableHolder()
+						} else {
+							(
+									selectedMessageData?.tapbacks
+										?: selectedAttachmentData?.tapbacks
+										?: emptyList()
+									).wrapImmutableHolder()
+						}
 					}
 				}
-			}
-			var selectedContentTapbacksCache by remember { mutableStateOf<ImmutableHolder<Collection<TapbackInfo>>>(emptyList<TapbackInfo>().wrapImmutableHolder()) }
-			LaunchedEffect(selectedContentTapbacks) {
-				if(selectedContentTapbacks.item.isNotEmpty()) {
-					selectedContentTapbacksCache = selectedContentTapbacks
+				var selectedContentTapbacksCache by remember { mutableStateOf<ImmutableHolder<Collection<TapbackInfo>>>(emptyList<TapbackInfo>().wrapImmutableHolder()) }
+				LaunchedEffect(selectedContentTapbacks) {
+					if(selectedContentTapbacks.item.isNotEmpty()) {
+						selectedContentTapbacksCache = selectedContentTapbacks
+					}
 				}
-			}
-			
-			//Show tapback details at the bottom of the screen
-			AnimatedVisibility(
-				modifier = Modifier.align(Alignment.BottomCenter),
-				visible = selectedContentTapbacks.item.isNotEmpty(),
-				enter = slideInVertically(initialOffsetY = { height -> height }),
-				exit = slideOutVertically(targetOffsetY = { height -> height })
-			) {
-				TapbackDetailsPanel(
-					modifier = Modifier
-						.widthIn(max = 512.dp)
-						.padding(8.dp)
-						.navigationBarsPadding(),
-					tapbacks = selectedContentTapbacksCache
-				)
+				
+				//Show tapback details at the bottom of the screen
+				AnimatedVisibility(
+					modifier = Modifier.align(Alignment.BottomCenter),
+					visible = selectedContentTapbacks.item.isNotEmpty(),
+					enter = slideInVertically(initialOffsetY = { height -> height }),
+					exit = slideOutVertically(targetOffsetY = { height -> height })
+				) {
+					TapbackDetailsPanel(
+						modifier = Modifier
+							.widthIn(max = 512.dp)
+							.padding(8.dp)
+							.navigationBarsPadding(),
+						tapbacks = selectedContentTapbacksCache
+					)
+				}
 			}
 		}
 	}
