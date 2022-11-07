@@ -4,6 +4,7 @@ import android.webkit.URLUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
+import java.io.IOException
 import java.net.URI
 import java.net.URISyntaxException
 
@@ -11,11 +12,17 @@ import java.net.URISyntaxException
  * Fetches rich link preview data for a given URL,
  * or throws an error if the operation failed
  */
+@Throws(IOException::class)
 suspend fun fetchRichMetadata(url: String): RichLinkPreview {
 	val document = withContext(Dispatchers.IO) {
-		Jsoup.connect(url)
-			.timeout(15 * 1000)
-			.get()
+		try {
+			Jsoup.connect(url)
+				.timeout(15 * 1000)
+				.get()
+		} catch(exception: IllegalArgumentException) {
+			//IllegalArgumentException is thrown for malformed URLs
+			throw IOException(exception)
+		}
 	}
 	
 	//Find meta elements
