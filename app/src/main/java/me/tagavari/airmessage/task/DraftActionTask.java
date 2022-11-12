@@ -56,7 +56,7 @@ public class DraftActionTask {
 		}).subscribeOn(Schedulers.single()).observeOn(Schedulers.io()).doOnSuccess(draft -> {
 			//Copying and compressing the file
 			copyCompressStreamToFile(linkedFile.getFile().map(ReadableBlobFile::new, ReadableBlobUri::new), linkedFile.getFileSize(), linkedFile.getFileType(), draft.getFile(), compressionTarget);
-		}).doOnTerminate(() -> {
+		}).doFinally(() -> {
 			//Deleting the source file
 			if(isDraftPrepare && linkedFile.getFile().isA()) {
 				AttachmentStorageHelper.deleteContentFile(AttachmentStorageHelper.dirNameDraftPrepare, linkedFile.getFile().getA());

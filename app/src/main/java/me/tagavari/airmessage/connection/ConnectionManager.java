@@ -1359,7 +1359,7 @@ public class ConnectionManager {
 		//Returning the subject with a timeout
 		return faceTimeLinkSubject.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Single.error(error))
 				.observeOn(AndroidSchedulers.mainThread())
-				.doOnTerminate(() -> faceTimeLinkSubject = null);
+				.doFinally(() -> faceTimeLinkSubject = null);
 	}
 	
 	/**
@@ -1388,7 +1388,7 @@ public class ConnectionManager {
 		//Returning the subject with a timeout
 		return faceTimeInitiateSubject.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Completable.error(error))
 				.observeOn(AndroidSchedulers.mainThread())
-				.doOnTerminate(() -> faceTimeInitiateSubject = null);
+				.doFinally(() -> faceTimeInitiateSubject = null);
 	}
 	
 	/**
@@ -1454,7 +1454,7 @@ public class ConnectionManager {
 			//Emitting an update
 			ReduxEmitterNetwork.getMassRetrievalUpdateSubject().onNext(new ReduxEventMassRetrieval.Error(requestID, errorCode));
 			Log.w(TAG, "Mass retrieval failed", observableError);
-		}).doOnTerminate(() -> {
+		}).doFinally(() -> {
 			//Updating the mass retrieval state
 			isMassRetrievalInProgress = false;
 		});
@@ -1463,19 +1463,19 @@ public class ConnectionManager {
 	private CompletableTransformer composeTimeoutIDCompletable(short requestID, Throwable throwable) {
 		return completable -> completable.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Completable.error(throwable))
 				.observeOn(AndroidSchedulers.mainThread())
-				.doOnTerminate(() -> idRequestSubjectMap.remove(requestID));
+				.doFinally(() -> idRequestSubjectMap.remove(requestID));
 	}
 	
 	private <T> SingleTransformer<T, T> composeTimeoutIDSingle(short requestID, Throwable throwable) {
 		return single -> single.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Single.error(throwable))
 				.observeOn(AndroidSchedulers.mainThread())
-				.doOnTerminate(() -> idRequestSubjectMap.remove(requestID));
+				.doFinally(() -> idRequestSubjectMap.remove(requestID));
 	}
 	
 	private <T> ObservableTransformer<T, T> composeTimeoutIDObservable(short requestID, Throwable throwable) {
 		return observable -> observable.timeout(requestTimeoutSeconds, TimeUnit.SECONDS, Observable.error(throwable))
 				.observeOn(AndroidSchedulers.mainThread())
-				.doOnTerminate(() -> idRequestSubjectMap.remove(requestID));
+				.doFinally(() -> idRequestSubjectMap.remove(requestID));
 	}
 	
 	/**
