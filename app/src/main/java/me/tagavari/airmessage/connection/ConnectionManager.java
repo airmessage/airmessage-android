@@ -192,8 +192,8 @@ public class ConnectionManager {
 		
 		//Loading pending conversations from the database
 		Single.fromCallable(() -> DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationState.incompleteServer))
-				.observeOn(Schedulers.single())
-				.subscribeOn(AndroidSchedulers.mainThread())
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
 				.doOnSuccess(conversations -> {
 					for(ConversationInfo conversation : conversations) {
 						pendingConversations.put(conversation.getGUID(), conversation);
