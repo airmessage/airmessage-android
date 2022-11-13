@@ -21,9 +21,7 @@ object FirebaseAuthBridge {
 	 * Signs out the currently signed-in user
 	 */
 	@Suppress("UNUSED_PARAMETER", "RedundantSuspendModifier")
-	suspend fun signOut(context: Context) {
-		throw UnsupportedOperationException()
-	}
+	suspend fun signOut(context: Context) = Unit
 	
 	/**
 	 * Handles the Google sign-in flow
