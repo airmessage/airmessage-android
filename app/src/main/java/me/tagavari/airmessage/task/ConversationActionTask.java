@@ -5,6 +5,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers;
 import io.reactivex.rxjava3.annotations.CheckReturnValue;
 import io.reactivex.rxjava3.annotations.Nullable;
 import io.reactivex.rxjava3.core.Completable;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.activity.Preferences;
 import me.tagavari.airmessage.data.DatabaseManager;
 import me.tagavari.airmessage.enums.ServiceHandler;
@@ -28,10 +29,13 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable unreadConversations(Collection<Long> conversationIDs, int unreadCount) {
 		return Completable.fromAction(() -> {
-			for(long conversationID : conversationIDs) DatabaseManager.getInstance().setUnreadMessageCount(conversationID, unreadCount);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			for(long conversationID : conversationIDs) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationUnread(conversationID, unreadCount));
-		});
+					for(long conversationID : conversationIDs) DatabaseManager.getInstance().setUnreadMessageCount(conversationID, unreadCount);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					for(long conversationID : conversationIDs) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationUnread(conversationID, unreadCount));
+				});
 	}
 	
 	/**
@@ -43,10 +47,13 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable muteConversations(Collection<Long> conversationIDs, boolean mute) {
 		return Completable.fromAction(() -> {
-			for(long conversationID : conversationIDs) DatabaseManager.getInstance().updateConversationMuted(conversationID, mute);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			for(long conversationID : conversationIDs) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationMute(conversationID, mute));
-		});
+					for(long conversationID : conversationIDs) DatabaseManager.getInstance().updateConversationMuted(conversationID, mute);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					for(long conversationID : conversationIDs) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationMute(conversationID, mute));
+				});
 	}
 	
 	/**
@@ -58,10 +65,13 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable archiveConversations(Collection<Long> conversationIDs, boolean archive) {
 		return Completable.fromAction(() -> {
-			for(long conversationID : conversationIDs) DatabaseManager.getInstance().updateConversationArchived(conversationID, archive);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			for(long conversationID : conversationIDs) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationArchive(conversationID, archive));
-		});
+					for(long conversationID : conversationIDs) DatabaseManager.getInstance().updateConversationArchived(conversationID, archive);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					for(long conversationID : conversationIDs) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationArchive(conversationID, archive));
+				});
 	}
 	
 	/**
@@ -72,18 +82,21 @@ public class ConversationActionTask {
 		List<ConversationInfo> clonedConversations = conversations.stream().map(ConversationInfo::clone).collect(Collectors.toList());
 		
 		return Completable.fromAction(() -> {
-			for(ConversationInfo conversationInfo : clonedConversations) {
-				//Delete the conversation from AirMessage's database
-				DatabaseManager.getInstance().deleteConversation(context, conversationInfo.getLocalID());
-				
-				//Deleting the conversation from the external database
-				if(conversationInfo.getServiceHandler() == ServiceHandler.systemMessaging && Preferences.isTextMessageIntegrationActive(context)) {
-					MMSSMSHelper.deleteConversation(context, conversationInfo.getExternalID());
-				}
-			}
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			for(ConversationInfo conversationInfo : conversations) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDelete(conversationInfo.getLocalID()));
-		});
+					for(ConversationInfo conversationInfo : clonedConversations) {
+						//Delete the conversation from AirMessage's database
+						DatabaseManager.getInstance().deleteConversation(context, conversationInfo.getLocalID());
+						
+						//Deleting the conversation from the external database
+						if(conversationInfo.getServiceHandler() == ServiceHandler.systemMessaging && Preferences.isTextMessageIntegrationActive(context)) {
+							MMSSMSHelper.deleteConversation(context, conversationInfo.getExternalID());
+						}
+					}
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					for(ConversationInfo conversationInfo : conversations) ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDelete(conversationInfo.getLocalID()));
+				});
 	}
 	
 	/**
@@ -96,10 +109,13 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable setConversationDraft(long conversationID, @Nullable String draftMessage, long updateTime) {
 		return Completable.fromAction(() -> {
-			DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, draftMessage, updateTime);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDraftMessageUpdate(conversationID, draftMessage, updateTime));
-		});
+					DatabaseManager.getInstance().updateConversationDraftMessage(conversationID, draftMessage, updateTime);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationDraftMessageUpdate(conversationID, draftMessage, updateTime));
+				});
 	}
 	
 	/**
@@ -111,10 +127,13 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable setConversationColor(long conversationID, int color) {
 		return Completable.fromAction(() -> {
-			DatabaseManager.getInstance().updateConversationColor(conversationID, color);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationColor(conversationID, color));
-		});
+					DatabaseManager.getInstance().updateConversationColor(conversationID, color);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationColor(conversationID, color));
+				});
 	}
 	
 	/**
@@ -126,10 +145,13 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable setConversationMemberColor(long conversationID, MemberInfo memberInfo, int color) {
 		return Completable.fromAction(() -> {
-			DatabaseManager.getInstance().updateMemberColor(conversationID, memberInfo.getAddress(), color);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationMemberColor(conversationID, memberInfo, color));
-		});
+					DatabaseManager.getInstance().updateMemberColor(conversationID, memberInfo.getAddress(), color);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationMemberColor(conversationID, memberInfo, color));
+				});
 	}
 	
 	/**
@@ -141,9 +163,12 @@ public class ConversationActionTask {
 	@CheckReturnValue
 	public static Completable setConversationTitle(long conversationID, @Nullable String title) {
 		return Completable.fromAction(() -> {
-			DatabaseManager.getInstance().updateConversationTitle(conversationID, title);
-		}).observeOn(AndroidSchedulers.mainThread()).doOnComplete(() -> {
-			ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationTitle(conversationID, title));
-		});
+					DatabaseManager.getInstance().updateConversationTitle(conversationID, title);
+				})
+				.subscribeOn(Schedulers.single())
+				.observeOn(AndroidSchedulers.mainThread())
+				.doOnComplete(() -> {
+					ReduxEmitterNetwork.getMessageUpdateSubject().onNext(new ReduxEventMessaging.ConversationTitle(conversationID, title));
+				});
 	}
 }
