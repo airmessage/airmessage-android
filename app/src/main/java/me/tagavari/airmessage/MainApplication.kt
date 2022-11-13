@@ -38,10 +38,7 @@ import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.flavor.MapsBridge
 import me.tagavari.airmessage.helper.NotificationHelper
 import me.tagavari.airmessage.helper.ThemeHelper
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxReceiverFaceTime
-import me.tagavari.airmessage.redux.ReduxReceiverNotification
-import me.tagavari.airmessage.redux.ReduxReceiverShortcut
+import me.tagavari.airmessage.redux.*
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.PrintWriter
@@ -177,6 +174,18 @@ class MainApplication : Application(), ImageLoaderFactory {
 		//Enable WebView debugging
 		if(BuildConfig.DEBUG) {
 			WebView.setWebContentsDebuggingEnabled(true)
+		}
+		
+		//Log mass retrieval changes
+		ReduxEmitterNetwork.massRetrievalUpdateSubject.subscribe { event ->
+			when(event) {
+				is ReduxEventMassRetrieval.Start ->
+					CrashlyticsBridge.log("Mass retrieval ID ${event.requestID} started")
+				is ReduxEventMassRetrieval.Complete ->
+					CrashlyticsBridge.log("Mass retrieval ID ${event.requestID} completed")
+				is ReduxEventMassRetrieval.Error ->
+					CrashlyticsBridge.log("Mass retrieval ID ${event.requestID} error: ${event.code}")
+			}
 		}
 	}
 	
