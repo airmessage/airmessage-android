@@ -191,14 +191,16 @@ public class ConnectionManager {
 		context.registerReceiver(backgroundReconnectBroadcastReceiver, new IntentFilter(intentActionBackgroundReconnect));
 		
 		//Loading pending conversations from the database
-		Single.fromCallable(() -> DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationState.incompleteServer))
-				.subscribeOn(Schedulers.single())
-				.observeOn(AndroidSchedulers.mainThread())
-				.doOnSuccess(conversations -> {
-					for(ConversationInfo conversation : conversations) {
-						pendingConversations.put(conversation.getGUID(), conversation);
-					}
-				}).subscribe();
+		compositeDisposable.add(
+				Single.fromCallable(() -> DatabaseManager.getInstance().fetchConversationsWithState(context, ConversationState.incompleteServer))
+						.subscribeOn(Schedulers.single())
+						.observeOn(AndroidSchedulers.mainThread())
+						.doOnSuccess(conversations -> {
+							for(ConversationInfo conversation : conversations) {
+								pendingConversations.put(conversation.getGUID(), conversation);
+							}
+						}).subscribe()
+		);
 	}
 	
 	/**
