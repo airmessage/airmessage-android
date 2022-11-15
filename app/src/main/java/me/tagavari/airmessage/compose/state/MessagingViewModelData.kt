@@ -625,9 +625,9 @@ class MessagingViewModelData(
 				DatabaseManager.getInstance().clearDraftReferences(conversation.localID)
 				DatabaseManager.getInstance().updateConversationDraftMessage(conversation.localID, null, -1)
 			}
-			
-			ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation.localID))
 		}
+		
+		ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation.localID))
 		
 		//Clear input
 		inputText = ""

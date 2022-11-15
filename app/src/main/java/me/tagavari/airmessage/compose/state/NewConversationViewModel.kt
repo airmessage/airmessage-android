@@ -270,7 +270,9 @@ class NewConversationViewModel(
 				
 				//Notify listeners of the new conversation
 				if(isConversationNew) {
-					messageUpdateSubject.onNext(ConversationUpdate(mapOf(conversation to listOf()), listOf()))
+					withContext(Dispatchers.Main) {
+						messageUpdateSubject.onNext(ConversationUpdate(mapOf(conversation to listOf()), listOf()))
+					}
 				}
 				
 				//Launch the conversation
