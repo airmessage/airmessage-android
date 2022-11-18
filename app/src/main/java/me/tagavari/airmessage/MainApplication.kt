@@ -176,7 +176,21 @@ class MainApplication : Application(), ImageLoaderFactory {
 			WebView.setWebContentsDebuggingEnabled(true)
 		}
 		
-		//Log mass retrieval changes
+		//Log message events
+		ReduxEmitterNetwork.messageUpdateSubject.subscribe { event ->
+			CrashlyticsBridge.log("Received message update ${event::class.qualifiedName}")
+		}
+		ReduxEmitterNetwork.connectionStateSubject.subscribe { event ->
+			when(event) {
+				is ReduxEventConnection.Connected ->
+					CrashlyticsBridge.log("Changed connection state to connected")
+				is ReduxEventConnection.Connecting ->
+					CrashlyticsBridge.log("Changed connection state to connecting")
+				is ReduxEventConnection.Disconnected ->
+					CrashlyticsBridge.log("Changed connection state to disconnected (code ${event.code})")
+			}
+			CrashlyticsBridge.log("Received message update ${event::class.qualifiedName}")
+		}
 		ReduxEmitterNetwork.massRetrievalUpdateSubject.subscribe { event ->
 			when(event) {
 				is ReduxEventMassRetrieval.Start ->
