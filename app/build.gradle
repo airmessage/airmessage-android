@@ -179,7 +179,7 @@ dependencies {
 	androidTestImplementation "androidx.compose.ui:ui-test-junit4"
 
 	//Accompanist
-	implementation "com.google.accompanist:accompanist-flowlayout:0.27.0"
+	implementation "com.google.accompanist:accompanist-flowlayout:0.27.1"
 	
 	//Material motion
 	implementation "io.github.fornewid:material-motion-compose-core:0.10.3"
