@@ -4,7 +4,7 @@ import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.common.helper.NotificationHelper;
 
 //Broadcast receiver for handling the dismissal of message notifications
 public class MessageNotificationDeleteReceiver extends BroadcastReceiver {

@@ -3,7 +3,7 @@ package me.tagavari.airmessage.messaging.viewholder
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import me.tagavari.airmessage.util.DisposableViewHolder
+import me.tagavari.airmessage.common.util.DisposableViewHolder
 
 /**
  * A view holder that contains a conversation title and an icon

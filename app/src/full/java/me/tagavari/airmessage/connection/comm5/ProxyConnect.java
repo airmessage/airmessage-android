@@ -15,21 +15,10 @@ import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.GetTokenResult;
 import com.google.firebase.messaging.FirebaseMessaging;
-import io.reactivex.rxjava3.core.Scheduler;
-import io.reactivex.rxjava3.core.Single;
-import io.reactivex.rxjava3.schedulers.Schedulers;
-import me.tagavari.airmessage.BuildConfig;
-import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.connection.encryption.EncryptionAES;
-import me.tagavari.airmessage.connection.encryption.EncryptionManager;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
-import me.tagavari.airmessage.util.ConnectionParams;
 
 import org.java_websocket.WebSocket;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.exceptions.InvalidDataException;
-import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.CloseFrame;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.handshake.ServerHandshake;
@@ -54,19 +43,23 @@ import javax.net.ssl.SSLPeerUnverifiedException;
 import javax.net.ssl.SSLSession;
 import javax.net.ssl.SSLSocket;
 
+import io.reactivex.rxjava3.core.Scheduler;
+import io.reactivex.rxjava3.core.Single;
+import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.BuildConfig;
-import me.tagavari.airmessage.connection.DataProxy;
-import me.tagavari.airmessage.connection.encryption.EncryptionAES;
-import me.tagavari.airmessage.connection.encryption.EncryptionManager;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.common.connection.DataProxy;
+import me.tagavari.airmessage.common.connection.comm5.EncryptedPacket;
+import me.tagavari.airmessage.common.connection.encryption.EncryptionAES;
+import me.tagavari.airmessage.common.connection.encryption.EncryptionManager;
+import me.tagavari.airmessage.common.data.SharedPreferencesManager;
+import me.tagavari.airmessage.common.enums.ConnectionErrorCode;
+import me.tagavari.airmessage.common.util.ConnectionParams;
 import me.tagavari.airmessage.flavor.CrashlyticsBridge;
-import me.tagavari.airmessage.util.ConnectionParams;
 
 /**
  * Handles connecting via WebSocket to AirMessage's Connect servers
  */
-class ProxyConnect extends DataProxy<EncryptedPacket> {
+public class ProxyConnect extends DataProxy<EncryptedPacket> {
 	//Creating the constants
 	private static final String TAG = ProxyConnect.class.getSimpleName();
 	

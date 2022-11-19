@@ -4,7 +4,7 @@ import android.annotation.SuppressLint
 import android.app.Activity
 import android.app.PendingIntent
 import android.content.IntentSender
-import me.tagavari.airmessage.helper.AndroidLocationHelper
+import me.tagavari.airmessage.common.helper.AndroidLocationHelper
 
 //Stub implementation of GMS' ResolvableApiException
 @Suppress("UNUSED", "UNUSED_PARAMETER")

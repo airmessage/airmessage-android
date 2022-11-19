@@ -5,7 +5,7 @@ import org.junit.Test;
 import java.io.IOException;
 import java.util.Random;
 
-import me.tagavari.airmessage.helper.StandardCompressionHelper;
+import me.tagavari.airmessage.common.helper.StandardCompressionHelper;
 
 import static com.google.common.truth.Truth.assertThat;
 

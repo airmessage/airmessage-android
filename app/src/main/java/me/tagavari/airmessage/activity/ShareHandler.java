@@ -30,16 +30,15 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.compose.ConversationsCompose;
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity;
-import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.ShortcutHelper;
-import me.tagavari.airmessage.messaging.ConversationInfo;
+import me.tagavari.airmessage.common.data.DatabaseManager;
+import me.tagavari.airmessage.common.data.SharedPreferencesManager;
+import me.tagavari.airmessage.common.helper.ResourceHelper;
+import me.tagavari.airmessage.common.helper.ShortcutHelper;
+import me.tagavari.airmessage.common.messaging.ConversationInfo;
 import me.tagavari.airmessage.messaging.viewbinder.VBConversation;
 import me.tagavari.airmessage.messaging.viewholder.VHConversationBase;
-import me.tagavari.airmessage.util.DisposableViewHolder;
+import me.tagavari.airmessage.common.util.DisposableViewHolder;
 
 public class ShareHandler extends AppCompatCompositeActivity {
 	//Creating the view model value

@@ -9,15 +9,15 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import kotlin.Pair;
-import me.tagavari.airmessage.constants.SMSReceiverConstants;
-import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
-import me.tagavari.airmessage.helper.NotificationHelper;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.ConversationItem;
-import me.tagavari.airmessage.messaging.MessageInfo;
-import me.tagavari.airmessage.task.MessageActionTask;
+import me.tagavari.airmessage.common.constants.SMSReceiverConstants;
+import me.tagavari.airmessage.common.data.DatabaseManager;
+import me.tagavari.airmessage.common.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.common.enums.MessageState;
+import me.tagavari.airmessage.common.helper.NotificationHelper;
+import me.tagavari.airmessage.common.messaging.ConversationInfo;
+import me.tagavari.airmessage.common.messaging.ConversationItem;
+import me.tagavari.airmessage.common.messaging.MessageInfo;
+import me.tagavari.airmessage.common.task.MessageActionTask;
 
 public class TextSMSDeliveredReceiver extends DeliveredReceiver {
 	@Override

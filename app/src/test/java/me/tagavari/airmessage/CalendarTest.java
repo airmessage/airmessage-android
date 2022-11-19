@@ -4,8 +4,8 @@ import org.junit.Test;
 
 import java.util.Calendar;
 
-import me.tagavari.airmessage.helper.AddressHelper;
-import me.tagavari.airmessage.helper.CalendarHelper;
+import me.tagavari.airmessage.common.helper.AddressHelper;
+import me.tagavari.airmessage.common.helper.CalendarHelper;
 
 import static com.google.common.truth.Truth.assertThat;
 

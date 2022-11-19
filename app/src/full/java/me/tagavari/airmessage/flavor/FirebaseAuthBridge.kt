@@ -18,7 +18,7 @@ import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.compose.util.findActivity
+import me.tagavari.airmessage.common.compose.util.findActivity
 
 object FirebaseAuthBridge {
 	/**

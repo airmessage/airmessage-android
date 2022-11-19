@@ -24,9 +24,9 @@ import com.google.maps.android.ktx.awaitMap
 import kotlinx.coroutines.launch
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
-import me.tagavari.airmessage.compose.component.MessageBubbleLocationContentGeocoder
-import me.tagavari.airmessage.compose.ui.theme.isAppDarkTheme
-import me.tagavari.airmessage.util.LatLngInfo
+import me.tagavari.airmessage.common.compose.component.MessageBubbleLocationContentGeocoder
+import me.tagavari.airmessage.common.compose.ui.theme.isAppDarkTheme
+import me.tagavari.airmessage.common.util.LatLngInfo
 
 /**
  * A component that displays a map view for a given position.

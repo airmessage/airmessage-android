@@ -4,7 +4,6 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.Bundle;
 import android.text.method.ScrollingMovementMethod;
 import android.view.View;
@@ -13,11 +12,9 @@ import android.widget.Toast;
 
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.compose.ConversationsCompose;
-import me.tagavari.airmessage.helper.ExternalStorageHelper;
+import me.tagavari.airmessage.common.helper.ExternalStorageHelper;
 
 public class CrashReport extends AppCompatActivity {
 	//Creating the constants

@@ -11,12 +11,12 @@ import io.reactivex.rxjava3.core.Single;
 import io.reactivex.rxjava3.core.SingleEmitter;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import kotlin.Triple;
-import me.tagavari.airmessage.enums.MessageSendErrorCode;
-import me.tagavari.airmessage.enums.MessageState;
-import me.tagavari.airmessage.helper.AddressHelper;
-import me.tagavari.airmessage.helper.MMSSMSHelper;
-import me.tagavari.airmessage.messaging.ConversationInfo;
-import me.tagavari.airmessage.messaging.MessageInfo;
+import me.tagavari.airmessage.common.enums.MessageSendErrorCode;
+import me.tagavari.airmessage.common.enums.MessageState;
+import me.tagavari.airmessage.common.helper.AddressHelper;
+import me.tagavari.airmessage.common.helper.MMSSMSHelper;
+import me.tagavari.airmessage.common.messaging.ConversationInfo;
+import me.tagavari.airmessage.common.messaging.MessageInfo;
 
 import java.util.ArrayList;
 import java.util.Collections;

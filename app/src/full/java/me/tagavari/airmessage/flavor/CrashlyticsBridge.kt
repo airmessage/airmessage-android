@@ -3,7 +3,8 @@ package me.tagavari.airmessage.flavor
 import android.content.Context
 import android.util.Log
 import com.google.firebase.crashlytics.FirebaseCrashlytics
-import me.tagavari.airmessage.data.SharedPreferencesManager
+import me.tagavari.airmessage.common.data.SharedPreferencesManager
+import me.tagavari.airmessage.common.enums.ProxyType
 
 object CrashlyticsBridge {
 	private val TAG = CrashlyticsBridge::class.java.simpleName
@@ -17,7 +18,7 @@ object CrashlyticsBridge {
 		FirebaseCrashlytics.getInstance().setCrashlyticsCollectionEnabled(!me.tagavari.airmessage.BuildConfig.DEBUG)
 		
 		if(SharedPreferencesManager.isConnectionConfigured(context)) {
-			FirebaseCrashlytics.getInstance().setCustomKey("proxy_type", if(SharedPreferencesManager.getProxyType(context) == me.tagavari.airmessage.enums.ProxyType.direct) "direct" else "connect")
+			FirebaseCrashlytics.getInstance().setCustomKey("proxy_type", if(SharedPreferencesManager.getProxyType(context) == ProxyType.direct) "direct" else "connect")
 		}
 	}
 	

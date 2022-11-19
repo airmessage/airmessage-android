@@ -6,11 +6,11 @@ import androidx.work.WorkerParameters
 import androidx.work.rxjava3.RxWorker
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.core.Single
-import me.tagavari.airmessage.data.DatabaseManager
-import me.tagavari.airmessage.data.SharedPreferencesManager
-import me.tagavari.airmessage.enums.ServiceHandler
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxEventMessaging
+import me.tagavari.airmessage.common.data.DatabaseManager
+import me.tagavari.airmessage.common.data.SharedPreferencesManager
+import me.tagavari.airmessage.common.enums.ServiceHandler
+import me.tagavari.airmessage.common.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.common.redux.ReduxEventMessaging
 
 class SystemMessageCleanupWorker(appContext: Context, workerParams: WorkerParameters): RxWorker(appContext, workerParams) {
     override fun createWork(): Single<Result> {

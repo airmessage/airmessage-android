@@ -29,14 +29,14 @@ import me.tagavari.airmessage.R
 import me.tagavari.airmessage.composite.AppCompatCompositeActivity
 import me.tagavari.airmessage.compositeplugin.PluginConnectionService
 import me.tagavari.airmessage.compositeplugin.PluginRXDisposable
-import me.tagavari.airmessage.connection.exception.AMRemoteUpdateException
-import me.tagavari.airmessage.constants.VersionConstants
-import me.tagavari.airmessage.helper.VersionHelper
-import me.tagavari.airmessage.helper.getParcelableExtraCompat
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxEventConnection
-import me.tagavari.airmessage.redux.ReduxEventRemoteUpdate
-import me.tagavari.airmessage.util.ServerUpdateData
+import me.tagavari.airmessage.common.connection.exception.AMRemoteUpdateException
+import me.tagavari.airmessage.common.constants.VersionConstants
+import me.tagavari.airmessage.common.helper.VersionHelper
+import me.tagavari.airmessage.common.helper.getParcelableExtraCompat
+import me.tagavari.airmessage.common.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.common.redux.ReduxEventConnection
+import me.tagavari.airmessage.common.redux.ReduxEventRemoteUpdate
+import me.tagavari.airmessage.common.util.ServerUpdateData
 import org.commonmark.parser.Parser
 import org.commonmark.renderer.html.HtmlRenderer
 

@@ -1,8 +1,9 @@
 package me.tagavari.airmessage.connection.comm5
 
 import android.content.Context
-import me.tagavari.airmessage.connection.DataProxy
-import me.tagavari.airmessage.util.ConnectionParams
+import me.tagavari.airmessage.common.connection.DataProxy
+import me.tagavari.airmessage.common.connection.comm5.EncryptedPacket
+import me.tagavari.airmessage.common.util.ConnectionParams
 
 class ProxyConnect: DataProxy<EncryptedPacket>() {
 	override fun start(context: Context, override: ConnectionParams?) = Unit

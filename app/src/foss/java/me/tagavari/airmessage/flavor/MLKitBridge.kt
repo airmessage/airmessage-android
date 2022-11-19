@@ -2,7 +2,7 @@ package me.tagavari.airmessage.flavor
 
 import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Single
-import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.common.messaging.MessageInfo
 
 object MLKitBridge {
 	const val isSupported = false

@@ -1,0 +1,26 @@
+package me.tagavari.airmessage.common.util
+
+import me.tagavari.airmessage.common.messaging.ConversationInfo
+import me.tagavari.airmessage.common.redux.ReduxEmitterNetwork
+import me.tagavari.airmessage.common.redux.ReduxEventMessaging
+import me.tagavari.airmessage.common.redux.ReduxEventMessaging.ConversationArchive
+import me.tagavari.airmessage.common.redux.ReduxEventMessaging.ConversationUnread
+
+/**
+ * Represents an update to a conversation due to an incoming message update
+ * The conversation may be unarchived due to the incoming message, and will have its unread count incremented
+ */
+class ConversationValueUpdateResult(private val isUnarchived: Boolean, private val unreadIncrement: Int) {
+	fun getEvents(conversationInfo: ConversationInfo): List<ReduxEventMessaging> {
+		val events = mutableListOf<ReduxEventMessaging>()
+		if(isUnarchived) events.add(ConversationArchive(conversationInfo.localID, false))
+		if(unreadIncrement > 0) events.add(ConversationUnread(conversationInfo.localID, conversationInfo.unreadMessageCount + unreadIncrement))
+		return events
+	}
+	
+	fun emitUpdate(conversationInfo: ConversationInfo) {
+		//Emitting updates
+		if(isUnarchived) ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationArchive(conversationInfo.localID, false))
+		if(unreadIncrement > 0) ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationUnread(conversationInfo.localID, conversationInfo.unreadMessageCount + unreadIncrement))
+	}
+}

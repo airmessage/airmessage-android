@@ -13,7 +13,7 @@ import androidx.work.OneTimeWorkRequest;
 import androidx.work.WorkManager;
 
 import me.tagavari.airmessage.activity.Preferences;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
+import me.tagavari.airmessage.common.data.SharedPreferencesManager;
 import me.tagavari.airmessage.service.SystemMessageImportService;
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker;
 

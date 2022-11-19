@@ -18,16 +18,16 @@ import io.reactivex.rxjava3.core.Completable
 import io.reactivex.rxjava3.core.Observable
 import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
-import me.tagavari.airmessage.data.UserCacheHelper
-import me.tagavari.airmessage.helper.ConversationBuildHelper.buildConversationTitle
-import me.tagavari.airmessage.helper.ConversationBuildHelper.buildConversationTitleDirect
-import me.tagavari.airmessage.helper.LanguageHelper.getLastUpdateStatusTime
-import me.tagavari.airmessage.helper.LanguageHelper.intToFormattedString
-import me.tagavari.airmessage.helper.ResourceHelper.resolveColorAttr
-import me.tagavari.airmessage.messaging.ConversationInfo
-import me.tagavari.airmessage.messaging.ConversationPreview
-import me.tagavari.airmessage.messaging.MemberInfo
-import me.tagavari.airmessage.util.IndexedItem
+import me.tagavari.airmessage.common.data.UserCacheHelper
+import me.tagavari.airmessage.common.helper.ConversationBuildHelper.buildConversationTitle
+import me.tagavari.airmessage.common.helper.ConversationBuildHelper.buildConversationTitleDirect
+import me.tagavari.airmessage.common.helper.LanguageHelper.getLastUpdateStatusTime
+import me.tagavari.airmessage.common.helper.LanguageHelper.intToFormattedString
+import me.tagavari.airmessage.common.helper.ResourceHelper.resolveColorAttr
+import me.tagavari.airmessage.common.messaging.ConversationInfo
+import me.tagavari.airmessage.common.messaging.ConversationPreview
+import me.tagavari.airmessage.common.messaging.MemberInfo
+import me.tagavari.airmessage.common.util.IndexedItem
 import java.util.*
 
 /**

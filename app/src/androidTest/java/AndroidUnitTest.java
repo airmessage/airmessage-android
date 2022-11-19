@@ -2,7 +2,7 @@ import androidx.test.filters.SmallTest;
 
 import org.junit.Test;
 
-import me.tagavari.airmessage.helper.AddressHelper;
+import me.tagavari.airmessage.common.helper.AddressHelper;
 
 import static com.google.common.truth.Truth.assertThat;
 

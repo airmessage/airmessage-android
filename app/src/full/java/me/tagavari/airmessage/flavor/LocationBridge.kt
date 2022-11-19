@@ -9,9 +9,9 @@ import com.google.android.gms.location.*
 import com.google.android.gms.tasks.CancellationTokenSource
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.tasks.await
-import me.tagavari.airmessage.exception.LocationUnavailableException
-import me.tagavari.airmessage.helper.AndroidLocationHelper
-import me.tagavari.airmessage.util.LatLngInfo
+import me.tagavari.airmessage.common.exception.LocationUnavailableException
+import me.tagavari.airmessage.common.helper.AndroidLocationHelper
+import me.tagavari.airmessage.common.util.LatLngInfo
 
 typealias ResolvableApiException = com.google.android.gms.common.api.ResolvableApiException
 

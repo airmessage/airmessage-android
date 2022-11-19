@@ -8,10 +8,10 @@ import android.os.Bundle;
 import android.os.IBinder;
 import androidx.annotation.Nullable;
 import me.tagavari.airmessage.composite.AppCompatActivityPlugin;
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.enums.ProxyType;
-import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper;
+import me.tagavari.airmessage.common.connection.ConnectionManager;
+import me.tagavari.airmessage.common.data.SharedPreferencesManager;
+import me.tagavari.airmessage.common.enums.ProxyType;
+import me.tagavari.airmessage.common.helper.ConnectionServiceLaunchHelper;
 import me.tagavari.airmessage.service.ConnectionService;
 
 /**

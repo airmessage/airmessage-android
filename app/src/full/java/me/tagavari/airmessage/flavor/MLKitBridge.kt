@@ -9,9 +9,9 @@ import io.reactivex.rxjava3.annotations.CheckReturnValue
 import io.reactivex.rxjava3.core.Single
 import io.reactivex.rxjava3.core.SingleEmitter
 import io.reactivex.rxjava3.schedulers.Schedulers
-import me.tagavari.airmessage.data.DatabaseManager
+import me.tagavari.airmessage.common.data.DatabaseManager
 import me.tagavari.airmessage.data.loadConversationForMLKit
-import me.tagavari.airmessage.messaging.MessageInfo
+import me.tagavari.airmessage.common.messaging.MessageInfo
 
 object MLKitBridge {
 	const val isSupported = true

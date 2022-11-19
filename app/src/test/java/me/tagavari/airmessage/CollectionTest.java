@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-import me.tagavari.airmessage.helper.CollectionHelper;
+import me.tagavari.airmessage.common.helper.CollectionHelper;
 
 import static com.google.common.truth.Truth.assertThat;
 

@@ -1,9 +1,9 @@
 package me.tagavari.airmessage.data
 
 import com.google.mlkit.nl.smartreply.TextMessage
-import me.tagavari.airmessage.data.DatabaseManager
-import me.tagavari.airmessage.enums.ConversationItemType
-import me.tagavari.airmessage.helper.SmartReplyHelper
+import me.tagavari.airmessage.common.data.DatabaseManager
+import me.tagavari.airmessage.common.enums.ConversationItemType
+import me.tagavari.airmessage.common.helper.SmartReplyHelper
 
 fun DatabaseManager.loadConversationForMLKit(conversationID: Long): MutableList<TextMessage> {
 	//Getting the database

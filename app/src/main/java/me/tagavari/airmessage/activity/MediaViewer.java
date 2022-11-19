@@ -52,12 +52,12 @@ import java.util.List;
 import java.util.Objects;
 
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.constants.MIMEConstants;
+import me.tagavari.airmessage.common.constants.MIMEConstants;
 import me.tagavari.airmessage.contract.ContractCreateDynamicDocument;
-import me.tagavari.airmessage.helper.AttachmentStorageHelper;
-import me.tagavari.airmessage.helper.ExternalStorageHelper;
-import me.tagavari.airmessage.helper.FileHelper;
-import me.tagavari.airmessage.messaging.AttachmentInfo;
+import me.tagavari.airmessage.common.helper.AttachmentStorageHelper;
+import me.tagavari.airmessage.common.helper.ExternalStorageHelper;
+import me.tagavari.airmessage.common.helper.FileHelper;
+import me.tagavari.airmessage.common.messaging.AttachmentInfo;
 
 public class MediaViewer extends AppCompatActivity {
 	//Creating the constants

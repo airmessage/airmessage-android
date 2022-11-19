@@ -60,7 +60,7 @@
 		tools:ignore="GoogleAppIndexingWarning">
 		<!-- Conversations -->
 		<activity
-			android:name=".compose.ConversationsCompose"
+			android:name=".activity.ConversationsCompose"
 			android:exported="true"
 			android:label="@string/app_name"
 			android:theme="@style/Theme.AirMessage.M3.API"
@@ -89,25 +89,25 @@
 		
 		<!-- Standalone messaging screen -->
 		<activity
-			android:name=".compose.MessagingCompose"
+			android:name=".activity.MessagingCompose"
 			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize" />
 		
 		<!-- Conversation details -->
 		<activity
-			android:name=".compose.ConversationDetailsCompose"
+			android:name=".activity.ConversationDetailsCompose"
 			android:theme="@style/Theme.AirMessage.M3.API" />
 		
 		<!-- Onboarding -->
 		<activity
 			android:exported="true"
-			android:name=".compose.OnboardingCompose"
+			android:name=".activity.OnboardingCompose"
 			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize" />
 		
 		<!-- Manual reconfiguration -->
 		<activity
-			android:name=".compose.ServerConfigStandaloneCompose"
+			android:name=".activity.ServerConfigStandaloneCompose"
 			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize" />
 		
@@ -117,7 +117,7 @@
 			android:label="@string/screen_settings"
 			android:name=".activity.Preferences"
 			android:theme="@style/Theme.AirMessage.M3.API"
-			android:parentActivityName=".compose.ConversationsCompose">
+			android:parentActivityName=".activity.ConversationsCompose">
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
@@ -131,7 +131,7 @@
 			android:exported="false"
 			android:name=".activity.ServerUpdate"
 			android:theme="@style/Theme.AirMessage.M3.API"
-			android:parentActivityName=".compose.ConversationsCompose"
+			android:parentActivityName=".activity.ConversationsCompose"
 			android:label="@string/screen_serverupdate">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
@@ -140,7 +140,7 @@
 		<activity
 			android:exported="false"
 			android:name=".activity.MediaViewer"
-			android:parentActivityName=".compose.ConversationsCompose"
+			android:parentActivityName=".activity.ConversationsCompose"
 			android:theme="@style/ThemeBlack"
 			android:configChanges="orientation|screenSize|layoutDirection">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
@@ -168,7 +168,7 @@
 		<!-- Open source licenses -->
 		<activity
 			android:exported="false"
-			android:name=".compose.LibrariesCompose"
+			android:name=".activity.LibrariesCompose"
 			android:theme="@style/Theme.AirMessage.M3.API"
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />

@@ -22,14 +22,14 @@ import com.google.android.material.bottomsheet.BottomSheetDialogFragment;
 import io.reactivex.rxjava3.disposables.CompositeDisposable;
 import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.connection.ConnectionManager;
-import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.helper.MessagesDataHelper;
-import me.tagavari.airmessage.data.SharedPreferencesManager;
-import me.tagavari.airmessage.helper.ResourceHelper;
-import me.tagavari.airmessage.helper.WindowHelper;
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork;
-import me.tagavari.airmessage.redux.ReduxEventConnection;
+import me.tagavari.airmessage.common.connection.ConnectionManager;
+import me.tagavari.airmessage.common.connection.MassRetrievalParams;
+import me.tagavari.airmessage.common.helper.MessagesDataHelper;
+import me.tagavari.airmessage.common.data.SharedPreferencesManager;
+import me.tagavari.airmessage.common.helper.ResourceHelper;
+import me.tagavari.airmessage.common.helper.WindowHelper;
+import me.tagavari.airmessage.common.redux.ReduxEmitterNetwork;
+import me.tagavari.airmessage.common.redux.ReduxEventConnection;
 import me.tagavari.airmessage.service.ConnectionService;
 
 public class FragmentSync extends BottomSheetDialogFragment {

@@ -7,7 +7,7 @@ import android.os.Handler;
 import android.widget.Toast;
 import androidx.annotation.Nullable;
 import me.tagavari.airmessage.R;
-import me.tagavari.airmessage.helper.DataStreamHelper;
+import me.tagavari.airmessage.common.helper.DataStreamHelper;
 
 import java.io.*;
 
