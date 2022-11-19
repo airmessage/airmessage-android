@@ -30,7 +30,6 @@ import me.tagavari.airmessage.activity.CrashReport
 import me.tagavari.airmessage.activity.Preferences
 import me.tagavari.airmessage.coil.IconFetcher
 import me.tagavari.airmessage.coil.VCardFetcher
-import me.tagavari.airmessage.compose.BuildConfig
 import me.tagavari.airmessage.compose.R
 import me.tagavari.airmessage.data.DatabaseManager
 import me.tagavari.airmessage.data.SharedPreferencesManager

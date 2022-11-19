@@ -43,7 +43,7 @@ android {
 			dimension = "distribution"
 		}
 		
-		create("free") {
+		create("foss") {
 			dimension = "distribution"
 		}
 	}
