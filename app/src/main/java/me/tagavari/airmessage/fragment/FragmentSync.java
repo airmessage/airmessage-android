@@ -24,7 +24,7 @@ import io.reactivex.rxjava3.schedulers.Schedulers;
 import me.tagavari.airmessage.R;
 import me.tagavari.airmessage.connection.ConnectionManager;
 import me.tagavari.airmessage.connection.MassRetrievalParams;
-import me.tagavari.airmessage.data.MessagesDataHelper;
+import me.tagavari.airmessage.helper.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.helper.ResourceHelper;
 import me.tagavari.airmessage.helper.WindowHelper;

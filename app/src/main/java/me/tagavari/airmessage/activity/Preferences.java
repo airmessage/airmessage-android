@@ -50,7 +50,6 @@ import androidx.preference.PreferenceGroup;
 import androidx.preference.PreferenceManager;
 import androidx.preference.PreferenceScreen;
 import androidx.preference.SwitchPreference;
-import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
@@ -74,7 +73,7 @@ import me.tagavari.airmessage.constants.ColorConstants;
 import me.tagavari.airmessage.contract.ContractDefaultMessagingApp;
 import me.tagavari.airmessage.contract.ContractNotificationRingtoneSelector;
 import me.tagavari.airmessage.data.DatabaseManager;
-import me.tagavari.airmessage.data.MessagesDataHelper;
+import me.tagavari.airmessage.helper.MessagesDataHelper;
 import me.tagavari.airmessage.data.SharedPreferencesManager;
 import me.tagavari.airmessage.enums.ProxyType;
 import me.tagavari.airmessage.flavor.FirebaseAuthBridge;

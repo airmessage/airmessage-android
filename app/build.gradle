@@ -33,6 +33,10 @@ if(keystorePropertiesFile.exists()) {
 }
 
 android {
+	sourceSets {
+		main.java.srcDirs += "${project.rootDir}/common"
+	}
+
 	signingConfigs {
 		if(sharedKeystoreFile.exists()) {
 			shared {

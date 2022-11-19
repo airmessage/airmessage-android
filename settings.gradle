@@ -1,6 +1,5 @@
 include ':app'
-include ':compose'
+include ':desktop'
 
 include ":android-smsmms"
 project(":android-smsmms").projectDir = file("lib/android-smsmms/library")
-
