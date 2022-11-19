@@ -8,7 +8,6 @@ import android.os.IBinder
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -31,11 +30,13 @@ class ServerConfigStandaloneCompose : ComponentActivity() {
 			connectionManager = binder.connectionManager
 			
 			//Disconnect and disable reconnections
-			binder.connectionManager.setDisableReconnections(true)
-			binder.connectionManager.disconnect(ConnectionErrorCode.user)
+			prepareConnectionManager(binder.connectionManager)
 		}
 		
 		override fun onServiceDisconnected(name: ComponentName) {
+			//Restore the previous connection state
+			connectionManager?.let { restoreConnectionManager(it, isComplete = false) }
+			
 			connectionManager = null
 		}
 	}
@@ -47,18 +48,6 @@ class ServerConfigStandaloneCompose : ComponentActivity() {
 		
 		setContent {
 			AirMessageAndroidTheme {
-				DisposableEffect(connectionManager) {
-					//Disable reconnections while configuring
-					connectionManager?.setDisableReconnections(true)
-					
-					onDispose {
-						val connectionManager = connectionManager ?: return@onDispose
-						
-						connectionManager.setConnectionOverride(null)
-						connectionManager.setDisableReconnections(false)
-					}
-				}
-				
 				OnboardingManual(
 					modifier = Modifier.fillMaxSize(),
 					connectionManager = connectionManager,
@@ -68,6 +57,9 @@ class ServerConfigStandaloneCompose : ComponentActivity() {
 						SharedPreferencesManager.setProxyType(this@ServerConfigStandaloneCompose, ProxyType.direct)
 						SharedPreferencesManager.setDirectConnectionDetails(this@ServerConfigStandaloneCompose, connectionParams)
 						SharedPreferencesManager.setConnectionConfigured(this@ServerConfigStandaloneCompose, true)
+						
+						//Reset the connection manager
+						connectionManager?.let { restoreConnectionManager(it, isComplete = true) }
 						
 						//Finish the activity
 						finish()
@@ -86,6 +78,9 @@ class ServerConfigStandaloneCompose : ComponentActivity() {
 			serviceConnection,
 			BIND_AUTO_CREATE
 		)
+		
+		//Update the connection manager
+		connectionManager?.let { prepareConnectionManager(it) }
 	}
 	
 	override fun onStop() {
@@ -93,5 +88,37 @@ class ServerConfigStandaloneCompose : ComponentActivity() {
 		
 		//Unbind from the connection service
 		unbindService(serviceConnection)
+		
+		//Reset the connection manager
+		connectionManager?.let { restoreConnectionManager(it, isComplete = false) }
+	}
+	
+	/**
+	 * Prepares the connection manager for manual setup
+	 * @param connectionManager The connection manager to configure
+	 */
+	private fun prepareConnectionManager(connectionManager: ConnectionManager) {
+		//Disconnect and disable reconnections
+		connectionManager.setDisableReconnections(true)
+		connectionManager.disconnect(ConnectionErrorCode.user)
+	}
+	
+	/**
+	 * Resets the connection manager from manual setup
+	 * @param connectionManager The connection manager to configure
+	 * @param isComplete Whether the connection configuration was successful
+	 */
+	private fun restoreConnectionManager(connectionManager: ConnectionManager, isComplete: Boolean) {
+		if(!isComplete) {
+			//Restore the service state
+			connectionManager.disconnect(ConnectionErrorCode.user)
+			connectionManager.connect()
+		}
+		
+		//Disable overrides
+		connectionManager.setConnectionOverride(null)
+		
+		//Re-enable reconnections
+		connectionManager.setDisableReconnections(false)
 	}
 }

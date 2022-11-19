@@ -12,7 +12,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -87,6 +89,14 @@ fun NewConversationBody(
 					}
 				}
 				
+				//Group contacts by first letter
+				val groupedContacts = remember(contactsState.contacts) {
+					contactsState.contacts
+						.groupBy { getNameHeader(it.name) }
+						.map { (key, contacts) -> ContactsListGroup(key, contacts) }
+						.sortedBy { it.key }
+				}
+				
 				Box(modifier = Modifier.fillMaxSize()) {
 					LazyColumn(
 						contentPadding = contentPadding,
@@ -101,42 +111,36 @@ fun NewConversationBody(
 							}
 						}
 						
-						var lastContact: ContactInfo? = null
-						for(contact in contactsState.contacts) {
-							val nameHeader = getNameHeader(contact.name)
-							val showNameHeader = getNameHeader(lastContact?.name) != nameHeader
-							
+						for(group in groupedContacts) {
 							//Show name headers between names that start with a different letter
-							if(showNameHeader) {
-								item(
-									key = nameHeader
+							item(
+								key = group.key
+							) {
+								Box(
+									modifier = Modifier
+										.padding(horizontal = 16.dp)
+										.size(40.dp),
+									contentAlignment = Alignment.Center
 								) {
-									Box(
-										modifier = Modifier
-											.padding(horizontal = 16.dp)
-											.size(40.dp),
-										contentAlignment = Alignment.Center
-									) {
-										Text(
-											text = nameHeader.toString(),
-											color = MaterialTheme.colorScheme.onSurfaceVariant,
-											fontSize = 20.sp
-										)
-									}
+									Text(
+										text = group.key.toString(),
+										color = MaterialTheme.colorScheme.onSurfaceVariant,
+										fontSize = 20.sp
+									)
 								}
 							}
 							
-							item(
-								key = contact.contactID
-							) {
-								ContactRow(
-									requiredService = requiredService,
-									contact = contact,
-									onSelectAddress = { addressInfo -> onAddRecipient(contact, addressInfo) }
-								)
+							for(contact in group.contacts) {
+								item(
+									key = contact.contactID
+								) {
+									ContactRow(
+										requiredService = requiredService,
+										contact = contact,
+										onSelectAddress = { addressInfo -> onAddRecipient(contact, addressInfo) }
+									)
+								}
 							}
-							
-							lastContact = contact
 						}
 					}
 					
@@ -210,6 +214,12 @@ private fun MessageButtonCombo(
 		}
 	}
 }
+
+@Immutable
+private data class ContactsListGroup(
+	val key: Char,
+	val contacts: List<ContactInfo>
+)
 
 @Preview(name = "Loading", showBackground = true, widthDp = 400, heightDp = 600)
 @Composable

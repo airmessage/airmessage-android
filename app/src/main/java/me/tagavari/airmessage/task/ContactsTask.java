@@ -43,7 +43,7 @@ public class ContactsTask {
 					new String[]{ContactsContract.Data.CONTACT_ID, ContactsContract.Data.MIMETYPE, ContactsContract.Data.DISPLAY_NAME, ContactsContract.Data.PHOTO_THUMBNAIL_URI, ContactsContract.Data.DATA1, ContactsContract.Data.DATA2, ContactsContract.Data.DATA3},
 					ContactsContract.Data.MIMETYPE + " = ? OR (" + ContactsContract.Data.HAS_PHONE_NUMBER + "!= 0 AND " + ContactsContract.Data.MIMETYPE + " = ?)",
 					new String[]{ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE, ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE},
-					ContactsContract.Data.DISPLAY_NAME + " ASC");
+					ContactsContract.Data.DISPLAY_NAME + " COLLATE NOCASE ASC");
 			
 			//Failing if the cursor is invalid
 			if(cursor == null) {

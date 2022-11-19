@@ -3,22 +3,18 @@ package me.tagavari.airmessage.compose.component
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import me.tagavari.airmessage.enums.TapbackType
 import me.tagavari.airmessage.messaging.StickerInfo
 import me.tagavari.airmessage.messaging.TapbackInfo
-
-private val tapbackSize = 28.dp
-private val tapbackOffset = 14.dp
 
 /**
  * A wrapper around a bubble component that
@@ -33,7 +29,7 @@ fun MessageBubbleWrapper(
 	content: @Composable () -> Unit
 ) {
 	Box(
-		modifier = if(tapbacks.isEmpty()) Modifier else Modifier.padding(top = tapbackOffset)
+		modifier = if(tapbacks.isEmpty()) Modifier else Modifier.padding(top = TapbackIndicator.tapbackOffset)
 	) {
 		content()
 		
@@ -67,33 +63,23 @@ fun MessageBubbleWrapper(
 			}
 		}
 		
-		tapbacks.firstOrNull()?.let { tapback ->
-			Surface(
+		//Display the last 3 tapbacks
+		tapbacks.takeLast(tapbackShowCount).forEachIndexed { index, tapback ->
+			//Show the most recent (last) tapback on top,
+			//apply an offset of 20% for tapbacks on the bottom
+			TapbackIndicator(
 				modifier = Modifier
-					.size(tapbackSize)
 					.align(if(isOutgoing) Alignment.TopStart else Alignment.TopEnd)
 					.offset(
-						x = tapbackOffset * ((if(isOutgoing) -1 else 1)),
-						y = -tapbackOffset
+						x = (TapbackIndicator.tapbackOffset * (1F + (tapbackShowCount - 1 - index) * 0.2F) * ((if(isOutgoing) -1 else 1))),
+						y = -TapbackIndicator.tapbackOffset
 					),
-				shape = CircleShape,
-				tonalElevation = 2.dp,
-				shadowElevation = 2.dp
-			) {
-				Box(contentAlignment = Alignment.Center) {
-					Text(
-						text = when(tapback.code) {
-							TapbackType.heart -> "\u2764"
-							TapbackType.like -> "\uD83D\uDC4D"
-							TapbackType.dislike -> "\uD83D\uDC4E"
-							TapbackType.laugh -> "\uD83D\uDE02"
-							TapbackType.exclamation -> "\u203C\uFE0F"
-							TapbackType.question -> "\u2753"
-							else -> ""
-						}
-					)
-				}
-			}
+				tapbackCode = tapback.code,
+				isOutgoing = tapback.sender == null
+			)
 		}
 	}
 }
+
+//Show up to 3 tapback indicators on a message
+private const val tapbackShowCount = 3

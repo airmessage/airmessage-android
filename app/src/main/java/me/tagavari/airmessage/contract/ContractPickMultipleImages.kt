@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.contract
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
@@ -8,8 +9,8 @@ import android.provider.MediaStore
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.annotation.RequiresApi
 
-@RequiresApi(33)
 class ContractPickMultipleImages: ActivityResultContract<Int?, List<Uri>>() {
+	@SuppressLint("InlinedApi")
 	override fun createIntent(context: Context, input: Int?): Intent {
 		val intent = Intent(MediaStore.ACTION_PICK_IMAGES)
 		input?.let { limit ->

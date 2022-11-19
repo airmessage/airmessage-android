@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.os.Build
 import android.util.Base64
 import android.util.Log
@@ -15,6 +16,7 @@ import me.tagavari.airmessage.connection.task.MessageUpdateTask
 import me.tagavari.airmessage.connection.task.ModifierUpdateTask
 import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.SharedPreferencesManager
+import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.ConnectionServiceLaunchHelper
 import me.tagavari.airmessage.helper.NotificationHelper
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
@@ -260,8 +262,20 @@ class FCMService : FirebaseMessagingService() {
 		 * Android 12 also introduced restrictions as to when a foreground service can be launched from the background,
 		 * so we should check if we are allowed to launch one before doing so.
 		 */
-		if(ConnectionService.getInstance() == null && (Build.VERSION.SDK_INT < Build.VERSION_CODES.S || remoteMessage.priority == RemoteMessage.PRIORITY_HIGH)) {
-			ConnectionServiceLaunchHelper.launchTemporary(this)
+		if(ConnectionService.getInstance() == null &&
+			(Build.VERSION.SDK_INT < Build.VERSION_CODES.S
+					|| remoteMessage.priority == RemoteMessage.PRIORITY_HIGH)) {
+			try {
+				ConnectionServiceLaunchHelper.launchTemporary(this)
+			} catch(exception: Exception) {
+				if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && exception is ForegroundServiceStartNotAllowedException) {
+					CrashlyticsBridge.log("Received notification of priority ${remoteMessage.priority}")
+					CrashlyticsBridge.recordException(exception)
+					return
+				}
+				
+				throw exception
+			}
 		}
 	}
 	

@@ -1,5 +1,6 @@
 package me.tagavari.airmessage.compose.component
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Notifications
@@ -17,33 +18,42 @@ import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 @Composable
 fun AlertCard(
 	modifier: Modifier = Modifier,
+	show: Boolean = true,
 	icon: (@Composable () -> Unit)? = null,
 	message: (@Composable () -> Unit)? = null,
 	button: (@Composable () -> Unit)? = null
 ) {
-	Card(
-		modifier = modifier.fillMaxWidth()
+	AnimatedVisibility(
+		visible = show,
+		enter = expandVertically(
+			expandFrom = Alignment.Top
+		) + fadeIn(),
+		exit = shrinkVertically(
+			shrinkTowards = Alignment.Top
+		) + fadeOut()
 	) {
-		Row(modifier = Modifier.padding(16.dp)) {
-			if(icon != null) {
-				icon()
-				
-				Spacer(modifier = Modifier.width(16.dp))
-			}
-			
-			Column(modifier = Modifier.weight(1F)) {
-				if(message != null) {
-					Spacer(modifier = Modifier.height(1.dp))
-					message()
+		Card(modifier = modifier) {
+			Row(modifier = Modifier.padding(16.dp)) {
+				if(icon != null) {
+					icon()
+					
+					Spacer(modifier = Modifier.width(16.dp))
 				}
 				
-				if(button != null) {
-					Spacer(modifier = Modifier.height(8.dp))
+				Column(modifier = Modifier.weight(1F)) {
+					if(message != null) {
+						Spacer(modifier = Modifier.height(1.dp))
+						message()
+					}
 					
-					Box(
-						modifier = Modifier.align(Alignment.End)
-					) {
-						button()
+					if(button != null) {
+						Spacer(modifier = Modifier.height(8.dp))
+						
+						Box(
+							modifier = Modifier.align(Alignment.End)
+						) {
+							button()
+						}
 					}
 				}
 			}

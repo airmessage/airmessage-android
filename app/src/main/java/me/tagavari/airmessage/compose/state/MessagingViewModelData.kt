@@ -286,11 +286,10 @@ class MessagingViewModelData(
 				//Find a matching message
 				val messageIndex = messages.indexOfLast { it.localID == event.messageID }
 				if(messageIndex == -1) return
+				val messageInfo = messages[messageIndex] as? MessageInfo ?: return
 				
 				//Update the message
-				messages[messageIndex] = messages[messageIndex].clone().apply {
-					this as MessageInfo
-					
+				messages[messageIndex] = messageInfo.clone().apply {
 					messageState = event.stateCode
 					dateRead = event.dateRead
 				}
@@ -299,11 +298,10 @@ class MessagingViewModelData(
 				//Find a matching message
 				val messageIndex = messages.indexOfLast { it.localID == event.messageInfo.localID }
 				if(messageIndex == -1) return
+				val messageInfo = messages[messageIndex] as? MessageInfo ?: return
 				
 				//Update the message
-				messages[messageIndex] = messages[messageIndex].clone().apply {
-					this as MessageInfo
-					
+				messages[messageIndex] = messageInfo.clone().apply {
 					errorCode = event.errorCode
 					errorDetailsAvailable = event.errorDetails != null
 					errorDetails = event.errorDetails
@@ -454,11 +452,10 @@ class MessagingViewModelData(
 				//Find a matching message
 				val messageIndex = messages.indexOfLast { it.localID == event.messageID }
 				if(messageIndex == -1) return
+				val messageInfo = messages[messageIndex] as? MessageInfo ?: return
 				
 				//Update the message
-				messages[messageIndex] = messages[messageIndex].clone().apply {
-					this as MessageInfo
-					
+				messages[messageIndex] = messageInfo.clone().apply {
 					sendStyleViewed = true
 				}
 			}
@@ -628,9 +625,9 @@ class MessagingViewModelData(
 				DatabaseManager.getInstance().clearDraftReferences(conversation.localID)
 				DatabaseManager.getInstance().updateConversationDraftMessage(conversation.localID, null, -1)
 			}
-			
-			ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation.localID))
 		}
+		
+		ReduxEmitterNetwork.messageUpdateSubject.onNext(ConversationDraftFileClear(conversation.localID))
 		
 		//Clear input
 		inputText = ""

@@ -7,7 +7,6 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -29,8 +28,10 @@ import me.tagavari.airmessage.MainApplication
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.ServerUpdate
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
+import me.tagavari.airmessage.compose.remember.deriveCachedValue
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.SharedPreferencesManager
+import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.redux.ReduxEmitterNetwork
 import me.tagavari.airmessage.redux.ReduxEventConnection
@@ -40,6 +41,8 @@ import java.security.GeneralSecurityException
 import java.util.*
 import kotlin.jvm.optionals.getOrNull
 
+private val cardSpacing = 16.dp
+
 @OptIn(ExperimentalStdlibApi::class)
 @Composable
 fun StatusCardColumn() {
@@ -48,20 +51,24 @@ fun StatusCardColumn() {
 	var showPasswordDialog by rememberSaveable { mutableStateOf(false) }
 	
 	Column(
-		modifier = Modifier.padding(16.dp),
-		verticalArrangement = Arrangement.spacedBy(16.dp)
+		modifier = Modifier.padding(start = cardSpacing, end = cardSpacing, top = cardSpacing)
 	) {
 		//Connection state
-		val connectionState by ReduxEmitterNetwork.connectionStateSubject.subscribeAsState(initial = null)
-		connectionState.let { state ->
-			if(state is ReduxEventConnection.Disconnected) {
-				ConnectionErrorCard(
-					connectionManager = LocalConnectionManager.current,
-					code = state.code,
-					onRequestChangePassword = { showPasswordDialog = true }
-				)
-			}
-		}
+		val connectionState by ReduxEmitterNetwork.connectionStateSubject.subscribeAsState(
+			initial = ReduxEmitterNetwork.connectionStateSubject.value
+		)
+		val connectionErrorCode by deriveCachedValue(
+			(connectionState as? ReduxEventConnection.Disconnected)?.code
+				?: ConnectionErrorCode.user
+		)
+		
+		ConnectionErrorCard(
+			modifier = Modifier.padding(bottom = cardSpacing),
+			show = connectionState is ReduxEventConnection.Disconnected,
+			connectionManager = LocalConnectionManager.current,
+			code = connectionErrorCode,
+			onRequestChangePassword = { showPasswordDialog = true }
+		)
 		
 		//Notifications
 		if(Build.VERSION.SDK_INT >= 33) {
@@ -74,26 +81,26 @@ fun StatusCardColumn() {
 				ActivityResultContracts.RequestPermission()
 			) { notificationPermissionGranted = it }
 			
-			if(!notificationPermissionGranted) {
-				AlertCard(
-					icon = {
-						Icon(
-							imageVector = Icons.Outlined.NotificationImportant,
-							contentDescription = null
-						)
-					},
-					message = {
-						Text(stringResource(R.string.message_permissiondetails_notifications))
-					},
-					button = {
-						TextButton(onClick = {
-							requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-						}) {
-							Text(stringResource(R.string.action_enable))
-						}
+			AlertCard(
+				modifier = Modifier.padding(bottom = cardSpacing),
+				show = !notificationPermissionGranted,
+				icon = {
+					Icon(
+						imageVector = Icons.Outlined.NotificationImportant,
+						contentDescription = null
+					)
+				},
+				message = {
+					Text(stringResource(R.string.message_permissiondetails_notifications))
+				},
+				button = {
+					TextButton(onClick = {
+						requestPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+					}) {
+						Text(stringResource(R.string.action_enable))
 					}
-				)
-			}
+				}
+			)
 		}
 		
 		//Contacts
@@ -112,26 +119,26 @@ fun StatusCardColumn() {
 				}
 			}
 			
-			if(!contactsPermissionGranted) {
-				AlertCard(
-					icon = {
-						Icon(
-							imageVector = Icons.Outlined.Contacts,
-							contentDescription = null
-						)
-					},
-					message = {
-						Text(stringResource(R.string.message_permissiondetails_contacts_listing))
-					},
-					button = {
-						TextButton(onClick = {
-							requestPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
-						}) {
-							Text(stringResource(R.string.action_enable))
-						}
+			AlertCard(
+				modifier = Modifier.padding(bottom = cardSpacing),
+				show = !contactsPermissionGranted,
+				icon = {
+					Icon(
+						imageVector = Icons.Outlined.Contacts,
+						contentDescription = null
+					)
+				},
+				message = {
+					Text(stringResource(R.string.message_permissiondetails_contacts_listing))
+				},
+				button = {
+					TextButton(onClick = {
+						requestPermissionLauncher.launch(android.Manifest.permission.READ_CONTACTS)
+					}) {
+						Text(stringResource(R.string.action_enable))
 					}
-				)
-			}
+				}
+			)
 		}
 		
 		//Server update
@@ -139,28 +146,29 @@ fun StatusCardColumn() {
 			val serverUpdateData = ReduxEmitterNetwork.remoteUpdateSubject.subscribeAsState(Optional.empty())
 				.value.getOrNull()
 			
-			if(serverUpdateData != null) {
-				val connectionManager = LocalConnectionManager.current
-				
-				AlertCard(
-					icon = {
-						Icon(
-							imageVector = Icons.Outlined.Update,
-							contentDescription = null
-						)
-					},
-					message = {
-						Text(stringResource(R.string.message_serverupdate))
-					},
-					button = {
-						TextButton(onClick = {
-							startUpdateActivity(serverUpdateData, context, connectionManager)
-						}) {
-							Text(stringResource(R.string.action_details))
-						}
+			val connectionManager = LocalConnectionManager.current
+			
+			AlertCard(
+				modifier = Modifier.padding(bottom = cardSpacing),
+				show = serverUpdateData != null,
+				icon = {
+					Icon(
+						imageVector = Icons.Outlined.Update,
+						contentDescription = null
+					)
+				},
+				message = {
+					Text(stringResource(R.string.message_serverupdate))
+				},
+				button = {
+					TextButton(onClick = {
+						if(serverUpdateData == null) return@TextButton
+						startUpdateActivity(serverUpdateData, context, connectionManager)
+					}) {
+						Text(stringResource(R.string.action_details))
 					}
-				)
-			}
+				}
+			)
 		}
 	}
 	

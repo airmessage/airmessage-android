@@ -6,16 +6,12 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import kotlinx.coroutines.rx3.await
-import me.tagavari.airmessage.MainApplication
-import me.tagavari.airmessage.compose.remember.deriveContactUpdates
+import me.tagavari.airmessage.compose.remember.deriveUserInfo
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.compose.util.wrapImmutableHolder
 import me.tagavari.airmessage.data.UserCacheHelper
@@ -31,15 +27,7 @@ fun ConversationDetailsMember(
 	onClick: (MemberInfo, UserCacheHelper.UserInfo?) -> Unit,
 ) {
 	//Load the message contact
-	val context = LocalContext.current
-	val userInfo by produceState<UserCacheHelper.UserInfo?>(initialValue = null, member.address, deriveContactUpdates()) {
-		//Get the user
-		try {
-			value = MainApplication.instance.userCacheHelper.getUserInfo(context, member.address).await()
-		} catch(exception: Throwable) {
-			exception.printStackTrace()
-		}
-	}
+	val userInfo by deriveUserInfo(member.address)
 	
 	Row(
 		modifier = modifier

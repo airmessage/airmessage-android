@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
@@ -24,6 +25,8 @@ import me.tagavari.airmessage.helper.IntentHelper
 
 @Composable
 fun ConnectionErrorCard(
+	modifier: Modifier = Modifier,
+	show: Boolean = true,
 	connectionManager: ConnectionManager?,
 	@ConnectionErrorCode code: Int,
 	onRequestChangePassword: () -> Unit
@@ -57,6 +60,8 @@ fun ConnectionErrorCard(
 	}
 	
 	AlertCard(
+		modifier = modifier,
+		show = show,
 		icon = {
 			Icon(
 				imageVector = Icons.Outlined.CloudOff,
@@ -79,6 +84,7 @@ fun ConnectionErrorCard(
 private fun ConnectionErrorCardPreview() {
 	AirMessageAndroidTheme {
 		ConnectionErrorCard(
+			show = true,
 			connectionManager = null,
 			code = ConnectionErrorCode.connection,
 			onRequestChangePassword = {}

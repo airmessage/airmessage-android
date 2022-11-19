@@ -1,7 +1,6 @@
 package me.tagavari.airmessage.compose.remember
 
 import android.net.Uri
-import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -21,7 +20,7 @@ fun interface RequestMediaCallback {
  */
 @Composable
 fun rememberMediaRequest(onSelect: (List<Uri>) -> Unit): RequestMediaCallback {
-	return if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+	return if(ActivityResultContracts.PickVisualMedia.isPhotoPickerAvailable()) {
 		val launcher = rememberLauncherForActivityResult(ContractPickMultipleImages(), onSelect)
 		RequestMediaCallback { limit ->
 			launcher.launch(limit)

@@ -2,7 +2,10 @@ package me.tagavari.airmessage.compose.component
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.rx3.asFlow
 import me.tagavari.airmessage.compose.provider.LocalConnectionManager
@@ -29,28 +32,34 @@ fun SyncDialog(
 		conversations.any { it.serviceHandler == ServiceHandler.appleBridge }
 	}
 	
+	val lifecycle = LocalLifecycleOwner.current
+	
 	//Listen for sync events
 	LaunchedEffect(connectionManager) {
-		ReduxEmitterNetwork.messageUpdateSubject.asFlow()
-			.filterIsInstance<ReduxEventMessaging.Sync>()
-			.collect {
-				if(connectionManager == null) return@collect
-				
-				showSyncDialog(activity, connectionManager, deleteMessages)
-			}
+		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+			ReduxEmitterNetwork.messageUpdateSubject.asFlow()
+				.filterIsInstance<ReduxEventMessaging.Sync>()
+				.collect {
+					if(connectionManager == null) return@collect
+					
+					showSyncDialog(activity, connectionManager, deleteMessages)
+				}
+		}
 	}
 	
 	//Check sync status when connected
 	LaunchedEffect(connectionManager) {
-		ReduxEmitterNetwork.connectionStateSubject.asFlow()
-			.filterIsInstance<ReduxEventConnection.Connected>()
-			.collect {
-				if(connectionManager == null) return@collect
-				
-				if(connectionManager.isPendingSync) {
-					showSyncDialog(activity, connectionManager, deleteMessages)
+		lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+			ReduxEmitterNetwork.connectionStateSubject.asFlow()
+				.filterIsInstance<ReduxEventConnection.Connected>()
+				.collect {
+					if(connectionManager == null) return@collect
+					
+					if(connectionManager.isPendingSync) {
+						showSyncDialog(activity, connectionManager, deleteMessages)
+					}
 				}
-			}
+		}
 	}
 }
 

@@ -76,7 +76,7 @@ private val LightColorScheme = lightColorScheme(
 @Composable
 fun AirMessageAndroidTheme(
 	darkTheme: Boolean = ThemeHelper.darkModeOverride ?: isSystemInDarkTheme(),
-	amoledTheme: Boolean = ThemeHelper.amoledMode,
+	amoledTheme: Boolean = ThemeHelper.resolvedAmoledMode,
 	// Dynamic color is available on Android 12+
 	dynamicColor: Boolean = true,
 	content: @Composable () -> Unit

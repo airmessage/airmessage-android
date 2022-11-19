@@ -1,10 +1,13 @@
 package me.tagavari.airmessage.flavor
 
 import android.content.Context
+import android.util.Log
 import com.google.firebase.crashlytics.FirebaseCrashlytics
 import me.tagavari.airmessage.data.SharedPreferencesManager
 
 object CrashlyticsBridge {
+	private val TAG = CrashlyticsBridge::class.java.simpleName
+	
 	@JvmStatic
 	fun configure(context: Context) {
 		//Setting the user identifier
@@ -22,5 +25,8 @@ object CrashlyticsBridge {
 	fun recordException(throwable: Throwable) = FirebaseCrashlytics.getInstance().recordException(throwable)
 	
 	@JvmStatic
-	fun log(message: String) = FirebaseCrashlytics.getInstance().log(message)
+	fun log(message: String) {
+		Log.i(TAG, "Crashlytics log message: $message")
+		FirebaseCrashlytics.getInstance().log(message)
+	}
 }

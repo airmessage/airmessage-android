@@ -38,10 +38,7 @@ import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.flavor.MapsBridge
 import me.tagavari.airmessage.helper.NotificationHelper
 import me.tagavari.airmessage.helper.ThemeHelper
-import me.tagavari.airmessage.redux.ReduxEmitterNetwork
-import me.tagavari.airmessage.redux.ReduxReceiverFaceTime
-import me.tagavari.airmessage.redux.ReduxReceiverNotification
-import me.tagavari.airmessage.redux.ReduxReceiverShortcut
+import me.tagavari.airmessage.redux.*
 import me.tagavari.airmessage.worker.SystemMessageCleanupWorker
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.io.PrintWriter
@@ -177,6 +174,32 @@ class MainApplication : Application(), ImageLoaderFactory {
 		//Enable WebView debugging
 		if(BuildConfig.DEBUG) {
 			WebView.setWebContentsDebuggingEnabled(true)
+		}
+		
+		//Log message events
+		ReduxEmitterNetwork.messageUpdateSubject.subscribe { event ->
+			CrashlyticsBridge.log("Received message update ${event::class.qualifiedName}")
+		}
+		ReduxEmitterNetwork.connectionStateSubject.subscribe { event ->
+			when(event) {
+				is ReduxEventConnection.Connected ->
+					CrashlyticsBridge.log("Changed connection state to connected")
+				is ReduxEventConnection.Connecting ->
+					CrashlyticsBridge.log("Changed connection state to connecting")
+				is ReduxEventConnection.Disconnected ->
+					CrashlyticsBridge.log("Changed connection state to disconnected (code ${event.code})")
+			}
+			CrashlyticsBridge.log("Received message update ${event::class.qualifiedName}")
+		}
+		ReduxEmitterNetwork.massRetrievalUpdateSubject.subscribe { event ->
+			when(event) {
+				is ReduxEventMassRetrieval.Start ->
+					CrashlyticsBridge.log("Mass retrieval ID ${event.requestID} started")
+				is ReduxEventMassRetrieval.Complete ->
+					CrashlyticsBridge.log("Mass retrieval ID ${event.requestID} completed")
+				is ReduxEventMassRetrieval.Error ->
+					CrashlyticsBridge.log("Mass retrieval ID ${event.requestID} error: ${event.code}")
+			}
 		}
 	}
 	

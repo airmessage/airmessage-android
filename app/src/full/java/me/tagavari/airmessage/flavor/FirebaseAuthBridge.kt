@@ -39,6 +39,9 @@ object FirebaseAuthBridge {
 	 * Signs out the currently signed-in user
 	 */
 	suspend fun signOut(context: Context) {
+		//Ignore if Google Play Services aren't available
+		if(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(context) != ConnectionResult.SUCCESS) return
+		
 		FirebaseAuth.getInstance().signOut()
 		GoogleSignIn.getClient(context, GoogleSignInOptions.DEFAULT_SIGN_IN).signOut().await()
 	}

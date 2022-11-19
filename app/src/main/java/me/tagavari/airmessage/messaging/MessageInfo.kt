@@ -116,15 +116,26 @@ class MessageInfo @JvmOverloads constructor(
 	
 	/**
 	 * Updates a message component instance
+	 * @param index The index of the component to update
+	 * @param component The component instance to replace
+	 * @return Whether the component was successfully updated
 	 */
-	fun updateComponent(index: Int, component: MessageComponent) {
+	fun updateComponent(index: Int, component: MessageComponent): Boolean {
 		if(messageTextComponent == null) {
-			attachments[index] = component as AttachmentInfo
+			if(index >= attachments.size) return false
+			if(component !is AttachmentInfo) return false
+			attachments[index] = component
 		} else if(index == 0) {
-			messageTextComponent = component as MessageComponentText
+			if(component !is MessageComponentText) return false
+			messageTextComponent = component
 		} else {
-			attachments[index + 1] = component as AttachmentInfo
+			if(index + 1 >= attachments.size) return false
+			if(component !is AttachmentInfo) return false
+			
+			attachments[index + 1] = component
 		}
+		
+		return true
 	}
 	
 	@get:JvmName("hasError")

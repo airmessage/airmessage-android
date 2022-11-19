@@ -19,6 +19,7 @@ import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.enums.ConversationState
 import me.tagavari.airmessage.enums.ServiceHandler
 import me.tagavari.airmessage.enums.ServiceType
+import me.tagavari.airmessage.flavor.CrashlyticsBridge
 import me.tagavari.airmessage.helper.ConversationColorHelper
 import me.tagavari.airmessage.helper.ConversationHelper
 import me.tagavari.airmessage.helper.ConversationPreviewHelper
@@ -127,6 +128,27 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 				.collect {
 					messagingViewModelCache.evictAll()
 					messagingViewModelCache = MessagingViewModelCache()
+				}
+		}
+		
+		//Clear message data on delete
+		viewModelScope.launch {
+			ReduxEmitterNetwork.messageUpdateSubject.asFlow()
+				.filterIsInstance<ReduxEventMessaging.ConversationDelete>()
+				.collect { event ->
+					messagingViewModelCache.remove(event.conversationID)
+				}
+		}
+		
+		//Log detail screen changes
+		viewModelScope.launch {
+			snapshotFlow { detailPage }
+				.collect { page ->
+					when(page) {
+						null -> CrashlyticsBridge.log("Selected detail page null")
+						is ConversationsDetailPage.Messaging -> CrashlyticsBridge.log("Selected detail page conversation ${page.conversationID}")
+						is ConversationsDetailPage.NewConversation -> CrashlyticsBridge.log("Selected detail page new conversation")
+					}
 				}
 		}
 	}
@@ -357,6 +379,9 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		}
 	}
 	
+	/**
+	 * Gets the [MessagingViewModelData] to use for a given conversation
+	 */
 	fun getMessagingViewModel(conversationID: Long): MessagingViewModelData {
 		//Return a cached view model
 		messagingViewModelCache[conversationID]?.let { return it }
@@ -366,7 +391,6 @@ class ConversationsViewModel(application: Application) : AndroidViewModel(applic
 		val viewModelData = MessagingViewModelData(getApplication(), conversationID, coroutineScope)
 		messagingViewModelCache.put(conversationID, viewModelData)
 		return viewModelData
-		
 	}
 	
 	/**
