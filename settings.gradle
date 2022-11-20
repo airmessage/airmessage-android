@@ -1,6 +1,8 @@
-include ':app'
-
-include ":android-smsmms"
-project(":android-smsmms").projectDir = file("lib/android-smsmms/library")
-
-//include ':desktop'
+def target = properties["airmessage.target"]
+if(target == "android") {
+	include ":app"
+	include ":android-smsmms"
+	project(":android-smsmms").projectDir = file("lib/android-smsmms/library")
+} else if(target == "desktop") {
+	include ":desktop"
+}

@@ -19,6 +19,10 @@ dependencies {
 	implementation(compose.desktop.currentOs)
 }
 
+java.sourceSets["main"].java {
+	srcDir("${project.rootDir}/common")
+}
+
 compose.desktop {
 	application {
 		mainClass = "MainKt"
