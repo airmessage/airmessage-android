@@ -178,7 +178,32 @@ class MainApplication : Application(), ImageLoaderFactory {
 		
 		//Log message events
 		ReduxEmitterNetwork.messageUpdateSubject.subscribe { event ->
-			CrashlyticsBridge.log("Received message update ${event::class.qualifiedName}")
+			val eventName = when(event) {
+				is ReduxEventMessaging.Message -> "Message"
+				is ReduxEventMessaging.MessageState -> "MessageState"
+				is ReduxEventMessaging.MessageError -> "MessageError"
+				is ReduxEventMessaging.MessageDelete -> "MessageDelete"
+				is ReduxEventMessaging.AttachmentFile -> "AttachmentFile"
+				is ReduxEventMessaging.TapbackUpdate -> "TapbackUpdate"
+				is ReduxEventMessaging.StickerAdd -> "StickerAdd"
+				is ReduxEventMessaging.ConversationUpdate -> "ConversationUpdate"
+				is ReduxEventMessaging.Sync -> "Sync"
+				is ReduxEventMessaging.ConversationUnread -> "ConversationUnread"
+				is ReduxEventMessaging.ConversationMember -> "ConversationMember"
+				is ReduxEventMessaging.ConversationMute -> "ConversationMute"
+				is ReduxEventMessaging.ConversationArchive -> "ConversationArchive"
+				is ReduxEventMessaging.ConversationDelete -> "ConversationDelete"
+				is ReduxEventMessaging.ConversationServiceHandlerDelete -> "ConversationServiceHandlerDelete"
+				is ReduxEventMessaging.ConversationTitle -> "ConversationTitle"
+				is ReduxEventMessaging.ConversationDraftMessageUpdate -> "ConversationDraftMessageUpdate"
+				is ReduxEventMessaging.ConversationDraftFileUpdate -> "ConversationDraftFileUpdate"
+				is ReduxEventMessaging.ConversationDraftFileClear -> "ConversationDraftFileClear"
+				is ReduxEventMessaging.ConversationColor -> "ConversationColor"
+				is ReduxEventMessaging.ConversationMemberColor -> "ConversationMemberColor"
+				is ReduxEventMessaging.PreviewUpdate -> "PreviewUpdate"
+				is ReduxEventMessaging.SendStyleViewed -> "SendStyleViewed"
+			}
+			CrashlyticsBridge.log("Received message update $eventName")
 		}
 		ReduxEmitterNetwork.connectionStateSubject.subscribe { event ->
 			when(event) {
@@ -189,7 +214,6 @@ class MainApplication : Application(), ImageLoaderFactory {
 				is ReduxEventConnection.Disconnected ->
 					CrashlyticsBridge.log("Changed connection state to disconnected (code ${event.code})")
 			}
-			CrashlyticsBridge.log("Received message update ${event::class.qualifiedName}")
 		}
 		ReduxEmitterNetwork.massRetrievalUpdateSubject.subscribe { event ->
 			when(event) {

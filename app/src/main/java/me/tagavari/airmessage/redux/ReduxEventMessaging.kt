@@ -13,10 +13,10 @@ typealias MessageStateEnum = me.tagavari.airmessage.enums.MessageState
 //An event to represent updates to messages and conversations
 sealed class ReduxEventMessaging {
 	//An abstract class for an action performed on a conversation
-	abstract class ReduxConversationAction(val conversationID: Long) : ReduxEventMessaging()
+	sealed class ReduxConversationAction(val conversationID: Long) : ReduxEventMessaging()
 	
 	//An abstract class for an action performed on a message
-	abstract class ReduxMessageAction(conversationID: Long, val messageInfo: MessageInfo) :
+	sealed class ReduxMessageAction(conversationID: Long, val messageInfo: MessageInfo) :
 		ReduxConversationAction(conversationID)
 	
 	//When new conversation items are received
