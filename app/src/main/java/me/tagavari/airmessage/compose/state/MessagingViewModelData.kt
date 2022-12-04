@@ -107,7 +107,10 @@ class MessagingViewModelData(
 			return@map SmartReplyHelper.generateResponses(application, filteredMessages).await()
 		}
 	
-	private val _messageAdditionFlow = MutableSharedFlow<MessageAdditionEvent>()
+	private val _messageAdditionFlow = MutableSharedFlow<MessageAdditionEvent>(
+		extraBufferCapacity = 1,
+		onBufferOverflow = BufferOverflow.DROP_OLDEST
+	)
 	val messageAdditionFlow = _messageAdditionFlow.asSharedFlow()
 	
 	//Sound
