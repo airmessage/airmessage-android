@@ -50,6 +50,8 @@ class MessagingViewModelData(
 		private set
 	var conversationTitle by mutableStateOf<String?>(null)
 		private set
+	var initialMessagesLoaded by mutableStateOf(false)
+		private set
 	private var lazyLoader: DatabaseManager.ConversationLazyLoader? = null
 	var lazyLoadState by mutableStateOf(MessageLazyLoadState.IDLE)
 		private set
@@ -213,6 +215,9 @@ class MessagingViewModelData(
 			withContext(Dispatchers.IO) {
 				lazyLoader.loadNextChunk(application, messageChunkSize)
 			}.let { addConversationItems(it) }
+			
+			//Set the messages as loaded
+			initialMessagesLoaded = true
 		}
 	}
 	
@@ -220,8 +225,8 @@ class MessagingViewModelData(
 	 * Loads past message history
 	 */
 	fun loadPastMessages() {
-		//Ignore if we're still loading or we're not idle
-		if(messages.isEmpty() || lazyLoadState != MessageLazyLoadState.IDLE) {
+		//Ignore if we're still loading
+		if(!initialMessagesLoaded || lazyLoadState != MessageLazyLoadState.IDLE) {
 			return
 		}
 		
@@ -250,25 +255,28 @@ class MessagingViewModelData(
 	private suspend fun applyMessageUpdate(event: ReduxEventMessaging) {
 		when(event) {
 			is ReduxEventMessaging.Message -> {
-				//Filter results relevant to this conversation
-				val resultList = event.conversationItems
-					.filter { it.first.localID == conversationID }
-					.flatMap { it.second }
-				
-				//Apply the update
-				applyMessageUpdate(resultList)
-				
-				//Notify listeners of new items
-				if(resultList.any { result ->
-						result.newItems.any { it is MessageInfo && it.isOutgoing }
-					}) {
-					_messageAdditionFlow.emit(MessageAdditionEvent.OUTGOING_MESSAGE)
-				}
-				
-				if(resultList.any { result ->
-						result.newItems.any { it is MessageInfo && !it.isOutgoing }
-					}) {
-					_messageAdditionFlow.emit(MessageAdditionEvent.INCOMING_MESSAGE)
+				//Make sure that we've loaded the initial messages
+				if(initialMessagesLoaded) {
+					//Filter results relevant to this conversation
+					val resultList = event.conversationItems
+						.filter { it.first.localID == conversationID }
+						.flatMap { it.second }
+					
+					//Apply the update
+					applyMessageUpdate(resultList)
+					
+					//Notify listeners of new items
+					if(resultList.any { result ->
+							result.newItems.any { it is MessageInfo && it.isOutgoing }
+						}) {
+						_messageAdditionFlow.emit(MessageAdditionEvent.OUTGOING_MESSAGE)
+					}
+					
+					if(resultList.any { result ->
+							result.newItems.any { it is MessageInfo && !it.isOutgoing }
+						}) {
+						_messageAdditionFlow.emit(MessageAdditionEvent.INCOMING_MESSAGE)
+					}
 				}
 			}
 			is ReduxEventMessaging.ConversationUpdate -> {
@@ -283,7 +291,9 @@ class MessagingViewModelData(
 				conversation = transferredConversation.serverConversation
 				
 				//Add transferred messages
-				applyMessageUpdate(transferredConversation.serverConversationItems)
+				if(initialMessagesLoaded) {
+					applyMessageUpdate(transferredConversation.serverConversationItems)
+				}
 			}
 			is ReduxEventMessaging.MessageState -> {
 				//Find a matching message
