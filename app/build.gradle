@@ -58,8 +58,8 @@ android {
 		applicationId "me.tagavari.airmessage"
 		minSdkVersion 23
 		targetSdkVersion 33
-		versionName "4.0.0-pre8"
-		versionCode 158
+		versionName "4.0.0-pre9"
+		versionCode 159
 		resConfigs "en", "fr", "ja"
 		
 		testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
