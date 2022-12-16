@@ -1,5 +1,7 @@
 package me.tagavari.airmessage.compose.component
 
+import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.ScrollState
@@ -75,6 +77,14 @@ fun MessageInputBar(
 				.padding(8.dp)
 				.then(modifier)
 		) {
+			val context = LocalContext.current
+			val scope = rememberCoroutineScope()
+			
+			@SuppressLint("UnsupportedChromeOsCameraSystemFeature")
+			val isCameraSupported = remember {
+				context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA)
+			}
+			
 			//Audio file data, set once the user has finished recording and the UI
 			//prompts the user with what to do with the file
 			var recordingData by remember { mutableStateOf<RecordingData?>(null) }
@@ -89,9 +99,6 @@ fun MessageInputBar(
 			//Audio playback state
 			val playbackManager = LocalAudioPlayback.current
 			val playbackState by playbackManager.stateForKey(key = recordingData?.file)
-			
-			val context = LocalContext.current
-			val scope = rememberCoroutineScope()
 			
 			fun sendRecording() {
 				//Send the file
@@ -131,6 +138,7 @@ fun MessageInputBar(
 					attachmentsScrollState = attachmentsScrollState,
 					collapseButtons = collapseButtons,
 					onChangeCollapseButtons = onChangeCollapseButtons,
+					showTakePhoto = isCameraSupported,
 					onTakePhoto = onTakePhoto,
 					onOpenContentPicker = onOpenContentPicker,
 					onStartAudioRecording = {

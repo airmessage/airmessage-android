@@ -69,6 +69,7 @@ fun MessageInputBarText(
 	attachmentsScrollState: ScrollState = rememberScrollState(),
 	collapseButtons: Boolean,
 	onChangeCollapseButtons: (Boolean) -> Unit,
+	showTakePhoto: Boolean,
 	onTakePhoto: () -> Unit,
 	onOpenContentPicker: () -> Unit,
 	onStartAudioRecording: () -> Unit,
@@ -85,8 +86,8 @@ fun MessageInputBarText(
 	//Automatically expand or collapse the buttons
 	//depending on how long a message the user has entered
 	val currentOnChangeCollapseButtons by rememberUpdatedState(onChangeCollapseButtons)
-	LaunchedEffect(messageText, attachments.isNotEmpty()) {
-		if(messageText.length > messageLengthButtonsCollapse || attachments.isNotEmpty()) {
+	LaunchedEffect(showTakePhoto, messageText, attachments.isNotEmpty()) {
+		if(!showTakePhoto && (messageText.length > messageLengthButtonsCollapse || attachments.isNotEmpty())) {
 			currentOnChangeCollapseButtons(true)
 		} else if(messageText.length < messageLengthButtonsExpand) {
 			currentOnChangeCollapseButtons(false)
@@ -156,11 +157,13 @@ fun MessageInputBarText(
 					}
 				} else {
 					Row {
-						IconButton(
-							modifier = Modifier.padding(end = 4.dp),
-							onClick = onTakePhoto,
-						) {
-							Icon(Icons.Outlined.PhotoCamera, contentDescription = "")
+						if(showTakePhoto) {
+							IconButton(
+								modifier = Modifier.padding(end = 4.dp),
+								onClick = onTakePhoto,
+							) {
+								Icon(Icons.Outlined.PhotoCamera, contentDescription = "")
+							}
 						}
 						
 						IconButton(
@@ -394,6 +397,7 @@ private fun PreviewMessageInputBarText() {
 				attachments = listOf(),
 				onRemoveAttachment = {},
 				onInputContent = {},
+				showTakePhoto = true,
 				onTakePhoto = {},
 				onOpenContentPicker = {},
 				collapseButtons = false,
