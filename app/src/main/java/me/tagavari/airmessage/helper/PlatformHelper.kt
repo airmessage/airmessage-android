@@ -39,6 +39,10 @@ object PlatformHelper {
 	
 	@Composable
 	fun updateChromeOSTopBarCompose(activity: Activity) {
+		//Ignore if not running on a Chrome OS device
+		if(!isChromeOS(activity)) return
+		
+		//Set the status bar color
 		val color = MaterialTheme.colorScheme.inverseOnSurface
 		LaunchedEffect(color) {
 			activity.window.statusBarColor = color.toArgb()
