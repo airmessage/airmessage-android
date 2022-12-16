@@ -2,6 +2,8 @@ package me.tagavari.airmessage.compose.component
 
 import android.util.Pair
 import android.util.TypedValue
+import android.view.InputDevice
+import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import android.widget.Toast
@@ -241,6 +243,8 @@ fun MessageInputBarText(
 					val context = LocalContext.current
 					val textColor = MaterialTheme.colorScheme.onSurface
 					val placeholderColor = MaterialTheme.colorScheme.onSurfaceVariant
+					
+					val currentOnSend by rememberUpdatedState(onSend)
 					AndroidView(
 						modifier = Modifier
 							.weight(1F)
@@ -280,6 +284,20 @@ fun MessageInputBarText(
 									// Return anything that we didn't handle ourselves. This preserves the default platform
 									// behavior for text and anything else for which we are not implementing custom handling.
 									otherPayloads
+								}
+								
+								setOnEditorActionListener { _, actionID, event ->
+									/*
+									IME_ACTION_DONE is triggered on the Google Pixelbook
+									IME_NULL is triggered with external wireless keyboards
+									 */
+									if(actionID == EditorInfo.IME_ACTION_DONE ||
+										(actionID == EditorInfo.IME_NULL && event.action == KeyEvent.ACTION_DOWN && event.source != InputDevice.SOURCE_UNKNOWN)) {
+										currentOnSend()
+										return@setOnEditorActionListener true
+									}
+									
+									return@setOnEditorActionListener false
 								}
 							}
 						},
