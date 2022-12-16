@@ -17,6 +17,7 @@ import me.tagavari.airmessage.compose.component.onboarding.OnboardingPane
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
+import me.tagavari.airmessage.helper.PlatformHelper
 import me.tagavari.airmessage.service.ConnectionService
 import me.tagavari.airmessage.service.ConnectionService.ConnectionBinder
 
@@ -46,6 +47,8 @@ class OnboardingCompose : ComponentActivity() {
 		
 		setContent {
 			AirMessageAndroidTheme {
+				PlatformHelper.updateChromeOSTopBarCompose(this)
+				
 				OnboardingPane(
 					connectionManager = connectionManager,
 					onComplete = {

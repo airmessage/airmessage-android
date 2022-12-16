@@ -32,6 +32,7 @@ import me.tagavari.airmessage.exception.LocationUnavailableException
 import me.tagavari.airmessage.flavor.ResolvableApiException
 import me.tagavari.airmessage.helper.AddressHelper.validateEmail
 import me.tagavari.airmessage.helper.AddressHelper.validatePhoneNumber
+import me.tagavari.airmessage.helper.PlatformHelper
 import me.tagavari.airmessage.helper.getParcelableExtraCompat
 import me.tagavari.airmessage.util.LatLngInfo
 
@@ -81,6 +82,8 @@ class ConversationDetailsCompose : ComponentActivity() {
 			}
 			
 			AirMessageAndroidTheme {
+				PlatformHelper.updateChromeOSTopBarCompose(this)
+				
 				Box(
 					modifier = Modifier
 						.background(MaterialTheme.colorScheme.background)

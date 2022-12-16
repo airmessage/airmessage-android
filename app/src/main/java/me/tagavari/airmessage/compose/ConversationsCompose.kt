@@ -35,6 +35,7 @@ import me.tagavari.airmessage.container.PendingConversationReceivedContent
 import me.tagavari.airmessage.data.ForegroundState
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.helper.NotificationHelper
+import me.tagavari.airmessage.helper.PlatformHelper
 import me.tagavari.airmessage.helper.ShortcutHelper.shortcutIDToConversationID
 import me.tagavari.airmessage.helper.getParcelableArrayListExtraCompat
 import me.tagavari.airmessage.helper.getParcelableExtraCompat
@@ -79,6 +80,8 @@ class ConversationsCompose : FragmentActivity(), GestureTrackable {
 		setContent {
 			ConnectionServiceLocalProvider(context = this) {
 				AirMessageAndroidTheme {
+					PlatformHelper.updateChromeOSTopBarCompose(this)
+					
 					ConversationMessagingPane(
 						devicePosture = devicePostureFlow.collectAsState(initial = null).value,
 						windowSizeClass = calculateWindowSizeClass(this)

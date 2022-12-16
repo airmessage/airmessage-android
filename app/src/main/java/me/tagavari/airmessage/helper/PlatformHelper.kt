@@ -1,7 +1,14 @@
 package me.tagavari.airmessage.helper
 
+import android.app.Activity
 import android.content.Context
-import androidx.appcompat.app.AppCompatActivity
+import android.util.TypedValue
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.toArgb
+import androidx.core.content.ContextCompat
+import com.google.android.material.color.MaterialColors
 import me.tagavari.airmessage.R
 
 object PlatformHelper {
@@ -10,18 +17,31 @@ object PlatformHelper {
 	 */
 	@JvmStatic
 	fun isChromeOS(context: Context): Boolean {
-		return context.packageManager.hasSystemFeature("org.chromium.arc.device_management")
+		val pm = context.packageManager
+		return pm.hasSystemFeature("org.chromium.arc") ||
+				pm.hasSystemFeature("org.chromium.arc.device_management")
 	}
 	
 	/**
 	 * Update the color of the status bar to match Chrome OS
 	 */
 	@JvmStatic
-	fun updateChromeOSStatusBar(activity: AppCompatActivity) {
-		//Ignoring if not running on a Chrome OS device
+	fun updateChromeOSTopBar(activity: Activity) {
+		//Ignore if not running on a Chrome OS device
 		if(!isChromeOS(activity)) return
 		
-		//Setting the statusbar color
-		activity.window.statusBarColor = activity.resources.getColor(R.color.colorSubBackground, null)
+		//Set the status bar color
+		val typedValue = TypedValue()
+		activity.theme.resolveAttribute(R.attr.colorOnSurfaceInverse, typedValue, true)
+		val color = activity.getColor(typedValue.resourceId)
+		activity.window.statusBarColor = color
+	}
+	
+	@Composable
+	fun updateChromeOSTopBarCompose(activity: Activity) {
+		val color = MaterialTheme.colorScheme.inverseOnSurface
+		LaunchedEffect(color) {
+			activity.window.statusBarColor = color.toArgb()
+		}
 	}
 }

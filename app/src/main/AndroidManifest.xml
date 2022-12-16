@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 	xmlns:tools="http://schemas.android.com/tools">
-
+	
 	<!-- Normal permissions -->
 	<uses-permission android:name="android.permission.INTERNET" />
 	<uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -9,7 +9,7 @@
 	<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 	<uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 	<uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
-
+	
 	<!-- Dangerous permissions -->
 	<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 	<uses-permission android:name="android.permission.CAMERA" />
@@ -18,7 +18,7 @@
 	<uses-permission android:name="android.permission.READ_CONTACTS" />
 	<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 	<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-
+	
 	<!-- Text message permissions -->
 	<uses-permission android:name="android.permission.SEND_SMS" />
 	<uses-permission android:name="android.permission.READ_SMS" />
@@ -30,11 +30,12 @@
 	<uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 	<uses-permission android:name="android.permission.READ_PHONE_STATE" />
 	<!-- <uses-permission android:name="android.permission.WRITE_SETTINGS" /> -->
-
+	
 	<!-- Features -->
 	<uses-feature android:name="android.hardware.camera" android:required="false" />
+	<uses-feature android:name="android.hardware.camera.autofocus" android:required="false" />
 	<uses-feature android:name="android.hardware.telephony" android:required="false" />
-
+	
 	<!-- Activity queries -->
 	<queries>
 		<!-- Camera -->
@@ -45,7 +46,7 @@
 			<action android:name="android.media.action.VIDEO_CAPTURE" />
 		</intent>
 	</queries>
-
+	
 	<application
 		android:allowBackup="true"
 		android:fullBackupContent="@xml/backup_rules"
@@ -85,6 +86,10 @@
 			</intent-filter>
 			
 			<meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts" />
+			
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+			<meta-data android:name="WindowManagerPreference:FreeformWindowSize" android:value="tablet" />
+			<meta-data android:name="WindowManagerPreference:FreeformWindowOrientation" android:value="landscape" />
 		</activity>
 		
 		<!-- Standalone messaging screen -->
@@ -96,20 +101,26 @@
 		<!-- Conversation details -->
 		<activity
 			android:name=".compose.ConversationDetailsCompose"
-			android:theme="@style/Theme.AirMessage.M3.API" />
+			android:theme="@style/Theme.AirMessage.M3.API">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
 		
 		<!-- Onboarding -->
 		<activity
 			android:exported="true"
 			android:name=".compose.OnboardingCompose"
 			android:theme="@style/Theme.AirMessage.M3.API"
-			android:windowSoftInputMode="adjustResize" />
+			android:windowSoftInputMode="adjustResize">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
 		
 		<!-- Manual reconfiguration -->
 		<activity
 			android:name=".compose.ServerConfigStandaloneCompose"
 			android:theme="@style/Theme.AirMessage.M3.API"
-			android:windowSoftInputMode="adjustResize" />
+			android:windowSoftInputMode="adjustResize">
+			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
+		</activity>
 		
 		<!-- Preferences -->
 		<activity
@@ -122,10 +133,10 @@
 				<action android:name="android.intent.action.MAIN" />
 				<category android:name="android.intent.category.NOTIFICATION_PREFERENCES" />
 			</intent-filter>
-
+			
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
+		
 		<!-- Server update -->
 		<activity
 			android:exported="false"
@@ -135,7 +146,7 @@
 			android:label="@string/screen_serverupdate">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
+		
 		<!-- Media viewer -->
 		<activity
 			android:exported="false"
@@ -145,7 +156,7 @@
 			android:configChanges="orientation|screenSize|layoutDirection">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
+		
 		<!-- Share Handler -->
 		<activity
 			android:excludeFromRecents="true"
@@ -164,7 +175,7 @@
 				<data android:mimeType="*/*" />
 			</intent-filter>
 		</activity>
-
+		
 		<!-- Open source licenses -->
 		<activity
 			android:exported="false"
@@ -173,7 +184,7 @@
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
+		
 		<!-- Crash report -->
 		<activity
 			android:exported="false"
@@ -182,37 +193,37 @@
 			android:windowSoftInputMode="adjustResize">
 			<meta-data android:name="WindowManagerPreference:SuppressWindowControlNavigationButton" android:value="true" />
 		</activity>
-
+		
 		<!-- Notification response -->
 		<receiver
 			android:enabled="true"
 			android:exported="false"
 			android:name=".receiver.MessageNotificationActionReceiver" />
-
+		
 		<!-- Message notification deletion receiver (for updating the status notification) -->
 		<receiver
 			android:enabled="true"
 			android:exported="false"
 			android:name=".receiver.MessageNotificationDeleteReceiver" />
-
+		
 		<!-- Server connection manager service -->
 		<service
 			android:name=".service.ConnectionService"
 			android:exported="false"
 			android:description="@string/servicedesc_connectionservice" />
-
+		
 		<!-- Text message import service -->
 		<service
 			android:name=".service.SystemMessageImportService"
 			android:exported="false"
 			android:description="@string/servicedesc_systemmessageimport" />
-
+		
 		<!-- File-URI export service -->
 		<service
 			android:name=".service.UriExportService"
 			android:exported="false"
 			android:description="@string/servicedesc_fileexportservice" />
-
+		
 		<!-- File provider -->
 		<provider
 			android:name="androidx.core.content.FileProvider"
@@ -223,7 +234,7 @@
 				android:name="android.support.FILE_PROVIDER_PATHS"
 				android:resource="@xml/provider_paths" />
 		</provider>
-
+		
 		<!-- Start service on boot -->
 		<receiver
 			android:name=".receiver.StartBootReceiver"
@@ -233,25 +244,25 @@
 				<action android:name="android.intent.action.BOOT_COMPLETED" />
 			</intent-filter>
 		</receiver>
-
+		
 		<!-- MMS / SMS library helper service -->
 		<service android:name="com.android.mms.transaction.TransactionService" />
-
+		
 		<!-- Sent MMS receiver -->
 		<receiver
 			android:name=".receiver.TextSMSSentReceiver"
 			android:taskAffinity="me.tagavari.airmessage.SMS_SENT" />
-
+		
 		<!-- Delivered SMS receiver -->
 		<receiver
 			android:name=".receiver.TextSMSDeliveredReceiver"
 			android:taskAffinity="me.tagavari.airmessage.SMS_DELIVERED" />
-
+		
 		<!-- Sent MMS receiver -->
 		<receiver
 			android:name=".receiver.TextMMSSentReceiver"
 			android:taskAffinity="com.klinker.android.messaging.MMS_SENT" />
-
+		
 		<!-- Incoming SMS receiver -->
 		<receiver
 			android:name=".receiver.TextSMSReceivedReceiver"
@@ -261,7 +272,7 @@
 				<action android:name="android.provider.Telephony.SMS_DELIVER" />
 			</intent-filter>
 		</receiver>
-
+		
 		<!-- Incoming MMS processor -->
 		<receiver
 			android:name="com.android.mms.transaction.PushReceiver"
@@ -272,12 +283,12 @@
 				<data android:mimeType="application/vnd.wap.mms-message" />
 			</intent-filter>
 		</receiver>
-
+		
 		<!-- Incoming MMS receiver -->
 		<receiver
 			android:name=".receiver.TextMMSReceivedReceiver"
 			android:taskAffinity="com.klinker.android.messaging.MMS_RECEIVED" />
-
+		
 		<!-- Headless MMS / SMS manager for quick replies -->
 		<service
 			android:name=".service.TextHeadlessService"
@@ -292,7 +303,7 @@
 				<data android:scheme="mmsto" />
 			</intent-filter>
 		</service>
-
+		
 		<!-- Messaging app change receiver (to reset messaging data when another app is selected -->
 		<receiver
 			android:name=".receiver.DefaultMessagingAppChangedReceiver"
@@ -301,7 +312,7 @@
 				<action android:name="android.provider.action.DEFAULT_SMS_PACKAGE_CHANGED" />
 			</intent-filter>
 		</receiver>
-
+		
 		<!-- External messaging provider change receiver (when another app sends an SMS and MMS message, and this app must be updated) -->
 		<receiver
 			android:name=".receiver.ExternalMessagingProviderChangedReceiver"
@@ -310,7 +321,7 @@
 				<action android:name="android.provider.action.EXTERNAL_PROVIDER_CHANGE" />
 			</intent-filter>
 		</receiver>
-
+		
 		<!-- Android Auto integration -->
 		<!-- <meta-data
 			android:name="com.google.android.gms.car.application"

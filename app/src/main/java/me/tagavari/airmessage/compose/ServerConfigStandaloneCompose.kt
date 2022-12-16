@@ -19,6 +19,7 @@ import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.data.SharedPreferencesManager
 import me.tagavari.airmessage.enums.ConnectionErrorCode
 import me.tagavari.airmessage.enums.ProxyType
+import me.tagavari.airmessage.helper.PlatformHelper
 import me.tagavari.airmessage.service.ConnectionService
 
 class ServerConfigStandaloneCompose : ComponentActivity() {
@@ -48,6 +49,8 @@ class ServerConfigStandaloneCompose : ComponentActivity() {
 		
 		setContent {
 			AirMessageAndroidTheme {
+				PlatformHelper.updateChromeOSTopBarCompose(this)
+				
 				OnboardingManual(
 					modifier = Modifier.fillMaxSize(),
 					connectionManager = connectionManager,

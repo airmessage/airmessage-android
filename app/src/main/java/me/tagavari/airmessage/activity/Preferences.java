@@ -82,6 +82,7 @@ import me.tagavari.airmessage.helper.ConfigurationHelper;
 import me.tagavari.airmessage.helper.LanguageHelper;
 import me.tagavari.airmessage.helper.MMSSMSHelper;
 import me.tagavari.airmessage.helper.NotificationHelper;
+import me.tagavari.airmessage.helper.PlatformHelper;
 import me.tagavari.airmessage.helper.ThemeHelper;
 import me.tagavari.airmessage.helper.WindowHelper;
 import me.tagavari.airmessage.receiver.StartBootReceiver;
@@ -121,6 +122,9 @@ public class Preferences extends AppCompatCompositeActivity implements Preferenc
 		
 		//Rendering edge-to-edge
 		WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
+		
+		//Set the top bar color on Chrome OS
+		PlatformHelper.updateChromeOSTopBar(this);
 		
 		//Enabling the toolbar and up navigation
 		setSupportActionBar(findViewById(R.id.toolbar));

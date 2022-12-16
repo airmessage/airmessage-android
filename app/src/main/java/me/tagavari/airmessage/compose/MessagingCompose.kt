@@ -14,6 +14,7 @@ import me.tagavari.airmessage.compose.provider.ConnectionServiceLocalProvider
 import me.tagavari.airmessage.compose.state.MessagingViewModel
 import me.tagavari.airmessage.compose.state.MessagingViewModelFactory
 import me.tagavari.airmessage.compose.ui.theme.AirMessageAndroidTheme
+import me.tagavari.airmessage.helper.PlatformHelper
 
 class MessagingCompose : ComponentActivity(), GestureTrackable {
 	override fun onCreate(savedInstanceState: Bundle?) {
@@ -27,6 +28,8 @@ class MessagingCompose : ComponentActivity(), GestureTrackable {
 		setContent {
 			ConnectionServiceLocalProvider(context = this) {
 				AirMessageAndroidTheme {
+					PlatformHelper.updateChromeOSTopBarCompose(this)
+					
 					val viewModel = viewModel<MessagingViewModel>(
 						factory = MessagingViewModelFactory(application, conversationID),
 						key = conversationID.toString()
