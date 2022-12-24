@@ -6,11 +6,13 @@ import android.widget.Toast
 import androidx.compose.runtime.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.rx3.asFlow
 import kotlinx.coroutines.rx3.await
 import me.tagavari.airmessage.R
 import me.tagavari.airmessage.activity.Preferences
+import me.tagavari.airmessage.compose.util.repeatWhileConnected
 import me.tagavari.airmessage.connection.ConnectionManager
 import me.tagavari.airmessage.connection.exception.AMRequestException
 import me.tagavari.airmessage.constants.FileNameConstants
@@ -77,7 +79,7 @@ class MessagingViewModelData(
 		
 		setOf(readTargetIndex, deliveredTargetIndex).filter { it != -1 }
 	}
-	private val autoDownloadFlow = MutableSharedFlow<Pair<MessageInfo, AttachmentInfo>>(extraBufferCapacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+	private val autoDownloadChannel = Channel<Pair<MessageInfo, AttachmentInfo>>(capacity = 64, onBufferOverflow = BufferOverflow.DROP_OLDEST)
 	
 	val queuedFiles = mutableStateListOf<QueuedFile>()
 	val messageSelectionState = MessageSelectionState()
@@ -147,12 +149,8 @@ class MessagingViewModelData(
 		
 		//Automatically download attachment files
 		viewModelScope.launch {
-			//Collect message updates while we're connected
-			ReduxEmitterNetwork.connectionStateSubject.asFlow()
-				.filter { it.state == ConnectionState.connected }
-				.combine(autoDownloadFlow) { _, attachmentList -> attachmentList }
-				.filter { (_, attachment) -> attachment.shouldAutoDownload }
-				.collect { (messageInfo, attachmentInfo) ->
+			repeatWhileConnected {
+				for((messageInfo, attachmentInfo) in autoDownloadChannel) {
 					//Download the attachment
 					downloadAttachment(ConnectionService.getConnectionManager(), messageInfo, attachmentInfo)
 					
@@ -162,6 +160,7 @@ class MessagingViewModelData(
 						DatabaseManager.getInstance().markAttachmentAutoDownloaded(attachmentInfo.localID)
 					}
 				}
+			}
 		}
 	}
 	
@@ -188,9 +187,12 @@ class MessagingViewModelData(
 				.asSequence()
 				//Map conversation items to attachments
 				.filterIsInstance<MessageInfo>()
-				.flatMap { message -> message.attachments.map { Pair(message, it) } }
-				.asFlow()
-				.collect(autoDownloadFlow)
+				.flatMap { message ->
+					message.attachments
+						.filter { it.shouldAutoDownload }
+						.map { Pair(message, it) }
+				}
+				.forEach { autoDownloadChannel.send(it) }
 		}
 	}
 	
@@ -488,7 +490,10 @@ class MessagingViewModelData(
 				messages.add(insertIndex, newItem)
 				
 				if(newItem is MessageInfo) {
-					newItem.attachments.map { Pair(newItem, it) }.asFlow().collect(autoDownloadFlow)
+					for(attachment in newItem.attachments) {
+						if(!attachment.shouldAutoDownload) continue
+						autoDownloadChannel.send(Pair(newItem, attachment))
+					}
 				}
 			}
 			
