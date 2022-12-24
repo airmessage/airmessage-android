@@ -17,7 +17,6 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.zip.DeflaterInputStream;
 import java.util.zip.InflaterOutputStream;
@@ -51,7 +50,7 @@ import me.tagavari.airmessage.util.CompoundErrorDetails;
 import me.tagavari.airmessage.util.ConversationTarget;
 import me.tagavari.airmessage.util.ServerUpdateData;
 
-public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
+public class ClientProtocol6 extends ProtocolManager<EncryptedPacket> {
 	private static final String hashAlgorithm = "MD5";
 	private static final String platformID = "android";
 
@@ -118,6 +117,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 	private static final int nstModifierActivity = 0;
 	private static final int nstModifierSticker = 1;
 	private static final int nstModifierTapback = 2;
+	private static final int nstModifierEdit = 3;
 
 	private static final int nstUpdateErrorDownload = 0;
 	private static final int nstUpdateErrorBadPackage = 1;
@@ -133,7 +133,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 
 	private short lastMassRetrievalRequestID = -1;
 
-	ClientProtocol5(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
+	ClientProtocol6(ClientComm5 communicationsManager, DataProxy<EncryptedPacket> dataProxy) {
 		super(communicationsManager, dataProxy);
 	}
 	
@@ -657,7 +657,7 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 		//Assembling the device information
 		String installationID = SharedPreferencesManager.getInstallationID(MainApplication.getInstance());
 		String clientName = Build.MANUFACTURER + ' ' + Build.MODEL;
-		String platformID = ClientProtocol5.platformID;
+		String platformID = ClientProtocol6.platformID;
 		
 		//Checking if the current protocol requires authentication
 		if(unpacker.unpackBoolean()) {
@@ -1229,8 +1229,10 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 					@MessageState int stateCode = mapNSTMessageState(unpacker.unpackInt());
 					@MessageSendErrorCode int errorCode = mapNRCAppleErrorCode(unpacker.unpackInt());
 					long dateRead = unpacker.unpackLong();
+					List<String> editHistory = unpacker.unpackStringList();
+					boolean isUnsent = unpacker.unpackBoolean();
 					
-					list.add(new Blocks.MessageInfo(serverID, guid, chatGuid, date, text, subject, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead, Collections.emptyList(), false));
+					list.add(new Blocks.MessageInfo(serverID, guid, chatGuid, date, text, subject, sender, attachments, stickers, tapbacks, sendEffect, stateCode, errorCode, dateRead, editHistory, isUnsent));
 					break;
 				}
 				case nstItemGroupAction: {
@@ -1336,6 +1338,13 @@ public class ClientProtocol5 extends ProtocolManager<EncryptedPacket> {
 					int tapbackType = unpacker.unpackInt();
 					
 					list.add(new Blocks.TapbackModifierInfo(message, messageIndex, sender, isAddition, mapTapbackType(tapbackType)));
+					break;
+				}
+				case nstModifierEdit: {
+					List<String> editHistory = unpacker.unpackStringList();
+					boolean isUnsent = unpacker.unpackBoolean();
+					
+					list.add(new Blocks.EditModifierInfo(message, editHistory, isUnsent));
 					break;
 				}
 			}

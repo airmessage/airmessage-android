@@ -26,7 +26,7 @@ public class Blocks {
 			this.available = false;
 			this.service = null;
 			this.name = null;
-			this.members = null;
+			this.members = new String[0];
 		}
 		
 		//Conversation available
@@ -65,8 +65,27 @@ public class Blocks {
 		@MessageState public final int stateCode;
 		@MessageSendErrorCode public final int errorCode;
 		public final long dateRead;
+		@NonNull public final List<String> editHistory;
+		public final boolean isUnsent;
 		
-		public MessageInfo(long serverID, String guid, String chatGuid, long date, @Nullable String text, @Nullable String subject, @Nullable String sender, @NonNull List<AttachmentInfo> attachments, @NonNull List<StickerModifierInfo> stickers, @NonNull List<TapbackModifierInfo> tapbacks, @Nullable String sendEffect, @MessageState int stateCode, @MessageSendErrorCode int errorCode, long dateRead) {
+		public MessageInfo(
+				long serverID,
+				String guid,
+				String chatGuid,
+				long date,
+				@Nullable String text,
+				@Nullable String subject,
+				@Nullable String sender,
+				@NonNull List<AttachmentInfo> attachments,
+				@NonNull List<StickerModifierInfo> stickers,
+				@NonNull List<TapbackModifierInfo> tapbacks,
+				@Nullable String sendEffect,
+				@MessageState int stateCode,
+				@MessageSendErrorCode int errorCode,
+				long dateRead,
+				@NonNull List<String> editHistory,
+				boolean isUnsent
+		) {
 			//Calling the super constructor
 			super(serverID, guid, chatGuid, date);
 			
@@ -81,6 +100,8 @@ public class Blocks {
 			this.stateCode = stateCode;
 			this.errorCode = errorCode;
 			this.dateRead = dateRead;
+			this.editHistory = editHistory;
+			this.isUnsent = isUnsent;
 		}
 	}
 	
@@ -102,9 +123,9 @@ public class Blocks {
 	
 	public static class ChatRenameActionInfo extends ConversationItem {
 		@Nullable public final String agent;
-		@NonNull public final String newChatName;
+		@Nullable public final String newChatName;
 		
-		public ChatRenameActionInfo(long serverID, String guid, String chatGuid, long date, @Nullable String agent, @NonNull String newChatName) {
+		public ChatRenameActionInfo(long serverID, String guid, String chatGuid, long date, @Nullable String agent, @Nullable String newChatName) {
 			//Calling the super constructor
 			super(serverID, guid, chatGuid, date);
 			
@@ -192,6 +213,17 @@ public class Blocks {
 			this.sender = sender;
 			this.isAddition = isAddition;
 			this.tapbackType = tapbackType;
+		}
+	}
+	
+	public static class EditModifierInfo extends ModifierInfo {
+		@NonNull public final List<String> editHistory;
+		public final boolean isUnsent;
+		
+		public EditModifierInfo(String message, @NonNull List<String> editHistory, boolean isUnsent) {
+			super(message);
+			this.editHistory = editHistory;
+			this.isUnsent = isUnsent;
 		}
 	}
 }
