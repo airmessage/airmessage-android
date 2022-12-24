@@ -2,7 +2,6 @@ package me.tagavari.airmessage.helper
 
 import android.content.Context
 import android.graphics.*
-import android.os.Build
 import android.view.View
 import androidx.core.app.Person
 import androidx.core.content.res.ResourcesCompat
@@ -195,8 +194,7 @@ object ConversationBuildHelper {
 		if(contactData.isA) {
 			val drawable = ResourcesCompat.getDrawable(context.resources, R.drawable.user, null) ?: return
 			drawable.bounds = drawRect
-			if(Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) drawable.colorFilter = BlendModeColorFilter(contactData.a, BlendMode.MULTIPLY)
-			else drawable.setColorFilter(contactData.a, PorterDuff.Mode.MULTIPLY)
+			drawable.colorFilter = PorterDuffColorFilter(contactData.a, PorterDuff.Mode.MULTIPLY)
 			drawable.draw(canvas)
 		} else {
 			//canvas.drawCircle(drawRect.left + (drawRect.right - drawRect.left) / 2, drawRect.top + (drawRect.bottom - drawRect.top) / 2, (drawRect.right - drawRect.left) / 2, backgroundPaint);
